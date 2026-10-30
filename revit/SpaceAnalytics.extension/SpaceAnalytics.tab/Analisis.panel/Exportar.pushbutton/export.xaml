@@ -1,5 +1,5 @@
 <!-- La ventana de Exportar con el estilo de la app (tema Aura de app/index.html): fondo con halos, tarjetas blancas,
-     botones píldora. Tres páginas: elegir (etapa y vínculos), leyendo (avance) y listo (resumen). La llena y la
+     botones píldora. Tres páginas: elegir (vínculos), leyendo (avance) y listo (resumen). La llena y la
      responde lib/export_window.py; los nombres x:Name y los Click son su contrato. -->
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -112,33 +112,6 @@
       <Setter Property="FontSize" Value="12"/>
     </Style>
 
-    <!-- el selector de etapa: píldoras dentro de una cápsula, como .seg de la app -->
-    <Style x:Key="Seg" TargetType="RadioButton">
-      <Setter Property="GroupName" Value="stage"/>
-      <Setter Property="Foreground" Value="{StaticResource Muted}"/>
-      <Setter Property="FontSize" Value="12"/>
-      <Setter Property="FontWeight" Value="SemiBold"/>
-      <Setter Property="Cursor" Value="Hand"/>
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="RadioButton">
-            <Border x:Name="b" Background="Transparent" CornerRadius="15" Height="30" Padding="13,0">
-              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-            </Border>
-            <ControlTemplate.Triggers>
-              <Trigger Property="IsChecked" Value="True">
-                <Setter TargetName="b" Property="Background" Value="{StaticResource Surface}"/>
-                <Setter TargetName="b" Property="Effect">
-                  <Setter.Value><DropShadowEffect BlurRadius="8" ShadowDepth="1" Direction="270" Opacity=".18"/></Setter.Value>
-                </Setter>
-                <Setter Property="Foreground" Value="{StaticResource Ink}"/>
-              </Trigger>
-            </ControlTemplate.Triggers>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
-    </Style>
-
     <!-- casilla redonda con palomita, para los vínculos -->
     <Style x:Key="Check" TargetType="CheckBox">
       <Setter Property="Margin" Value="0,4,0,4"/>
@@ -230,20 +203,6 @@
           <TextBlock Style="{StaticResource H2}" Text="Llevar el modelo a la app"/>
           <TextBlock Style="{StaticResource Feel}" Margin="0,6,0,18"
                      Text="Lee el modelo sin cambiar nada y arma un HTML con la app y los datos dentro, listo para abrir con doble clic."/>
-          <Border Style="{StaticResource Card}">
-            <StackPanel>
-              <TextBlock Style="{StaticResource Eyebrow}" Text="ETAPA"/>
-              <Border Background="{StaticResource Line}" CornerRadius="17" Padding="2" HorizontalAlignment="Left">
-                <StackPanel Orientation="Horizontal">
-                  <RadioButton x:Name="stage_0" Style="{StaticResource Seg}"/>
-                  <RadioButton x:Name="stage_1" Style="{StaticResource Seg}"/>
-                  <RadioButton x:Name="stage_2" Style="{StaticResource Seg}"/>
-                  <RadioButton x:Name="stage_3" Style="{StaticResource Seg}"/>
-                </StackPanel>
-              </Border>
-              <TextBlock x:Name="stage_hint" Style="{StaticResource Feel}" FontSize="12" Margin="0,8,0,0"/>
-            </StackPanel>
-          </Border>
           <Border x:Name="links_card" Style="{StaticResource Card}">
             <StackPanel>
               <TextBlock Style="{StaticResource Eyebrow}" Text="VÍNCULOS DE REVIT A INCLUIR"/>
@@ -254,6 +213,7 @@
             <StackPanel>
               <TextBlock Style="{StaticResource Eyebrow}" Text="SE GUARDA EN"/>
               <TextBlock x:Name="dest_path" Style="{StaticResource MonoText}"/>
+              <TextBlock x:Name="setup_hint" Style="{StaticResource Feel}" FontSize="12" Margin="0,8,0,0"/>
             </StackPanel>
           </Border>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">

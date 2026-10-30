@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""La ventana de Exportar (export.xaml, en este mismo botón) con el estilo de la app: elegir etapa y vínculos, leer el
+"""La ventana de Exportar (export.xaml, en este mismo botón) con el estilo de la app: elegir los vínculos, leer el
 modelo con su avance y mostrar el resumen. La lectura corre dentro de la ventana modal, en el contexto de la API de
 Revit como cualquier botón de pyRevit; cada avance deja que WPF se redibuje y atienda Cancelar."""
 from __future__ import absolute_import, division, print_function, unicode_literals
@@ -19,20 +19,16 @@ PUMP_EVERY = 0.05  # segundos entre redibujos mientras se lee el modelo
 
 
 class ExportWindow(forms.WPFWindow):
-    """`export(etapa, vínculos, tick)` hace la exportación y devuelve el informe (text.report más 'html', la ruta del
+    """`export(vínculos, tick)` hace la exportación y devuelve el informe (text.report más 'html', la ruta del
     HTML escrito o None); `tick(hechos, total)` levanta `cancelled` si se pidió cancelar. Al cerrar, `open_path` es lo
     que hay que abrir en el navegador (o None)."""
 
-    def __init__(self, xaml, mark, info, stages, stage, hint, links, folder, export, cancelled):
+    def __init__(self, xaml, mark, info, hint, links, folder, export, cancelled):
         forms.WPFWindow.__init__(self, xaml)
         self.set_icon(mark)
         self.set_image_source(self.mark, mark)
         self.model_info.Text = info
-        self._stages = list(zip([self.stage_0, self.stage_1, self.stage_2, self.stage_3], stages))
-        for button, name in self._stages:
-            button.Content = name
-            button.IsChecked = name == stage
-        self.stage_hint.Text = hint
+        self.setup_hint.Text = hint
         self._links = []
         for label, inst in links:
             box = CheckBox()
@@ -81,9 +77,6 @@ class ExportWindow(forms.WPFWindow):
             self.cancel_click(sender, None)
 
     def export_click(self, sender, args):
-        stage = next((name for button, name in self._stages if button.IsChecked), None)
-        if not stage:
-            return
         links = [inst for box, inst in self._links if box.IsChecked]
         self._page(self.page_work)
         self._busy, self._cancel = True, False
@@ -92,11 +85,11 @@ class ExportWindow(forms.WPFWindow):
         self.work_detail.Text = ""
         self._pump()
         try:
-            report = self._export(stage, links, self._tick)
+            report = self._export(links, self._tick)
         except self._cancelled:
             self._busy = False
             self._page(self.page_setup)
-            self.stage_hint.Text = "Exportación cancelada. No se escribió nada."
+            self.setup_hint.Text = "Exportación cancelada. No se escribió nada."
             return
         except Exception as ex:
             report = {"title": "No se pudo exportar", "counts": [], "lines": [], "warnings": ["{0}".format(ex)],

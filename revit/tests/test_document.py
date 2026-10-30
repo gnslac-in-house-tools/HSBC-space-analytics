@@ -77,7 +77,7 @@ def raw_model():
 
 @pytest.fixture
 def built():
-    src = source("2025", "Sucursal Reforma.rvt", "Esquemático", "Nueva construcción", ["Base building.rvt"], WHEN)
+    src = source("2025", "Sucursal Reforma.rvt", "Nueva construcción", ["Base building.rvt"], WHEN)
     return build(src, raw_model())
 
 
@@ -86,7 +86,7 @@ def test_the_root_follows_the_contract(built):
     assert doc["schema"] == SCHEMA == "hsbc-space-analytics/space-model@1"
     assert doc["source"] == {"app": "Revit", "version": "2025", "file": "Sucursal Reforma.rvt",
                              "exported_at": "2026-10-29T18:20:05", "exporter": EXPORTER_VERSION,
-                             "stage": "Esquemático", "phase": "Nueva construcción", "links": ["Base building.rvt"]}
+                             "phase": "Nueva construcción", "links": ["Base building.rvt"]}
     assert sorted(doc) == sorted(["schema", "source", "levels", "rooms", "floors", "walls", "doors", "windows",
                                   "obstacles", "connectors", "types"])
     assert doc["connectors"] == []
@@ -259,7 +259,7 @@ def test_connectors_in_the_document_with_their_types():
     ]
     raw["types"]["908"] = {"category": "Stairs", "family": "Escalera ensamblada", "name": "Concreto"}
     raw["types"]["910"] = {"category": "VerticalCirculation", "family": "Escalera eléctrica", "name": "1000"}
-    doc, dropped = build(source("2025", "a.rvt", "Concepto", "", [], WHEN), raw)
+    doc, dropped = build(source("2025", "a.rvt", "", [], WHEN), raw)
     assert [(c["id"], c["z"], c["levels"]) for c in doc["connectors"]] == [
         ("700", [0.0, 4.0], ["10", "20"]), ("700@20", [4.0, 8.0], ["20"])]
     assert dropped["connectors"] == 1  # sin caja ni geometría

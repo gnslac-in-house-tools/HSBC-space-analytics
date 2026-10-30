@@ -2,7 +2,7 @@
 """Dónde y con qué nombre quedan las exportaciones, y cuáles hay ya (docs/space-model.md, "El HTML portátil").
 
 Cada exportación son dos archivos con el mismo nombre en `Documentos\\HSBC Space Analytics\\`:
-`<modelo sin .rvt> · <etapa> · <aaaa-mm-dd hhmm>.json` y `.html`. El nombre se sanea para Windows.
+`<modelo sin .rvt> · <aaaa-mm-dd hhmm>.json` y `.html`. El nombre se sanea para Windows.
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 
@@ -10,8 +10,6 @@ import io
 import json
 import os
 import re
-
-from sa_model import SCHEMA, STAGES
 
 FOLDER_NAME = "HSBC Space Analytics"
 SEPARATOR = " · "
@@ -45,17 +43,17 @@ def stamp(when):
     return when.strftime(STAMP_FORMAT)
 
 
-def export_stem(model, stage, when):
-    """`<modelo> · <etapa> · <aaaa-mm-dd hhmm>`, saneado; `model` ya es un model_stem."""
-    return sanitize(SEPARATOR.join([model, stage, stamp(when)]))
+def export_stem(model, when):
+    """`<modelo> · <aaaa-mm-dd hhmm>`, saneado; `model` ya es un model_stem."""
+    return sanitize(SEPARATOR.join([model, stamp(when)]))
 
 
 def parse_stem(stem):
-    """(modelo, etapa, sello) de un nombre de exportación sin extensión; None si no lo es."""
-    parts = stem.rsplit(SEPARATOR, 2)
-    if len(parts) != 3 or parts[1] not in STAGES or not _STAMP.match(parts[2]):
+    """(modelo, sello) de un nombre de exportación sin extensión; None si no lo es."""
+    parts = stem.rsplit(SEPARATOR, 1)
+    if len(parts) != 2 or not parts[0] or not _STAMP.match(parts[1]):
         return None
-    return parts[0], parts[1], parts[2]
+    return parts[0], parts[1]
 
 
 def output_folder(documents):
@@ -71,7 +69,7 @@ def ensure_folder(folder):
 
 def exports_in(folder, model, ext):
     """Las exportaciones de `model` con extensión `ext` (".json", ".html") en `folder`, de la más reciente a la más
-    antigua: [(sello, etapa, ruta)]. El modelo se compara sin distinguir mayúsculas, como Windows."""
+    antigua: [(sello, ruta)]. El modelo se compara sin distinguir mayúsculas, como Windows."""
     if not folder or not os.path.isdir(folder):
         return []
     found = []
@@ -82,41 +80,15 @@ def exports_in(folder, model, ext):
         parsed = parse_stem(stem)
         if parsed is None or parsed[0].lower() != model.lower():
             continue
-        found.append((parsed[2], parsed[1], os.path.join(folder, name)))
-    found.sort(key=lambda f: (f[0], f[2]), reverse=True)
+        found.append((parsed[1], os.path.join(folder, name)))
+    found.sort(reverse=True)
     return found
 
 
 def latest_html(folder, model):
     """La ruta del .html más reciente de `model`; None si no hay."""
     found = exports_in(folder, model, ".html")
-    return found[0][2] if found else None
-
-
-def read_json(path):
-    with io.open(path, encoding="utf-8-sig") as f:
-        return json.load(f)
-
-
-def previous_models(folder, model, stage, file_name=None):
-    """Las exportaciones con que comparar: de cada etapa distinta de `stage`, la última .json de `model` en `folder`
-    que se pueda leer, sea de este contrato y (si se da `file_name`) venga del mismo archivo de Revit. En el orden de
-    las etapas (Concepto, Esquemático, Desarrollo, Documentación)."""
-    by_stage = {}
-    for _, st, path in exports_in(folder, model, ".json"):
-        if st == stage or st in by_stage:
-            continue
-        try:
-            data = read_json(path)
-        except Exception:
-            continue
-        if not isinstance(data, dict) or data.get("schema") != SCHEMA:
-            continue
-        src = data.get("source") or {}
-        if file_name is not None and (src.get("file") or "").lower() != file_name.lower():
-            continue
-        by_stage[st] = data
-    return [by_stage[s] for s in STAGES if s in by_stage]
+    return found[0][1] if found else None
 
 
 def dumps(document):

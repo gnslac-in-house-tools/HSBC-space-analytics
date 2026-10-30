@@ -31,22 +31,21 @@ carpeta `app\` dentro de `SpaceAnalytics.extension\` y se usa esa.
 
 **Exportar** abre una ventana con el estilo de la app (tema Aura: fondo con halos, tarjetas, botones píldora):
 
-1. Elige la etapa: *Concepto*, *Esquemático*, *Desarrollo* o *Documentación* (viene marcada la de la última
-   exportación de este modelo). Cancelar o Esc no hacen nada.
-2. Si el modelo tiene vínculos de Revit cargados, marca cuáles incluir (todos por omisión). Sus elementos se llevan a
-   las coordenadas del modelo y sus ids van como `"<idDelVínculo>:<idDelElemento>"`.
-3. Lee el modelo con su barra de avance (Cancelar o Esc la detienen sin escribir nada). No modifica nada: no abre
+1. Si el modelo tiene vínculos de Revit cargados, marca cuáles incluir (todos por omisión). Sus elementos se llevan a
+   las coordenadas del modelo y sus ids van como `"<idDelVínculo>:<idDelElemento>"`. La ventana dice también dónde
+   se guarda y cuándo fue la última exportación de este modelo. Cancelar o Esc no hacen nada.
+2. Lee el modelo con su barra de avance (Cancelar o Esc la detienen sin escribir nada). No modifica nada: no abre
    transacciones.
-4. Escribe en `Documentos\HSBC Space Analytics\` dos archivos con el mismo nombre,
-   `<modelo> · <etapa> · <aaaa-mm-dd hhmm>`:
+3. Escribe en `Documentos\HSBC Space Analytics\` dos archivos con el mismo nombre,
+   `<modelo> · <aaaa-mm-dd hhmm>`:
    - el `.json`, según el contrato;
-   - el `.html`, la app con los datos dentro: la exportación nueva y, si hay, la última `.json` de cada **otra** etapa
-     del mismo modelo en esa carpeta, para comparar.
-5. Muestra el resumen en la misma ventana (cuántos elementos de cada cosa, accesos, avisos: sin rooms, sin puertas
+   - el `.html`, la app con este modelo dentro (solo este: la app analiza un modelo a la vez).
+4. Muestra el resumen en la misma ventana (cuántos elementos de cada cosa, accesos, avisos: sin rooms, sin puertas
    de acceso, sin pisos, elementos que fallaron) con *Abrir en la app* (Enter), *Abrir carpeta* y *Cerrar*.
 
 **Abrir**: abre el `.html` más reciente de este modelo en esa carpeta. Si no hay ninguno, ofrece abrir la app vacía
-para arrastrar uno o varios `.json`.
+para arrastrar un `.json`. Las exportaciones con el nombre viejo (`<modelo> · <etapa> · <fecha>`) no las
+encuentra; se abren con doble clic.
 
 ### Qué conviene tener en el modelo
 

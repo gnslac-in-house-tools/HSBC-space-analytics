@@ -58,11 +58,10 @@ def skipped_line(skipped):
     return "Omitidos a propósito: {0}.".format(", ".join(parts)) if parts else None
 
 
-def report(document, dropped=None, failures=None, files=None, compared=None, note=None, skipped=None):
+def report(document, dropped=None, failures=None, files=None, note=None, skipped=None):
     """El resumen por partes, para la ventana de Exportar: {title, counts, lines, warnings, files}. `files` son las
-    rutas escritas; `compared`, las etapas que van en el HTML además de la nueva; `note`, algo más que decir (p. ej. que
-    no se encontró la app); `skipped`, {motivo: cuántos} de lo que se dejó fuera a propósito (demolidos, rooms sin
-    colocar…)."""
+    rutas escritas; `note`, algo más que decir (p. ej. que no se encontró la app); `skipped`, {motivo: cuántos} de lo
+    que se dejó fuera a propósito (demolidos, rooms sin colocar…)."""
     src = document.get("source") or {}
     lines = []
     if document.get("doors"):
@@ -70,20 +69,18 @@ def report(document, dropped=None, failures=None, files=None, compared=None, not
             len(roles.accesses(document)), len(roles.entrances(document))))
     if src.get("links"):
         lines.append("Vínculos incluidos: {0}.".format(", ".join(src["links"])))
-    if compared:
-        lines.append("El HTML compara con: {0}.".format(", ".join(compared)))
     line = skipped_line(skipped)
     if line:
         lines.append(line)
     if note:
         lines.append(note)
-    return {"title": "{0} · {1}".format(src.get("file", ""), src.get("stage", "")), "counts": count_list(document),
+    return {"title": src.get("file", ""), "counts": count_list(document),
             "lines": lines, "warnings": warnings(document, dropped, failures), "files": list(files or [])}
 
 
-def summary(document, dropped=None, failures=None, files=None, compared=None, note=None, skipped=None):
+def summary(document, dropped=None, failures=None, files=None, note=None, skipped=None):
     """(mensaje, detalle) en texto, con lo mismo que report()."""
-    r = report(document, dropped, failures, files, compared, note, skipped)
+    r = report(document, dropped, failures, files, note, skipped)
     parts = [" · ".join(r["counts"])] + [l for l in r["lines"] if not l.startswith("Omitidos") and l != note]
     if r["warnings"]:
         parts.append("Avisos:\n- " + "\n- ".join(r["warnings"]))
