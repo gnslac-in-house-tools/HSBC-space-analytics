@@ -32,7 +32,9 @@ const S = {w:{flujo:.7,visib:.6,seg:.8,conf:.9,sust:.75},inc:{flujo:true,visib:t
  rels:new Set(['flujo|conf','visib|seg']),focus:{type:'pillar',k:'seg'},link:false,linkFirst:null,t:0,view:'plan',cell:0.5,min:0,thr:.65,vals:false,
  selFam:new Set(),iso:false,hlRooms:[],undo:[],famCur:null,famQ:'',famCat:'Todas',famSort:'fam',famDir:1,
  model:null,mid:0,level:null,cache:{},res:null,path:null,mark:null,zoom:null,busy:false,again:false,warnOpen:false,thrBy:{},thrUser:{},
- rot:0,cam3:{k:1,x:0,y:0}, // 3D: giro en grados y cámara (acercamiento y desplazamiento)
+ rot:0,cam3:{k:1,x:0,y:0},
+ left:'board', // panel izquierdo: 'board' (tablero de pilares y capas) o 'senses' (el instrumento, solo desde Buscar)
+ lay:{heat:true,heatOp:1,grid:true,labels:true,furn:true,furnOp:1,plants:true,ent:true,watch:false}, // capas del plano // 3D: giro en grados y cámara (acercamiento y desplazamiento)
  stack:false,gap:1,bld:null,broute:null}; // 3D con todos los niveles (gap = separación entre ellos, 1 = automática) y rutas del edificio
 const $ = id => document.getElementById(id);
 const NS = 'http://www.w3.org/2000/svg';
@@ -236,12 +238,62 @@ function weightDrag(h, k) { let on = false, last = 0; const s = $('inst');
 function listen() { if (!S.res) { toast('Primero carga un modelo'); return; } Snd.on = true; $('snd').setAttribute('aria-pressed', 'true'); P.filter(p => live(p.k)).forEach((p, i) => setTimeout(() => Snd.tone(p.f, 2.6, .03 + .06 * S.w[p.k], Math.max(0, p.target - score(p.k)) * 6), i * 140));
  const w = P.filter(p => live(p.k)).sort((a, b) => (score(a.k) - a.target) * S.w[a.k] - (score(b.k) - b.target) * S.w[b.k])[0]; if (w && score(w.k) < w.target) toast(`Suena tenso en ${w.s}`, `${score(w.k)} vs meta ${w.target}`, {label: 'Ver', run: () => focus('pillar', w.k)}); else toast('El espacio suena afinado'); }
 
-function renderMixer() { $('mixer').innerHTML = `<div class="mhead"><span></span><span>PILAR</span><span>PTS</span><span>META</span><span>PESO</span><span title="Incluir en índice">IX</span></div>` + P.map(p => { const on = (S.focus.type === 'pillar' && S.focus.k === p.k), sc = score(p.k);
+/** La tabla de pesos: en Prioridades del cliente y bajo Senses. El peso solo mueve el índice ponderado. */
+function renderMixer() { const html = `<div class="mhead"><span></span><span>PILAR</span><span>PTS</span><span>META</span><span>PESO</span><span title="Incluir en índice">IX</span></div>` + P.map(p => { const on = (S.focus.type === 'pillar' && S.focus.k === p.k), sc = score(p.k);
   return `<div class="mrow ${on ? 'on' : ''}" data-k="${p.k}"><span class="d" style="background:${p.c1}"></span><span>${p.s}</span><span class="v ${sc == null ? 'na' : ''}" title="${sc == null ? 'Sin datos en este modelo' : ''}">${sc == null ? '—' : sc}</span><span class="t">${p.target}</span><span class="step"><button data-w="-" aria-label="Menos peso">−</button><span>${Math.round(S.w[p.k] * 100)}%</span><button data-w="+" aria-label="Más peso">+</button></span><input type="checkbox" ${S.inc[p.k] ? 'checked' : ''} aria-label="Incluir ${p.s} en el índice" title="Incluir en índice"></div>`; }).join('');
- $('mixer').querySelectorAll('.mrow').forEach(r => { const k = r.dataset.k;
+ document.querySelectorAll('.mixer').forEach(mx => { mx.innerHTML = html; mx.querySelectorAll('.mrow').forEach(r => { const k = r.dataset.k;
   r.addEventListener('click', e => { if (e.target.closest('button,input')) return; focus('pillar', k); });
   r.querySelectorAll('[data-w]').forEach(b => b.onclick = () => bumpW(k, b.dataset.w === '+' ? .05 : -.05));
-  r.querySelector('input').onchange = e => { snapshot(`índice ${BY[k].s}`); S.inc[k] = e.target.checked; renderAll(); toast(`${BY[k].s} ${S.inc[k] ? 'incluido en' : 'excluido del'} índice`, '', {label: 'Deshacer', run: undo}); }; }); }
+  r.querySelector('input').onchange = e => { snapshot(`índice ${BY[k].s}`); S.inc[k] = e.target.checked; renderAll(); toast(`${BY[k].s} ${S.inc[k] ? 'incluido en' : 'excluido del'} índice`, '', {label: 'Deshacer', run: undo}); }; }); });
+ const ix = S.res ? idxNow() : null; $('prio-ix').textContent = ix ? `Índice ${fmt(ix.v, 1)}` : ''; }
+/* ===================== tablero de pilares y capas (panel izquierdo) ===================== */
+const RATE_S = {ok: 'Cumple', mid: 'Mejorar', low: 'Atención'}; // RATE en corto, para la fila del tablero
+/** Cada pilar: puntaje contra su meta, con estado (ícono + texto). Clic = esa capa en el plano. Debajo, las relaciones activas. */
+function renderBoard() { const b = $('pboard');
+ if (!S.res) { b.innerHTML = '<p class="lnote">Carga un modelo para ver sus pilares.</p>'; $('prels').innerHTML = ''; return; }
+ b.innerHTML = P.map(p => { const sc = score(p.k), rt = ratePillar(sc, p.target), on = S.focus.type === 'pillar' && S.focus.k === p.k;
+  return `<button class="pb${on ? ' on' : ''}" data-k="${p.k}" aria-pressed="${on}" style="--c:${p.c1}" title="${p.name}: ${sc == null ? 'sin datos' : sc} de 100, meta ${p.target}. Clic para pintarlo en el plano.">
+   <span class="pb-h">${pIcon(p.k, 15)}<span class="pb-n">${p.s}</span>${rt ? `<span class="pb-s">${sIcon(rt)}${RATE_S[rt]}</span>` : '<span class="pb-s none">Sin datos</span>'}<b>${sc == null ? '—' : sc}</b></span>
+   <span class="pb-bar" aria-hidden="true"><i style="width:${sc || 0}%"></i><em style="left:${p.target}%"></em></span></button>`; }).join('');
+ b.querySelectorAll('.pb').forEach(x => x.onclick = () => { const k = x.dataset.k; focus('pillar', k); Snd.tone(BY[k].f, 1.2, .04); });
+ $('prels').innerHTML = [...S.rels].map(rk => { const [a, c] = rk.split('|'), on = S.focus.type === 'rel' && S.focus.k === rk;
+  return `<button class="rc${on ? ' on' : ''}" data-rk="${rk}" aria-pressed="${on}" title="${R[rk].q}"><i style="background:${BY[a].c1}"></i><i style="background:${BY[c].c1}"></i>${R[rk].n}</button>`; }).join('')
+  || '<p class="lnote">Ninguna. Créalas desde el inspector: <b>Relacionar con</b>.</p>';
+ $('prels').querySelectorAll('[data-rk]').forEach(x => x.onclick = () => focus('rel', x.dataset.rk)); }
+
+/** Capas del plano (y del 3D): qué se ve y qué tan fuerte. Se arman una vez; syncLayers() solo refleja el estado. */
+const LAYS = [['heat', 'Mapa de calor'], ['grid', 'Retícula'], ['labels', 'Nombres'], ['furn', 'Mobiliario'], ['plants', 'Vegetación'], ['ent', 'Accesos'],
+ ['watch', 'Puestos de personal', 'Puestos de personal: en Seguridad se ven siempre']];
+const OPS = [['heatOp', 'heat', 'Calor'], ['furnOp', 'furn', 'Muebles']];
+const EYE = '<svg class="eye" viewBox="0 0 24 24" aria-hidden="true"><g class="on"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></g><g class="off"><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3 3.9M6.6 6.6C3.9 8.4 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/></g></svg>';
+let vpRaf = 0; const vpSoon = () => { cancelAnimationFrame(vpRaf); vpRaf = requestAnimationFrame(renderViewport); };
+function buildLayers() { const box = $('layers');
+ box.innerHTML = `<div class="lyg">${LAYS.map(([k, n, t]) => `<button class="lt${k === 'watch' ? ' wide' : ''}" data-l="${k}" aria-pressed="false" title="${t || 'Mostrar u ocultar: ' + n.toLowerCase()}">${EYE}<span>${n}</span></button>`).join('')}</div>
+  <div class="lyo">${OPS.map(([op, of, n]) => `<label class="ly-op" data-of="${of}"><span>${n}</span><input type="range" min="10" max="100" step="5" data-op="${op}" aria-label="Opacidad: ${n.toLowerCase()}"><output></output></label>`).join('')}
+   <div class="ly-op mn" data-of="heat"><span>Mín</span><span class="step"><button data-min="-" aria-label="Bajar el valor mínimo">−</button><span class="mono" id="minv">0.0</span><button data-min="+" aria-label="Subir el valor mínimo">+</button></span><button class="btn mini" id="ly-vals" aria-pressed="false" title="Escribir el valor en cada celda (con zoom)">Valores</button></div></div>
+  <div class="ly-row"><span>Ruta</span><span class="seg" id="ly-path"><button data-p="">Ninguna</button><button data-p="farthest">Más lejana</button><button data-p="cash">Efectivo</button></span></div>
+  <div class="ly-row"><span>Marcar</span><span class="seg" id="ly-mark"><button data-m="">Nada</button><button data-m="blind">Ciegos</button><button data-m="unreach">Inaccesibles</button></span></div>`;
+ box.querySelectorAll('.lt').forEach(b => b.onclick = () => { const k = b.dataset.l; S.lay[k] = !S.lay[k]; Snd.click(); renderViewport(); });
+ box.querySelectorAll('[data-op]').forEach(r => r.oninput = () => { S.lay[r.dataset.op] = r.value / 100; r.nextElementSibling.textContent = r.value + ' %'; vpSoon(); });
+ box.querySelectorAll('[data-min]').forEach(b => b.onclick = () => { S.min = Math.max(0, Math.min(.8, +(S.min + (b.dataset.min === '+' ? .2 : -.2)).toFixed(1))); renderViewport(); Snd.click(); });
+ $('ly-vals').onclick = () => { S.vals = !S.vals; renderViewport(); };
+ $('ly-path').onclick = e => { const b = e.target.closest('[data-p]'); if (!b || !S.res) return; if (b.dataset.p) { focus('pillar', b.dataset.p === 'cash' ? 'seg' : 'flujo'); showPath(b.dataset.p); } else { S.path = null; S.broute = null; renderViewport(); } };
+ $('ly-mark').onclick = e => { const b = e.target.closest('[data-m]'); if (!b || !S.res) return; if (b.dataset.m) showMark(b.dataset.m); else { S.mark = null; renderViewport(); } };
+ syncLayers(); }
+/** Refleja el estado en las capas y en los ojos de las métricas del inspector (la ruta o la marca que se ve en el plano). */
+function syncLayers() { const box = $('layers'); if (!box.firstChild) return;
+ box.querySelectorAll('.lt').forEach(b => b.setAttribute('aria-pressed', !!S.lay[b.dataset.l]));
+ box.querySelectorAll('[data-of]').forEach(d => d.setAttribute('aria-disabled', !S.lay[d.dataset.of]));
+ box.querySelectorAll('[data-op]').forEach(r => { const v = Math.round(S.lay[r.dataset.op] * 100); if (+r.value !== v) r.value = v; r.nextElementSibling.textContent = v + ' %'; });
+ $('minv').textContent = S.min.toFixed(1); $('ly-vals').setAttribute('aria-pressed', S.vals);
+ const p = bRoute() ? null : S.path || ''; $('ly-path').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.p === p));
+ $('ly-mark').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.m === (S.mark || '')));
+ document.querySelectorAll('#insp .im-eye').forEach(b => { const [t, v] = b.dataset.ly.split(':'), on = (t === 'path' ? S.path : S.mark) === v; b.setAttribute('aria-pressed', on); b.title = (on ? 'Ocultar' : 'Ver') + ' en el plano'; }); }
+/** Tablero (por omisión) o Senses: el instrumento de antes, para quien lo busque en Ctrl K. */
+function setLeft(m) { const sn = m === 'senses'; S.left = sn ? 'senses' : 'board';
+ $('lboard').hidden = sn; $('lsenses').hidden = !sn; $('b-anat').hidden = !sn; $('b-back').hidden = !sn;
+ $('lp-eye').textContent = sn ? 'Instrumento' : 'Diagnóstico'; $('lp-h').textContent = sn ? 'Senses' : 'Pilares';
+ if (!sn) { setLink(false); $('anat').classList.remove('on'); } Snd.click(); }
 
 /* ===================== VIEWPORT: planta ===================== */
 const X = x => (x - F.x0) * SC, Y = y => (F.y1 - y) * SC;
@@ -252,20 +304,20 @@ function css(v) { return getComputedStyle(document.documentElement).getPropertyV
 function heatImage(r = S.res) {
  const G = r.G, k = Math.max(3, Math.min(24, Math.floor(2400 / Math.max(G.nx, G.ny))));
  const cv = document.createElement('canvas'); cv.width = G.nx * k; cv.height = G.ny * k; const x = cv.getContext('2d');
- const line = css('--line'), ink = css('--ink'), col = focusColor(), dim = S.iso && S.selFam.size ? .35 : 1, rel = S.focus.type === 'rel';
+ const line = css('--line'), ink = css('--ink'), col = focusColor(), dim = S.iso && S.selFam.size ? .35 : 1, rel = S.focus.type === 'rel', ha = S.lay.heat ? S.lay.heatOp : 0;
  const round = (px, py, w, h, r) => { if (!r || !x.roundRect) { x.fillRect(px, py, w, h); return; } x.beginPath(); x.roundRect(px, py, w, h, r); x.fill(); };
  x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = `500 ${Math.round(k * .3)}px "JetBrains Mono", monospace`;
  for (let j = 0; j < G.ny; j++) for (let i = 0; i < G.nx; i++) {
   const c = j * G.nx + i; if (!G.inside[c]) continue; const px = i * k, py = (G.ny - 1 - j) * k;
-  if (k >= 6) { x.strokeStyle = line; x.lineWidth = 1; x.strokeRect(px + .5, py + .5, k - 1, k - 1); }
+  if (S.lay.grid && k >= 6) { x.strokeStyle = line; x.lineWidth = 1; x.strokeRect(px + .5, py + .5, k - 1, k - 1); }
   if (!G.free[c]) continue;
   const v = valueAt(c, r);
   if (S.mark === 'blind' && G.watch.length && G.seen[c] === 0 || S.mark === 'unreach' && !isFinite(G.dEnt[c])) { x.strokeStyle = ink; x.setLineDash([2, 2]); x.lineWidth = 1.2; x.strokeRect(px + 1.5, py + 1.5, k - 3, k - 3); x.setLineDash([]); }
   if (isNaN(v) || v < S.min) continue;
   const cls = Math.min(4, Math.floor(v * 5));
-  if (cls > 0 || v > .05) { x.globalAlpha = OPAC[cls] * dim; x.fillStyle = col; round(px + 1, py + 1, k - 2, k - 2, k >= 8 ? 1.5 : 0); x.globalAlpha = 1; }
+  if (ha && (cls > 0 || v > .05)) { x.globalAlpha = OPAC[cls] * dim * ha; x.fillStyle = col; round(px + 1, py + 1, k - 2, k - 2, k >= 8 ? 1.5 : 0); x.globalAlpha = 1; }
   if (rel && v >= S.thr) { x.strokeStyle = '#D42A3C'; x.lineWidth = Math.max(1, k / 9); x.strokeRect(px + 1.5, py + 1.5, k - 3, k - 3); }
-  if (S.vals && k >= 18) { x.fillStyle = ink; x.globalAlpha = .7; x.fillText(v.toFixed(1), px + k / 2, py + k / 2 + .5); x.globalAlpha = 1; }
+  if (S.vals && ha && k >= 18) { x.fillStyle = ink; x.globalAlpha = .7; x.fillText(v.toFixed(1), px + k / 2, py + k / 2 + .5); x.globalAlpha = 1; }
  }
  return cv.toDataURL();
 }
@@ -322,19 +374,20 @@ function drawPlan(svg, opts = {}) { svg.innerHTML = ''; svg.classList.add('plan'
   if (wl.curtain) { el('polyline', {points: p, fill: 'none', class: 'glass-w', 'stroke-width': t}, w); el('polyline', {points: p, fill: 'none', stroke: 'var(--wall)', 'stroke-width': .7}, w); }
   else el('polyline', {points: p, fill: 'none', stroke: 'var(--wall)', 'stroke-width': t, 'stroke-linejoin': 'miter', 'stroke-linecap': 'square'}, w); });
  s.doors.forEach(d => drawOpening(w, d, 'door', wb)); s.windows.forEach(o => drawOpening(w, o, 'window', wb));
- s.obstacles.forEach(o => { const pl = E.plantOf(r.model, o); if (pl) { drawPlant(w, pl, o.id); return; }
-  el('polygon', {points: pts(o.footprint), class: 'furn', style: o.category === 'Columns' ? 'fill:var(--wall);fill-opacity:.55' : ''}, w); });
+ const fu = el('g', {opacity: S.lay.furnOp}, w);
+ s.obstacles.forEach(o => { const pl = E.plantOf(r.model, o); if (pl) { if (S.lay.plants) drawPlant(w, pl, o.id); return; }
+  if (S.lay.furn) el('polygon', {points: pts(o.footprint), class: 'furn', style: o.category === 'Columns' ? 'fill:var(--wall);fill-opacity:.55' : ''}, fu); });
  // puestos de personal y accesos
- const showWatch = S.focus.k.indexOf('seg') >= 0;
+ const showWatch = S.lay.watch || S.focus.k.indexOf('seg') >= 0; // en Seguridad siempre: el mapa trata de ellos
  if (showWatch) G.watch.forEach(p => { const [x, y] = G.xy(p.c); el('circle', {cx: X(x), cy: Y(y), r: 4.2, class: 'pin', stroke: BY.seg.c1}, w); el('circle', {cx: X(x), cy: Y(y), r: 1.6, fill: BY.seg.c1}, w); });
- G.entrances.forEach(e => { const [x, y] = G.xy(e.c); el('path', {d: `M${X(x) - 5} ${Y(y) + 4} L${X(x)} ${Y(y) - 4} L${X(x) + 5} ${Y(y) + 4}`, fill: 'none', stroke: 'var(--ink)', 'stroke-width': 1.6, 'stroke-linecap': 'round', 'stroke-linejoin': 'round'}, w); });
+ if (S.lay.ent) G.entrances.forEach(e => { const [x, y] = G.xy(e.c); el('path', {d: `M${X(x) - 5} ${Y(y) + 4} L${X(x)} ${Y(y) - 4} L${X(x) + 5} ${Y(y) + 4}`, fill: 'none', stroke: 'var(--ink)', 'stroke-width': 1.6, 'stroke-linecap': 'round', 'stroke-linejoin': 'round'}, w); });
  // rutas
  if (S.path && G.paths[S.path]) { const ps = G.paths[S.path].cells.map(c => G.xy(c)), col = S.path === 'cash' ? BY.seg.c1 : BY.flujo.c1;
   el('polyline', {points: pts(ps), class: 'route', stroke: 'var(--floor)', 'stroke-width': 6}, w); el('polyline', {points: pts(ps), class: 'route flow', stroke: col}, w);
   [ps[0], ps[ps.length - 1]].forEach(p => el('circle', {cx: X(p[0]), cy: Y(p[1]), r: 4.5, fill: col, stroke: 'var(--floor)', 'stroke-width': 1.5}, w)); }
  const br = bRoute(); if (br) planRouteLegs(w, br);
  // etiquetas
- s.rooms.forEach(rm => { const [cx, cy] = E.ringCentroid(rm.outline[0]); const t = el('text', {x: X(cx), y: Y(cy), 'text-anchor': 'middle', class: 'lbl'}, svg); t.textContent = rm.name || rm.number; });
+ if (S.lay.labels) s.rooms.forEach(rm => { const [cx, cy] = E.ringCentroid(rm.outline[0]); const t = el('text', {x: X(cx), y: Y(cy), 'text-anchor': 'middle', class: 'lbl'}, svg); t.textContent = rm.name || rm.number; });
  S.hlRooms.forEach(k => { const rm = s.rooms[k]; if (rm) el('polygon', {points: pts(rm.outline[0]), fill: 'none', stroke: 'var(--ink)', 'stroke-width': 1.8, 'stroke-dasharray': '6 4'}, svg); });
  // selección de familias
  const st = selTypes();
@@ -469,15 +522,16 @@ function drawLayer3D(g, Ly, heat, stack, i) {
     el('polygon', {points: quad([[A[0], A[1], 0], [B[0], B[1], 0], [B[0], B[1], H], [A[0], A[1], H]]), fill: 'var(--surface-2)', 'fill-opacity': .94, stroke: 'var(--wall)', 'stroke-width': .7, 'stroke-linejoin': 'round'}, g);
     const [a, b] = ISO(A[0], A[1], H), [cx, cy] = ISO(B[0], B[1], H); el('line', {x1: a, y1: b, x2: cx, y2: cy, stroke: 'var(--wall)', 'stroke-width': Math.max(1.6, wl.thickness * SC * .5), 'stroke-linecap': 'round'}, g); }}); }); });
  const st = selTypes();
- s.obstacles.forEach(o => { const pl = E.plantOf(r.model, o); if (pl) { items.push({d: DEPTH(X(pl.x), Y(pl.y)), draw: () => drawPlant3D(g, pl, o.id, hOf(o.z[1]), st.has(o.type))}); return; }
+ s.obstacles.forEach(o => { const pl = E.plantOf(r.model, o); if (pl) { if (S.lay.plants) items.push({d: DEPTH(X(pl.x), Y(pl.y)), draw: () => drawPlant3D(g, pl, o.id, hOf(o.z[1]), st.has(o.type))}); return; }
+  if (!S.lay.furn) return;
   const H = hOf(o.z[1]), fp = o.footprint.map(p => [X(p[0]), Y(p[1])]), cx = fp.reduce((a, p) => a + DEPTH(p[0], p[1]), 0) / fp.length, sel = st.has(o.type);
-  items.push({d: cx, draw: () => {
+  items.push({d: cx, draw: () => { const fg = el('g', {opacity: S.lay.furnOp}, g);
    const edges = fp.map((p, i) => [p, fp[(i + 1) % fp.length]]).sort((u, v) => (DEPTH(u[0][0], u[0][1]) + DEPTH(u[1][0], u[1][1])) - (DEPTH(v[0][0], v[0][1]) + DEPTH(v[1][0], v[1][1])));
-   edges.forEach(([p, q]) => el('polygon', {points: quad([[p[0], p[1], 0], [q[0], q[1], 0], [q[0], q[1], H], [p[0], p[1], H]]), fill: o.category === 'Columns' ? 'var(--line-2)' : 'var(--line)', stroke: 'var(--wall)', 'stroke-width': .35}, g));
-   el('polygon', {points: quad(fp.map(p => [p[0], p[1], H])), fill: 'var(--surface-2)', stroke: 'var(--wall)', 'stroke-width': .5, class: sel ? 'selshape' : ''}, g); }}); });
+   edges.forEach(([p, q]) => el('polygon', {points: quad([[p[0], p[1], 0], [q[0], q[1], 0], [q[0], q[1], H], [p[0], p[1], H]]), fill: o.category === 'Columns' ? 'var(--line-2)' : 'var(--line)', stroke: 'var(--wall)', 'stroke-width': .35}, fg));
+   el('polygon', {points: quad(fp.map(p => [p[0], p[1], H])), fill: 'var(--surface-2)', stroke: 'var(--wall)', 'stroke-width': .5, class: sel ? 'selshape' : ''}, fg); }}); });
  items.sort((a, b) => a.d - b.d).forEach(it => it.draw());
  if (Ly.cur && S.path && G.paths[S.path]) { const ps = G.paths[S.path].cells.map(c => G.xy(c)); el('polyline', {points: ps.map(p => ISO(X(p[0]), Y(p[1]), 2).map(v => v.toFixed(1)).join(',')).join(' '), class: 'route flow', stroke: S.path === 'cash' ? BY.seg.c1 : BY.flujo.c1}, g); }
- if (Ly.cur) s.rooms.forEach(rm => { const [cx, cy] = E.ringCentroid(rm.outline[0]); const [x, y] = ISO(X(cx), Y(cy), 0); const t = el('text', {x, y, 'text-anchor': 'middle', class: 'lbl'}, g); t.textContent = rm.name || rm.number; });
+ if (Ly.cur && S.lay.labels) s.rooms.forEach(rm => { const [cx, cy] = E.ringCentroid(rm.outline[0]); const [x, y] = ISO(X(cx), Y(cy), 0); const t = el('text', {x, y, 'text-anchor': 'middle', class: 'lbl'}, g); t.textContent = rm.name || rm.number; });
  if (stack) { // el nombre del nivel junto a su esquina más a la izquierda
   const cs = [[G.ox, G.oy], [G.ox + G.nx * G.cell, G.oy], [G.ox, G.oy + G.ny * G.cell], [G.ox + G.nx * G.cell, G.oy + G.ny * G.cell]].map(([x, y]) => ISO(X(x), Y(y), 0)).sort((a, b) => a[0] - b[0])[0];
   const t = el('text', {x: cs[0] - 8, y: cs[1], 'text-anchor': 'end', class: 'lvtag' + (Ly.cur ? ' cur' : '')}, g); t.textContent = Ly.name; }
@@ -525,7 +579,7 @@ function axoNav(svg) { let drag = null, raf = 0;
   S.cam3 = {k, x: S.cam3.x + (cx - pt.x) * (q - 1), y: S.cam3.y + (cy - pt.y) * (q - 1)}; drawAxo(svg); }, {passive: false});
  svg.addEventListener('dblclick', () => { S.cam3 = {k: 1, x: 0, y: 0}; drawAxo(svg); }); }
 function renderViewport() { const vb = $('vbody'); vb.className = 'vbody' + (S.view === 'split' ? ' split' : ''); vb.innerHTML = '';
- if (!S.res) { renderEmpty(vb); $('vlegend').innerHTML = ''; renderSelChip(); return; }
+ if (!S.res) { renderEmpty(vb); $('vlegend').innerHTML = ''; renderSelChip(); syncLayers(); return; }
  const mk = (type, cap) => { const d = document.createElement('div'); d.className = 'vp'; d.innerHTML = `<span class="cap">${cap}</span><span class="north">N ↑</span>`; const s = document.createElementNS(NS, 'svg'); s.setAttribute('aria-label', cap); d.appendChild(s); vb.appendChild(d);
   (type === 'plan' ? drawPlan : drawAxo)(s);
   if (type === 'plan') { probe(s); const z = document.createElement('div'); z.className = 'zoom'; z.innerHTML = '<button class="btn sq" data-z="in" aria-label="Acercar">+</button><button class="btn sq" data-z="out" aria-label="Alejar">−</button><button class="btn sq" data-z="fit" aria-label="Ver todo" title="Ver todo (doble clic)">⤢</button>'; d.appendChild(z);
@@ -544,7 +598,7 @@ function renderViewport() { const vb = $('vbody'); vb.className = 'vbody' + (S.v
  const lv = S.res.level.name.toUpperCase();
  if (S.view !== 'axo') mk('plan', `PLANTA · ${esc(lv)} · RETÍCULA ${fmt(S.res.G.cell, 1)} m`);
  if (S.view !== 'plan') mk('axo', S.stack && multiLevel() ? `3D · TODOS LOS NIVELES · SEPARACIÓN ×${fmt(S.gap, 2)}` : '3D · MAQUETA BLANCA · CORTE A 1.20 m');
- renderLegend(); renderSelChip(); drawZone(); }
+ renderLegend(); renderSelChip(); drawZone(); syncLayers(); }
 function renderEmpty(vb) {
  const d = document.createElement('div'); d.className = 'drop'; d.id = 'drop';
  d.innerHTML = `<div><svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="opacity:.6"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18M15 3v18M3 15h18"/></svg>
@@ -643,36 +697,32 @@ function renderInspector() { const box = $('insp');
   <tr><td>Pisos del nivel</td><td class="v">retícula</td></tr><tr><td>Muros</td><td class="v">separan</td></tr><tr><td>Muro cortina y ventanas</td><td class="v">vista afuera</td></tr><tr><td>Puertas</td><td class="v">conectan</td></tr><tr><td>Columnas y muebles</td><td class="v">obstáculos</td></tr><tr><td>Parámetros SA_</td><td class="v">roles y materiales</td></tr></table></div>
   <div class="card insight">Se analiza un modelo a la vez. Abrir otro reemplaza al actual.</div>`; return; }
  let h = '';
- if (S.focus.type === 'pillar') { const p = BY[S.focus.k], sc = score(p.k), rooms = roomsBy(p.k), ms = S.res.metrics[p.k];
+ if (S.focus.type === 'pillar') { const p = BY[S.focus.k], sc = score(p.k), rt = ratePillar(sc, p.target), gap = sc == null ? null : p.target - sc, rooms = roomsBy(p.k), ms = S.res.metrics[p.k];
   h += `<div><div class="eyebrow" style="color:${p.c1}">Pilar · ${p.s}</div><h2 style="margin-top:4px">${p.name}</h2><div class="feel" style="margin-top:3px">“${p.feel}”</div></div>
-  <div class="card"><div class="kpi"><div class="n">${sc == null ? '—' : sc}</div><div class="u">/ 100<br>META ${p.target}</div><span class="sp"></span><div class="u" style="text-align:right">PESO<br><span class="step" style="margin-top:3px;width:76px"><button id="iw-">−</button><span>${Math.round(S.w[p.k] * 100)}%</span><button id="iw+">+</button></span></div></div>
-   <div class="bar"><div class="f" style="width:${sc || 0}%;background:linear-gradient(90deg,${p.c2},${p.c1})"></div><div class="tg" style="left:${p.target}%"></div></div>${sc == null ? `<div class="feel" style="margin-top:8px;font-size:12px">Sin datos: ${p.k === 'sust' ? 'ningún tipo trae parámetros SA_. Agrégalos en Revit o carga la tabla de Excel en Familias.' : 'falta información en el modelo (ver avisos).'}</div>` : ''}</div>
-  <div class="card" style="animation-delay:.05s"><div class="eyebrow" style="margin-bottom:6px">Relacionar con</div><div class="relto">${P.filter(q => q.k !== p.k).map(q => { const rk = key(p.k, q.k), has = S.rels.has(rk); return `<button class="${has ? 'has' : ''}" data-o="${q.k}" title="${R[rk].n}"><i style="background:${q.c1}"></i>${q.s}${has ? ' ✓' : ''}</button>`; }).join('')}</div></div>
-  <div class="card" style="animation-delay:.1s"><div class="eyebrow" style="margin-bottom:2px">Métricas</div><table>${ms.map(row => `<tr><td>${row[0]}<small>${esc(row[5])}</small></td><td class="v">${fmt(row[1], row[3])} ${row[2]}</td></tr>`).join('')}</table>
-   ${p.k === 'flujo' ? `<div class="relto" style="margin-top:8px"><button class="has" data-path="farthest">Ver ruta más lejana</button><button class="has" data-path="cash">Ver ruta de efectivo</button><button class="has" data-mark="unreach">Áreas inaccesibles</button></div>` : ''}
-   ${p.k === 'seg' ? `<div class="relto" style="margin-top:8px"><button class="has" data-mark="blind">Ver puntos ciegos</button><button class="has" data-path="cash">Ruta de efectivo</button></div>` : ''}</div>
+  <div class="card ikpi"><div class="kpi"><div class="n">${sc == null ? '—' : sc}</div><div class="u">/ 100</div><span class="sp"></span>${pill(rt)}</div>
+   <div class="bar"><div class="f" style="width:${sc || 0}%;background:linear-gradient(90deg,${p.c2},${p.c1})"></div><div class="tg" style="left:${p.target}%"></div></div>
+   <div class="ik-m"><span>meta <b>${p.target}</b></span><span>${gap == null ? '' : gap > 0 ? `faltan <b>${gap}</b> puntos` : gap < 0 ? `<b>${-gap}</b> sobre la meta` : 'justo en la meta'}</span></div>
+   <p class="ik-d"><b>Mide</b> ${p.unit}</p>${sc == null ? `<div class="feel" style="margin-top:8px;font-size:12px">Sin datos: ${p.k === 'sust' ? 'ningún tipo trae parámetros SA_. Agrégalos en Revit o carga la tabla de Excel en Familias.' : 'falta información en el modelo (ver avisos).'}</div>` : ''}</div>
+  <div class="card" style="animation-delay:.05s"><div class="eyebrow">Métricas</div><div class="ims">${ms.map(metricRow).join('')}</div></div>
   ${p.k === 'flujo' && multiLevel() ? levelsCard() : ''}
-  ${rooms.length ? `<div class="card" style="animation-delay:.15s"><div style="display:flex;justify-content:space-between"><div class="eyebrow">Rooms · peor a mejor</div><span class="mono muted" style="font-size:9.5px">media de celdas</span></div><div class="rooms" style="margin-top:6px">${rooms.slice(0, 8).map(r => `<div class="room-r" data-r="${r.k}"><span>${esc(r.n)}</span><span class="mini"><i style="width:${r.v}%;background:${p.c1}"></i></span><span class="v">${r.v}</span></div>`).join('')}</div></div>` : ''}`; }
+  ${rooms.length ? `<div class="card" style="animation-delay:.1s"><div style="display:flex;justify-content:space-between"><div class="eyebrow">Rooms · peor a mejor</div><span class="mono muted" style="font-size:9.5px">raya = meta</span></div><div class="rooms" style="margin-top:6px">${rooms.slice(0, 8).map(r => `<div class="room-r" data-r="${r.k}"><span>${esc(r.n)}</span><span class="mini"><i style="width:${r.v}%;background:${p.c1}"></i><em style="left:${p.target}%"></em></span><span class="v">${r.v}</span></div>`).join('')}</div></div>` : ''}
+  <div class="card" style="animation-delay:.15s"><div class="eyebrow" style="margin-bottom:6px">Relacionar con</div><div class="relto">${P.filter(q => q.k !== p.k).map(q => { const rk = key(p.k, q.k), has = S.rels.has(rk); return `<button class="${has ? 'has' : ''}" data-o="${q.k}" title="${R[rk].n}"><i style="background:${q.c1}"></i>${q.s}${has ? ' ✓' : ''}</button>`; }).join('')}</div></div>`; }
  else { const r = R[S.focus.k], [a, b] = S.focus.k.split('|'), area = crossArea(), free = S.res.G.freeCount * cellArea(), top = relRooms().slice(0, 3);
   const text = `${fmtA(area)} m² (${fmt(free ? area / free * 100 : 0)} % del área libre) son ${r.d}.` + (top.length ? ` Se concentran en ${top.map(x => `${esc(x.n)} (${fmtA(x.a)} m²)`).join(', ')}.` : '');
   h += `<div><div class="eyebrow" style="color:#D42A3C">Relación · ${BY[a].s} × ${BY[b].s}</div><h2 style="margin-top:4px">${r.n}</h2><div class="feel" style="margin-top:3px">${r.q}</div></div>
-  <div class="card"><div class="kpi"><div class="n">${fmtA(area)}<span style="font-size:15px"> m²</span></div><div class="u">SOBRE UMBRAL ${S.thr.toFixed(2)}<br>RETÍCULA ${fmt(S.res.G.cell, 1)} m</div></div></div>
+  <div class="card"><div class="kpi"><div class="n">${fmtA(area)}<span style="font-size:15px"> m²</span></div><div class="u">${fmt(free ? area / free * 100 : 0)} % DEL ÁREA LIBRE<br>SOBRE UMBRAL ${S.thr.toFixed(2)}</div></div></div>
   <div class="card insight" style="animation-delay:.05s;border-left-color:#D42A3C">${text}</div>
   ${top.length ? `<div class="card" style="animation-delay:.08s"><div class="eyebrow" style="margin-bottom:6px">Dónde</div><div class="rooms">${top.map(x => `<div class="room-r" data-r="${x.k}"><span>${esc(x.n)}</span><span class="mini"><i style="width:${Math.min(100, x.a / top[0].a * 100)}%;background:#D42A3C"></i></span><span class="v">${fmtA(x.a)}</span></div>`).join('')}</div></div>` : ''}
-  <div class="card" style="animation-delay:.1s"><div class="eyebrow" style="margin-bottom:6px">Acciones sugeridas</div><div class="relto">${r.a.map(x => `<button class="has" style="cursor:default">${x}</button>`).join('')}</div></div>
+  <div class="card" style="animation-delay:.1s"><div class="eyebrow" style="margin-bottom:4px">Acciones sugeridas</div><ul class="acts">${r.a.map(x => `<li>${x}</li>`).join('')}</ul></div>
   <div class="card" style="animation-delay:.15s"><div class="eyebrow" style="margin-bottom:3px">Respaldo</div><div class="feel">${r.src}</div></div>
   <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" id="i-pres">Presentar <kbd>P</kbd></button><button class="btn" id="i-rm">Quitar relación</button></div>`; }
- const v = indexVal();
- h += `<div class="card" style="animation-delay:.2s"><div style="display:flex;justify-content:space-between;align-items:baseline"><div class="eyebrow">Índice ponderado</div><span class="mono" style="font-size:14px">${fmt(v, 1)}</span></div>${P.map(p => { const sc = score(p.k); return `<div class="room-r" data-p="${p.k}" style="grid-template-columns:64px 1fr 24px;opacity:${live(p.k) ? 1 : .4}"><span>${p.s}</span><span class="mini" style="height:7px;overflow:visible"><i style="width:${sc || 0}%;background:${p.c1};border-radius:3px"></i><b style="position:absolute;left:${p.target}%;top:-2px;bottom:-2px;width:2px;background:var(--ink)"></b></span><span class="v">${sc == null ? '—' : sc}</span></div>`; }).join('')}</div>`;
- box.innerHTML = h;
- $('iw-') && ($('iw-').onclick = () => bumpW(S.focus.k, -.05)); $('iw+') && ($('iw+').onclick = () => bumpW(S.focus.k, .05));
+ box.innerHTML = h; syncLayers();
  box.querySelectorAll('.relto [data-o]').forEach(b => b.onclick = () => { const rk = key(S.focus.k, b.dataset.o); if (S.rels.has(rk)) focus('rel', rk); else createRel(S.focus.k, b.dataset.o); });
  box.querySelectorAll('[data-r]').forEach(r => r.onclick = e => roomClick(+r.dataset.r, e.shiftKey));
  box.querySelectorAll('[data-broute]').forEach(b => b.onclick = () => showBuildingRoute('far'));
  box.querySelectorAll('[data-stack]').forEach(b => b.onclick = () => setStack(true));
- box.querySelectorAll('[data-p]').forEach(r => r.onclick = () => focus('pillar', r.dataset.p));
- box.querySelectorAll('[data-path]').forEach(b => b.onclick = () => showPath(b.dataset.path));
- box.querySelectorAll('[data-mark]').forEach(b => b.onclick = () => showMark(b.dataset.mark));
+ box.querySelectorAll('.im-eye').forEach(b => b.onclick = () => { const [t, v] = b.dataset.ly.split(':');
+  if (t === 'path') { if (S.path === v) { S.path = null; renderViewport(); } else showPath(v); } else if (S.mark === v) { S.mark = null; renderViewport(); } else showMark(v); });
  $('i-pres') && ($('i-pres').onclick = () => present(true)); $('i-rm') && ($('i-rm').onclick = () => removeRel(S.focus.k)); }
 /** Clic en un room: lo selecciona y abre su ficha junto a él. Con Shift lo suma a la zona (o lo quita si ya estaba).
  *  Con un solo room en Flujo además traza su ruta desde el acceso, aunque haya que subir de nivel. */
@@ -709,7 +759,7 @@ function thrFor(rk) {
  return S.thrBy[rk] == null ? .5 : S.thrBy[rk]; }
 function setThr(d) { const rk = S.focus.k; S.thr = Math.max(.1, Math.min(.9, +(S.thr + d).toFixed(2))); S.thrBy[rk] = S.thr; S.thrUser[rk] = true; renderViewport(); renderInspector(); Snd.click(); }
 function focus(type, k) { S.focus = {type, k}; if (type === 'rel') S.thr = thrFor(k); syncRels(); renderAll(); }
-function renderAll() { renderMixer(); renderViewport(); renderInspector(); }
+function renderAll() { renderMixer(); renderBoard(); renderViewport(); renderInspector(); }
 
 /* ===================== FAMILIAS ===================== */
 const UNIT = {Floors: 'kg/m²', Walls: 'kg/m²'};
@@ -786,7 +836,13 @@ function rateMetric(row) { const b = BENCH[row[0]], v = row[1]; if (!b || v == n
 const unitOf = row => row[2] === '%' ? ' %' : row[2] ? ' ' + row[2] : '';
 const benchTxt = row => { const b = BENCH[row[0]]; if (!b) return ''; const s = row[4] ? '≥' : '≤';
  return `meta ${s} ${fmt(b.good)}${unitOf(row)}` + (b.good === b.ok ? '' : ` · límite ${fmt(b.ok)}${unitOf(row)}`); };
-/** Índice ponderado con los pesos del instrumento, y la meta ponderada con los mismos pesos. */
+/** Métricas que se pueden ver en el plano: el ojo prende su ruta o su marca (lo mismo que Ruta y Marcar en Capas). */
+const MLAYER = {'Ruta más lejana': 'path:farthest', 'Ruta de efectivo (bóveda → caja)': 'path:cash', 'Área libre inaccesible': 'mark:unreach', 'Puntos ciegos': 'mark:blind'};
+/** Una métrica en el inspector: valor grande, estado contra su referencia (ícono + texto) y de dónde sale. */
+function metricRow(row) { const rt = rateMetric(row), ly = MLAYER[row[0]];
+ return `<div class="im"><div class="im-h"><span>${row[0]}</span>${ly ? `<button class="im-eye" data-ly="${ly}" aria-pressed="false" aria-label="Ver ${row[0].toLowerCase()} en el plano">${EYE}</button>` : ''}<b>${fmt(row[1], row[3])}<small>${unitOf(row)}</small></b></div>
+  <div class="im-f">${rt ? `<span class="pst">${sIcon(rt)}${RATE[rt]}</span><span>${benchTxt(row)}</span>` : ''}${row[5] ? `<span>${esc(row[5])}</span>` : ''}</div></div>`; }
+/** Índice ponderado con los pesos del cliente, y la meta ponderada con los mismos pesos. */
 function idxNow() { let n = 0, t = 0, d = 0; P.forEach(p => { if (!live(p.k)) return; n += score(p.k) * S.w[p.k]; t += p.target * S.w[p.k]; d += S.w[p.k]; }); return d ? {v: n / d, target: t / d} : null; }
 /** Todos los indicadores con referencia y valor, calificados. */
 const indicators = () => P.filter(p => score(p.k) != null).flatMap(p => S.res.metrics[p.k].filter(m => BENCH[m[0]] && m[1] != null).map(m => ({p, m, r: rateMetric(m)})));
@@ -921,7 +977,7 @@ function slideBody(type, proj) {
    <div class="g3">
     <div class="pcard fx"><div class="eyebrow">Pilar</div><code>promedio(celdas) × 100</code><p>Qué tan bien rinde el piso completo en una cualidad.</p></div>
     <div class="pcard fx"><div class="eyebrow">Relación</div><code>celdas(A × B ≥ umbral) × ${fmt(cellArea(), 2)} m²</code><p>Umbral = percentil 80 de la relación la primera vez; luego fijo, para comparar versiones del modelo.</p></div>
-    <div class="pcard fx"><div class="eyebrow">Índice ponderado</div><code>Σ pilar × peso / Σ pesos</code><p>Los pesos se ajustan en el instrumento según lo que más importa al cliente.</p></div></div>
+    <div class="pcard fx"><div class="eyebrow">Índice ponderado</div><code>Σ pilar × peso / Σ pesos</code><p>Los pesos se ajustan en Prioridades del cliente según lo que más le importa.</p></div></div>
    <p class="foot">Son indicadores de diseño, no simulaciones: la luz natural es un proxy por visuales a vidrio y el ruido se estima por tráfico. Para certificar se simula aparte.</p>`; }
  if (type === 'method') { const ex = 65;
   return `<h1>Cómo definimos las metas</h1>
@@ -941,6 +997,7 @@ function closePresent() { $('present').classList.remove('on'); }
 
 /* ===================== buscador de cualidades / comandos ===================== */
 function commands() { const c = []; const g = (grp, t, run, col = '#999', k = '') => c.push({grp, t, run, c: col, k});
+ g('Vista', S.left === 'senses' ? 'Volver al tablero de pilares' : 'Senses · el instrumento de pilares', () => setLeft(S.left === 'senses' ? 'board' : 'senses'), '#8C7BF5');
  g('Acciones', 'Abrir space-model.json…', () => $('file-model').click(), '#5B9BFF');
  if (S.res) {
   g('Consultas del espacio', '¿Dónde hay estrés? · Flujo × Confort', () => { if (!S.rels.has('flujo|conf')) createRel('flujo', 'conf'); else focus('rel', 'flujo|conf'); }, '#D42A3C');
@@ -952,7 +1009,7 @@ function commands() { const c = []; const g = (grp, t, run, col = '#999', k = ''
   g('Consultas del espacio', 'Puntos ciegos · nadie del personal los ve', () => showMark('blind'), BY.seg.c1);
   g('Consultas del espacio', 'Áreas inaccesibles desde el acceso', () => showMark('unreach'), BY.flujo.c1);
   g('Consultas del espacio', 'Rooms bajo meta en Confort', () => { focus('pillar', 'conf'); S.hlRooms = roomsBy('conf').filter(r => r.v < BY.conf.target).map(r => r.k); if (S.hlRooms.length) openZone(S.hlRooms[0]); renderViewport(); toast(`${S.hlRooms.length} rooms bajo meta`, `Confort < ${BY.conf.target}`); }, BY.conf.c1);
-  g('Consultas del espacio', 'Celdas con Visibilidad ≥ 0.6', () => { focus('pillar', 'visib'); S.min = .6; $('minv').textContent = '0.6'; renderViewport(); }, BY.visib.c1);
+  g('Consultas del espacio', 'Celdas con Visibilidad ≥ 0.6', () => { focus('pillar', 'visib'); S.min = .6; renderViewport(); }, BY.visib.c1);
   g('Consultas del espacio', '¿Qué tan privada es la asesoría? · Exposición', () => { if (!S.rels.has('visib|conf')) createRel('visib', 'conf'); else focus('rel', 'visib|conf'); }, BY.conf.c1);
   g('Consultas del espacio', 'Familias con más carbono', () => { S.famSort = 'gwp'; S.famDir = -1; openFam(); }, BY.sust.c1);
   P.forEach((p, i) => g('Pilares', `Enfocar ${p.name}`, () => focus('pillar', p.k), p.c1, String(i + 1)));
@@ -968,7 +1025,7 @@ function commands() { const c = []; const g = (grp, t, run, col = '#999', k = ''
  ['aura', 'niebla', 'noche'].forEach(t => g('Vista', `Tema ${t}`, () => setTheme(t)));
  return c; }
 let palSel = 0, palItems = [];
-function openPal() { $('pal').classList.add('on'); $('pal-in').value = ''; palSel = 0; drawPal(); setTimeout(() => $('pal-in').focus(), 10); Snd.click(); }
+function openPal(q) { $('pal').classList.add('on'); $('pal-in').value = typeof q === 'string' ? q : ''; palSel = 0; drawPal(); setTimeout(() => $('pal-in').focus(), 10); Snd.click(); }
 function closePal() { $('pal').classList.remove('on'); }
 function drawPal() { const q = E.norm($('pal-in').value); palItems = commands().filter(c => E.norm(c.grp + ' ' + c.t).includes(q)).slice(0, q ? 18 : 14); palSel = Math.min(palSel, Math.max(0, palItems.length - 1)); let h = '', grp = '';
  palItems.forEach((c, i) => { if (c.grp !== grp) { grp = c.grp; h += `<li class="gh">${grp}</li>`; } h += `<li class="it ${i === palSel ? 'sel' : ''}" data-i="${i}"><i style="background:${c.c}"></i>${esc(c.t)}<span class="k">${c.k}</span></li>`; });
@@ -990,9 +1047,6 @@ document.querySelectorAll('#bgs button').forEach(b => b.onclick = () => { setBg(
 document.querySelectorAll('#views button').forEach(b => b.onclick = () => setView(b.dataset.v));
 document.querySelectorAll('#cells button').forEach(b => b.onclick = () => { S.cell = +b.dataset.c; document.querySelectorAll('#cells button').forEach(x => x.setAttribute('aria-pressed', x === b)); Snd.click(); runAnalysis(); });
 $('lvl').onchange = e => setLevel(e.target.value);
-$('min-').onclick = () => { S.min = Math.max(0, +(S.min - .2).toFixed(1)); $('minv').textContent = S.min.toFixed(1); renderViewport(); Snd.click(); };
-$('min+').onclick = () => { S.min = Math.min(.8, +(S.min + .2).toFixed(1)); $('minv').textContent = S.min.toFixed(1); renderViewport(); Snd.click(); };
-$('b-vals').onclick = e => { S.vals = !S.vals; e.currentTarget.setAttribute('aria-pressed', S.vals); renderViewport(); };
 $('snd').onclick = e => { Snd.on = !Snd.on; e.currentTarget.setAttribute('aria-pressed', Snd.on); };
 $('b-open').onclick = () => $('file-model').click();
 $('file-model').onchange = e => { readFiles(e.target.files); e.target.value = ''; };
@@ -1001,6 +1055,7 @@ document.addEventListener('pointerdown', e => { if (!e.target.closest('#zpop, sv
 $('zpop').addEventListener('pointerenter', () => zoneNear(true)); $('zpop').addEventListener('pointerleave', () => zoneNear(false));
 addEventListener('resize', placeZone);
 $('b-pal').onclick = openPal; $('b-fam').onclick = () => openFam(); $('b-run').onclick = () => runAnalysis(true); $('b-pres').onclick = () => present(); $('b-undo').onclick = undo;
+$('b-back').onclick = () => setLeft('board'); buildLayers(); renderBoard(); renderMixer();
 $('b-link').onclick = () => setLink(!S.link); $('b-anat').onclick = () => $('anat').classList.toggle('on'); $('anat-x').onclick = () => $('anat').classList.remove('on');
 $('f-q').oninput = e => { S.famQ = e.target.value; renderFam(); };
 document.querySelectorAll('.mtable th[data-s]').forEach(th => th.onclick = () => { const s = th.dataset.s; S.famDir = S.famSort === s ? -S.famDir : 1; S.famSort = s; renderFam(); });
@@ -1027,11 +1082,11 @@ addEventListener('keydown', e => { const k = e.key.toLowerCase();
  if ($('present').classList.contains('on')) { if (e.key === 'ArrowRight') { pIdx++; drawSlide(); } if (e.key === 'ArrowLeft') { pIdx--; drawSlide(); } return; }
  if ($('modal').classList.contains('on') || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
  const n = parseInt(e.key); if (n >= 1 && n <= 5) { nodeClick(P[n - 1].k); return; }
- if (k === 'r') runAnalysis(true); if (k === 'p') present(); if (k === 'l') setLink(!S.link); if (k === 'f') openFam(); });
+ if (k === 'r') runAnalysis(true); if (k === 'p') present(); if (k === 'l' && S.left === 'senses') setLink(!S.link); if (k === 'f') openFam(); });
 
 /* ===================== bucle y arranque ===================== */
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; let last = performance.now();
-function loop(t) { const dt = Math.min(.05, (t - last) / 1000); last = t; if (!reduce) S.t += dt; P.forEach(p => { const v = score(p.k) || 0; S.ds[p.k] = reduce ? v : S.ds[p.k] + (v - S.ds[p.k]) * .08; }); updateInst(); requestAnimationFrame(loop); }
+function loop(t) { const dt = Math.min(.05, (t - last) / 1000); last = t; if (!reduce) S.t += dt; P.forEach(p => { const v = score(p.k) || 0; S.ds[p.k] = reduce ? v : S.ds[p.k] + (v - S.ds[p.k]) * .08; }); if (S.left === 'senses') updateInst(); requestAnimationFrame(loop); }
 buildInst(); renderLevels(); renderAll();
 const hp = new URLSearchParams(location.hash.slice(1));
 if (hp.get('bg')) setBg(hp.get('bg')); if (hp.get('theme')) setTheme(hp.get('theme'));
@@ -1040,6 +1095,7 @@ try { embedded = JSON.parse($('space-model-data').textContent); } catch (e) { to
 if (embedded) { window.SA_HAS_SAMPLE = false; addModels(embedded, 'exportación de Revit'); }
 else if (hp.get('sample')) loadSample();
 if (hp.get('view')) setView(hp.get('view'));
-window.SA = {S, focus, setView, showPath, showMark, openFam, present, createRel, runAnalysis}; // para pruebas y capturas
+if (hp.get('left')) setLeft(hp.get('left'));
+window.SA = {S, focus, setLeft, setView, showPath, showMark, openFam, present, createRel, runAnalysis}; // para pruebas y capturas
 requestAnimationFrame(loop);
 })();
