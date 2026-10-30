@@ -34,3 +34,10 @@ estilizarlo a mano.
 - **Sin repetir:** cada control vive en un solo panel. Capas, rutas, marcas, pesos e índice, a la izquierda; el detalle
   del pilar o la relación enfocada (métricas, rooms, relacionar con), a la derecha.
 - **Mismo nombre en los dos lados:** «Relaciones» y «Relacionar con», «Capas», «Rooms».
+
+## Resumen compacto
+
+`#resumen=1` (o *Resumen compacto* en Ctrl K) muestra solo un panel, a todo lo alto y de 440 px como máximo, con
+las mismas piezas: encabezado con la marca, índice en la tarjeta enfocada, pilares en filas, indicadores fuera de
+meta (`.row.m`), rooms más bajos (`.row.s`) y el espacio (`.row.kv`). Abajo, *Abrir la app* y *Presentar*. Es lo
+que abre el botón Resumen de Revit.

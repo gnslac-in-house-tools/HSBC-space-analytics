@@ -6,7 +6,7 @@ HTML portátil: la app de análisis espacial con los datos dentro, que se abre c
 
 ```
 SpaceAnalytics.extension/
-  SpaceAnalytics.tab/Analisis.panel/   Exportar · Abrir
+  SpaceAnalytics.tab/Analisis.panel/   Exportar · Abrir · Resumen · Presentar
     Exportar.pushbutton/   export.xaml + lib/export_window.py: la ventana con el estilo de la app; mark.png
   lib/sa_model/   Python puro, sin Revit: geometría, el documento del contrato, nombres de archivo, el HTML portátil
   lib/sa_revit/   el único paquete que importa Autodesk.Revit.DB: los colectores
@@ -29,7 +29,8 @@ carpeta `app\` dentro de `SpaceAnalytics.extension\` y se usa esa.
 
 ## Usar
 
-**Exportar** abre una ventana con el estilo de la app (tema Aura: fondo con halos, tarjetas, botones píldora):
+**Exportar** abre una ventana angosta y vertical con el estilo de la app (tema Aura: fondo con halos, tarjetas,
+botones píldora, el violeta para la acción principal):
 
 1. Si el modelo tiene vínculos de Revit cargados, marca cuáles incluir (todos por omisión). Sus elementos se llevan a
    las coordenadas del modelo y sus ids van como `"<idDelVínculo>:<idDelElemento>"`. La ventana dice también dónde
@@ -41,11 +42,23 @@ carpeta `app\` dentro de `SpaceAnalytics.extension\` y se usa esa.
    - el `.json`, según el contrato;
    - el `.html`, la app con este modelo dentro (solo este: la app analiza un modelo a la vez).
 4. Muestra el resumen en la misma ventana (cuántos elementos de cada cosa, accesos, avisos: sin rooms, sin puertas
-   de acceso, sin pisos, elementos que fallaron) con *Abrir en la app* (Enter), *Abrir carpeta* y *Cerrar*.
+   de acceso, sin pisos, elementos que fallaron) con *Abrir en la app* (Enter), *Resumen*, *Presentar* y *Carpeta*.
 
 **Abrir**: abre el `.html` más reciente de este modelo en esa carpeta. Si no hay ninguno, ofrece abrir la app vacía
 para arrastrar un `.json`. Las exportaciones con el nombre viejo (`<modelo> · <etapa> · <fecha>`) no las
 encuentra; se abren con doble clic.
+
+**Resumen**: abre el `.html` más reciente de este modelo en el resumen compacto de la app (`#resumen=1`), en una
+ventana angosta como un panel: índice ponderado, los cinco pilares contra su meta, los indicadores que no cumplen,
+los rooms más bajos y el espacio. Lo calcula el motor de la app con los datos de esa exportación: si el modelo
+cambió, exporta de nuevo.
+
+**Presentar**: abre el mismo `.html` directo en la presentación (`#present=1`), maximizada.
+
+Los dos usan Edge (o Chrome) en modo app, sin barras, con un perfil propio en
+`%LOCALAPPDATA%\HSBC Space Analytics\navegador` (con el perfil del usuario, si Edge ya está abierto, ignora el
+tamaño). Sin Edge ni Chrome, una página puente en la carpeta temporal abre el HTML con su `#` en el navegador de
+siempre (un doble clic lo perdería). Sin exportaciones de este modelo, piden usar Exportar primero.
 
 ### Qué conviene tener en el modelo
 

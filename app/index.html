@@ -167,6 +167,20 @@ button.row{cursor:pointer;transition:background .15s,box-shadow .15s}button.row:
 .side .mrow{height:30px;font-size:12px;border-radius:10px}
 .lsenses{flex:1;min-height:0;display:flex;flex-direction:column}
 @media (prefers-reduced-motion:reduce){.b4 i,.ib,.ly-op,.rc{transition:none}}
+/* resumen compacto: el mismo panel, solo y a todo lo alto (#resumen=1) */
+.dgw{position:fixed;inset:0;z-index:29;display:none;justify-content:center;padding:7px}
+body.dg .dgw{display:flex}body.dg .app{visibility:hidden}
+.dgw .side{width:100%;max-width:440px;height:100%}
+.dgw .phd .mark{margin-top:2px}
+body.dg .toasts{display:none}.dgw .row.s{--c:#8C7BF5}
+.hk>.eyebrow{margin-bottom:8px}
+.dg-n{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:6px}
+.dg-n>div{display:flex;align-items:center;gap:6px;padding:7px 9px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);font:500 11px Manrope;color:var(--muted)}
+.dg-n b{font:400 17px/1 Outfit;color:var(--ink)}.dg-n .sico{width:13px;height:13px;flex:none}
+.dg-w li::before{border-color:#E0A030}.dg-w li{font-size:11.5px;color:var(--muted)}
+.dg-f{display:flex;gap:6px;padding:10px 14px 12px;border-top:1px solid var(--line);flex:none}
+.dg-f .btn{flex:1;justify-content:center;height:32px;font-size:12px}
+.dg-f #dg-pres{background:var(--acc-t);border-color:var(--acc-b);color:var(--acc-i)}
 .anat{position:absolute;inset:6px;z-index:5;display:none;padding:12px;border-radius:14px;background:var(--surface-2);border:1px solid var(--line);box-shadow:var(--shadow);overflow:auto}
 .anat.on{display:block;animation:fade .25s both}
 .anat dl{display:grid;grid-template-columns:auto 1fr;gap:7px 10px;margin-top:8px;font-size:11.5px;line-height:1.4}
@@ -527,6 +541,7 @@ select.lvl{height:28px;border:1px solid var(--line);border-radius:999px;backgrou
   <div class="mmain"><div class="mtable"><table><thead><tr><th style="width:28px"><input type="checkbox" id="f-all" aria-label="Seleccionar todas"></th><th data-s="fam">Familia</th><th data-s="cat">Categoría</th><th data-s="count" class="num">Cant.</th><th data-s="gwp" class="num">GWP</th><th data-s="cost" class="num">Costo</th><th data-s="rec" class="num">Recicl.</th></tr></thead><tbody id="f-body"></tbody></table></div><div class="mdet" id="f-det"></div></div>
   <div class="mft"><span class="mono muted" id="f-count">0 seleccionadas</span><span class="sp"></span><button class="btn" id="f-xls" title="Une una tabla por Type Mark: columnas GWP, Reciclado, VOC, NRC, EPD, Costo">Cargar tabla Excel</button><button class="btn" id="f-csv">Exportar CSV</button><button class="btn" id="f-iso">Aislar en viewport</button><button class="btn" id="f-sel" style="background:var(--sel);color:#fff;border-color:transparent">Seleccionar en viewport</button></div>
 </div></div>
+<div class="dgw"><section class="glass panel side" id="dg" aria-label="Resumen"></section></div>
 <div class="present" id="present"></div>
 <div class="pal" id="pal"><div class="box"><input id="pal-in" placeholder="Busca una cualidad: privacidad, estrés, puntos ciegos…" aria-label="Buscar"><ul id="pal-list"></ul></div></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>

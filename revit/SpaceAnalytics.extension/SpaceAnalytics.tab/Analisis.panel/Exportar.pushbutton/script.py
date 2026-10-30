@@ -2,7 +2,7 @@
 """Exportar: el modelo (y los vínculos que se elijan) a space-model.json más el HTML portátil.
 
 Todo pasa en una ventana con el estilo de la app (export.xaml y lib/export_window.py): se eligen los vínculos, se ve
-el avance y al final el resumen, con el botón para abrir el HTML. Solo lee el modelo: no abre transacciones.
+el avance y al final lo exportado, con los botones para abrir el HTML en la app, en el resumen o en la presentación. Solo lee el modelo: no abre transacciones.
 Los archivos van a Documentos\\HSBC Space Analytics\\ con el nombre `<modelo> · <aaaa-mm-dd hhmm>`
 (docs/space-model.md).
 """
@@ -13,7 +13,7 @@ from datetime import datetime
 
 from pyrevit import forms, revit, script
 
-from sa_model import bundle, document, exports, text
+from sa_model import bundle, document, exports, launch, text
 from sa_revit import collect, shell
 
 import export_window  # lib/ del botón: la interfaz vive en los botones
@@ -76,15 +76,18 @@ def main():
     file_name = model_name(doc)
     folder = exports.output_folder(shell.documents_folder())
     found = exports.exports_in(folder, exports.model_stem(file_name), ".json")
-    hint = ("Última exportación de este modelo: {0}.".format(found[0][0]) if found
-            else "Primera exportación de este modelo.")
+    hint = "Última: {0}".format(found[0][0]) if found else "Primera exportación de este modelo."
 
     win = export_window.ExportWindow(script.get_bundle_file("export.xaml"), script.get_bundle_file("mark.png"),
                                      "{0} · Revit {1}".format(file_name, doc.Application.VersionNumber),
                                      hint, collect.loaded_links(doc), folder,
                                      lambda links, tick: export(doc, links, tick), collect.Cancelled)
     win.show_dialog()
-    if win.open_path:
+    if win.open_view == "summary":
+        shell.open_view(win.open_path, launch.SUMMARY, launch.SUMMARY_SIZE)
+    elif win.open_view == "present":
+        shell.open_view(win.open_path, launch.PRESENT)
+    elif win.open_path:
         shell.open_path(win.open_path)
 
 

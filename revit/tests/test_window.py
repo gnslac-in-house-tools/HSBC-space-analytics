@@ -69,3 +69,16 @@ def test_no_stage_picker():
 def test_the_window_has_the_app_mark():
     with open(os.path.join(BUTTON, "mark.png"), "rb") as f:
         assert f.read(8) == b"\x89PNG\r\n\x1a\n"
+
+
+def test_done_page_opens_the_app_the_summary_or_the_presentation():
+    names = set(e.attrib.get(X + "Name", "") for e in xaml().iter())
+    assert {"open_btn", "summary_btn", "present_btn"} <= names
+
+
+def test_the_window_is_narrow_and_the_main_action_is_not_black():
+    root = xaml()
+    assert int(root.attrib["Width"]) <= 440
+    primary = next(e for e in root.iter() if e.attrib.get(X + "Key") == "Primary")
+    background = [c.attrib["Value"] for c in primary if c.attrib.get("Property") == "Background"]
+    assert background == ["{StaticResource Accent}"]

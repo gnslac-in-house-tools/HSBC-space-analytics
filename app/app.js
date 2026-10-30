@@ -138,6 +138,7 @@ function applyHash() {
   if (f && R[f]) { S.rels.add(f); syncRels(); focus('rel', f); } else if (f && BY[f]) focus('pillar', f);
   if (h.get('path')) showPath(h.get('path')); if (h.get('mark')) showMark(h.get('mark'));
   if (h.get('fam')) { const t = S.res.table.filter(x => x.category === 'Furniture').slice(0, 2); t.forEach(x => S.selFam.add(x.id)); renderViewport(); openFam(t[0] && t[0].id); }
+  if (h.get('resumen')) openDigest();
   if (h.get('present')) present();
 }
 function updateTop() {
@@ -778,7 +779,7 @@ function thrFor(rk) {
  return S.thrBy[rk] == null ? .5 : S.thrBy[rk]; }
 function setThr(d) { const rk = S.focus.k; S.thr = Math.max(.1, Math.min(.9, +(S.thr + d).toFixed(2))); S.thrBy[rk] = S.thr; S.thrUser[rk] = true; renderViewport(); renderInspector(); Snd.click(); }
 function focus(type, k) { S.focus = {type, k}; if (type === 'rel') S.thr = thrFor(k); syncRels(); renderAll(); }
-function renderAll() { renderMixer(); renderBoard(); renderViewport(); renderInspector(); }
+function renderAll() { renderMixer(); renderBoard(); renderViewport(); renderInspector(); renderDigest(); }
 
 /* ===================== FAMILIAS ===================== */
 const UNIT = {Floors: 'kg/m²', Walls: 'kg/m²'};
@@ -1014,9 +1015,45 @@ function slideBody(type, proj) {
  return ''; }
 function closePresent() { $('present').classList.remove('on'); }
 
+/* ---------- resumen compacto (#resumen=1; el botón Resumen de Revit lo abre en una ventana angosta) ---------- */
+/** Todo lo que dice la app en un panel vertical: índice, pilares, indicadores fuera de meta, rooms más bajos y el espacio. */
+function openDigest() { document.body.classList.add('dg'); $('dg').classList.add('on'); renderDigest(); }
+function closeDigest() { document.body.classList.remove('dg'); $('dg').classList.remove('on'); }
+function renderDigest() { const box = $('dg'); if (!box.classList.contains('on')) return;
+ const m = cur(), head = (sub, title) => `<header class="phd"><div class="mark" aria-hidden="true"></div><div class="phd-t"><div class="eyebrow">Resumen</div><h3><span>${title}</span></h3><p>${sub}</p></div></header>`;
+ const foot = `<footer class="dg-f"><button class="btn" id="dg-app">Abrir la app</button><button class="btn" id="dg-pres"${S.res ? '' : ' disabled'}>Presentar <kbd>P</kbd></button></footer>`;
+ const wire = () => { $('dg-app').onclick = closeDigest; $('dg-pres').onclick = () => present(); box.querySelectorAll('[data-lv]').forEach(b => b.onclick = () => setLevel(b.dataset.lv)); };
+ if (!S.res) { box.innerHTML = head('Sin modelo', 'Space Analytics') + '<div class="pbody"><section class="sec"><p>Abre un space-model.json o exporta desde Revit.</p></section></div>' + foot; wire(); return; }
+ const src = m.model.source, d = src.exported_at ? new Date(src.exported_at) : null, ix = idxNow();
+ const sub = [esc(S.res.level.name), d && !isNaN(d) ? `exportado ${d.toLocaleDateString('es-MX', {day: 'numeric', month: 'short', year: 'numeric'})}` : '', src.version ? `Revit ${esc(src.version)}` : ''].filter(Boolean).join(' · ');
+ let h = '';
+ if (multiLevel()) h += `<section class="sec"><div class="sec-h"><span class="eyebrow">Nivel</span></div><div class="rcs">${E.levelsOf(m.model).map(L => `<button class="rc${L.id === S.res.level.id ? ' on' : ''}" data-lv="${esc(L.name)}" aria-pressed="${L.id === S.res.level.id}">${esc(L.name)}</button>`).join('')}</div></section>`;
+ if (ix) { const rt = ratePillar(ix.v, ix.target), gap = Math.round(ix.target - ix.v);
+  h += `<section class="sec"><div class="hero hk" style="--c:#8C7BF5"><div class="eyebrow">Índice ponderado</div>
+   <div class="hk-top"><span class="val xl">${fmt(ix.v, 1)}<small>/ 100</small></span>${pill(rt)}</div>
+   <span class="b4 l"><i style="width:${ix.v}%"></i><em style="left:${ix.target}%"></em></span>
+   <div class="hk-m meta"><span>meta <b>${fmt(ix.target)}</b></span><span>${gap > 0 ? `faltan <b>${gap}</b> puntos` : gap < 0 ? `<b>${-gap}</b> sobre la meta` : 'justo en la meta'}</span></div></div></section>`; }
+ h += `<section class="sec"><div class="sec-h"><span class="eyebrow">Pilares</span><span class="sec-m">puntaje · raya = meta</span></div><div class="list">${P.map(p => { const sc = score(p.k), rt = ratePillar(sc, p.target);
+  return `<div class="row" style="--c:${p.c1}"><span class="lab">${pIcon(p.k, 15)}<span>${p.name}</span></span><span class="end">${rt ? `<span class="pst">${sIcon(rt)}${RATE_S[rt]}</span>` : '<span class="pst none">Sin datos</span>'}<span class="val">${sc == null ? '—' : sc}</span></span>
+   <span class="b4 ind full" aria-hidden="true"><i style="width:${sc || 0}%"></i><em style="left:${p.target}%"></em></span></div>`; }).join('')}</div></section>`;
+ const ind = indicators(), n = {ok: 0, mid: 0, low: 0}; ind.forEach(x => n[x.r]++);
+ const off = ind.filter(x => x.r !== 'ok').sort((a, b) => (a.r === 'low' ? 0 : 1) - (b.r === 'low' ? 0 : 1));
+ h += `<section class="sec"><div class="sec-h"><span class="eyebrow">Indicadores</span><span class="sec-m">${n.ok} de ${ind.length} cumplen</span></div>
+  <div class="dg-n">${['ok', 'mid', 'low'].map(r => `<div>${sIcon(r)}<b>${n[r]}</b><span>${RATE_S[r]}</span></div>`).join('')}</div>
+  ${off.length ? `<div class="list div">${off.map(x => `<div class="row m" style="--c:${x.p.c1}"><span class="lab">${pIcon(x.p.k, 14)}<span>${x.m[0]}</span></span><span class="end"><span class="val s">${fmt(x.m[1], x.m[3])}<small>${unitOf(x.m).trim()}</small></span></span>
+   <div class="full mt"><span class="pst">${sIcon(x.r)}${RATE_S[x.r]}</span><span class="meta">${benchTxt(x.m)}</span></div></div>`).join('')}</div>` : '<p>Todos cumplen su referencia.</p>'}</section>`;
+ const avg = r => { const v = P.map(p => r.scores[p.k]).filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+ const low = S.res.rooms.map(r => ({r, a: avg(r)})).filter(x => x.a != null).sort((x, y) => x.a - y.a).slice(0, 5);
+ if (low.length) h += `<section class="sec"><div class="sec-h"><span class="eyebrow">Rooms más bajos</span><span class="sec-m">promedio de los pilares</span></div><div class="list">${low.map(({r, a}) => `<div class="row s"><span class="lab"><span>${esc(r.name)}</span></span><span class="b4"><i style="width:${a}%"></i></span><span class="val s">${fmt(a)}</span></div>`).join('')}</div></section>`;
+ const w = allWarnings(), kv = [['Área libre', `${fmt(S.res.G.freeCount * cellArea())} m²`], ['Rooms', S.res.rooms.length], ['Retícula', `${fmt(S.res.G.cell, 1)} m`]].concat(multiLevel() ? [['Niveles', E.levelsOf(m.model).length]] : []);
+ h += `<section class="sec"><div class="sec-h"><span class="eyebrow">El espacio</span></div><div class="list div">${kv.map(([a, b]) => `<div class="row kv"><span class="lab"><span>${a}</span></span><span class="val s">${b}</span></div>`).join('')}</div></section>`;
+ if (w.length) h += `<section class="sec"><div class="sec-h"><span class="eyebrow" style="color:#B07818">Avisos</span><span class="sec-m">${w.length}</span></div><ul class="acts dg-w">${w.slice(0, 4).map(x => `<li>${esc(x)}</li>`).join('')}</ul>${w.length > 4 ? `<p style="margin-top:6px">Y ${w.length - 4} más en la app.</p>` : ''}</section>`;
+ box.innerHTML = head(sub, esc((src.file || 'Proyecto').replace(/\.rvt$/i, ''))) + `<div class="pbody">${h}</div>` + foot; wire(); }
+
 /* ===================== buscador de cualidades / comandos ===================== */
 function commands() { const c = []; const g = (grp, t, run, col = '#999', k = '') => c.push({grp, t, run, c: col, k});
  g('Vista', S.left === 'senses' ? 'Volver al tablero de pilares' : 'Senses · el instrumento de pilares', () => setLeft(S.left === 'senses' ? 'board' : 'senses'), '#8C7BF5');
+ g('Vista', 'Resumen compacto · todo en un panel', openDigest, '#8C7BF5');
  g('Acciones', 'Abrir space-model.json…', () => $('file-model').click(), '#5B9BFF');
  if (S.res) {
   g('Consultas del espacio', '¿Dónde hay estrés? · Flujo × Confort', () => { if (!S.rels.has('flujo|conf')) createRel('flujo', 'conf'); else focus('rel', 'flujo|conf'); }, '#D42A3C');
@@ -1097,7 +1134,7 @@ addEventListener('keydown', e => { const k = e.key.toLowerCase();
  if ((e.ctrlKey || e.metaKey) && k === 'o') { e.preventDefault(); $('file-model').click(); return; }
  if ($('pal').classList.contains('on')) return;
  if (e.key === 'Escape' && S.warnOpen) { S.warnOpen = false; renderSelChip(); return; }
- if (e.key === 'Escape') { zoneClose(); closePresent(); closeFam(); setLink(false); $('anat').classList.remove('on'); return; }
+ if (e.key === 'Escape') { if (!$('present').classList.contains('on')) closeDigest(); zoneClose(); closePresent(); closeFam(); setLink(false); $('anat').classList.remove('on'); return; }
  if ($('present').classList.contains('on')) { if (e.key === 'ArrowRight') { pIdx++; drawSlide(); } if (e.key === 'ArrowLeft') { pIdx--; drawSlide(); } return; }
  if ($('modal').classList.contains('on') || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
  const n = parseInt(e.key); if (n >= 1 && n <= 5) { nodeClick(P[n - 1].k); return; }
@@ -1115,6 +1152,6 @@ if (embedded) { window.SA_HAS_SAMPLE = false; addModels(embedded, 'exportación 
 else if (hp.get('sample')) loadSample();
 if (hp.get('view')) setView(hp.get('view'));
 if (hp.get('left')) setLeft(hp.get('left'));
-window.SA = {S, focus, setLeft, setView, showPath, showMark, openFam, present, createRel, runAnalysis}; // para pruebas y capturas
+window.SA = {S, openDigest, focus, setLeft, setView, showPath, showMark, openFam, present, createRel, runAnalysis}; // para pruebas y capturas
 requestAnimationFrame(loop);
 })();

@@ -49,7 +49,9 @@ def test_finds_what_it_guards():
     assert "lib/sa_model/document.py" in dict(SOURCES)
     assert "lib/sa_revit/collect.py" in dict(SOURCES)
     assert BUTTONS == ["SpaceAnalytics.tab/Analisis.panel/Abrir.pushbutton",
-                       "SpaceAnalytics.tab/Analisis.panel/Exportar.pushbutton"]
+                       "SpaceAnalytics.tab/Analisis.panel/Exportar.pushbutton",
+                       "SpaceAnalytics.tab/Analisis.panel/Presentar.pushbutton",
+                       "SpaceAnalytics.tab/Analisis.panel/Resumen.pushbutton"]
 
 
 @pytest.mark.parametrize("button", BUTTONS)
@@ -84,7 +86,7 @@ def test_the_ribbon_says_what_it_should():
     names, text = layout(TAB)
     assert names == ["Analisis"] and re.search(r"^title:\s*Space Analytics\s*$", text, re.M)
     names, text = layout(os.path.join(TAB, "Analisis.panel"))
-    assert names == ["Exportar", "Abrir"] and re.search(r"^title:\s*Análisis\s*$", text, re.M)
+    assert names == ["Exportar", "Abrir", "Resumen", "Presentar"] and re.search(r"^title:\s*Análisis\s*$", text, re.M)
 
 
 def _defined(module):
