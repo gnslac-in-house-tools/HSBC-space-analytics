@@ -1,4 +1,4 @@
-// Escribe la sucursal de prueba (la de los mockups, 30 × 20 m) en la forma del contrato, en dos etapas.
+// Escribe la sucursal de prueba (la de los mockups, 30 × 20 m) en la forma del contrato.
 // Es un fixture para probar la app sin modelo de Revit, no un generador de modelos.
 // node app/tests/fixtures/make-sucursal.js
 const fs = require('fs');
@@ -9,13 +9,12 @@ const P = (x, y) => [+(x / U).toFixed(3), +((400 - y) / U).toFixed(3)];
 const rectU = (x, y, w, h) => [P(x, y), P(x + w, y), P(x + w, y + h), P(x, y + h)];
 const circleU = (x, y, r, n = 10) => Array.from({ length: n }, (_, k) => P(x + r * Math.cos(k / n * 2 * Math.PI), y + r * Math.sin(k / n * 2 * Math.PI)));
 
-function build(stage) {
-  const concept = stage === 'Concepto';
+function build() {
   let id = 1000;
   const nid = () => String(id++);
   const m = {
     schema: 'hsbc-space-analytics/space-model@1',
-    source: { app: 'Revit', version: '2025', file: 'Sucursal de prueba.rvt', exported_at: '2026-10-29T18:00:00', exporter: 'fixture', stage, phase: 'Nueva construcción', links: [] },
+    source: { app: 'Revit', version: '2025', file: 'Sucursal de prueba.rvt', exported_at: '2026-10-29T18:00:00', exporter: 'fixture', phase: 'Nueva construcción', links: [] },
     levels: [{ id: 'L0', name: 'Planta baja', elevation: 0 }, { id: 'L1', name: 'Azotea', elevation: 4.5 }],
     rooms: [], floors: [], walls: [], doors: [], windows: [], obstacles: [],
     types: {
@@ -59,11 +58,10 @@ function build(stage) {
   W('T_INT', [0, 120], [300, 120], 0.12); const wBO = m.walls[m.walls.length - 1];
   W('T_INT', [300, 0], [300, 120], 0.12);
   W('T_INT', [300, 120], [450, 120], 0.12); const wLo = m.walls[m.walls.length - 1];
-  const esm = W(concept ? 'T_INT' : 'T_ESM', [450, 0], [450, 310], 0.12, { curtain: !concept });
+  const esm = W('T_ESM', [450, 0], [450, 310], 0.12, { curtain: true });
   W('T_INT', [450, 110], [600, 110], 0.12); W('T_INT', [450, 220], [600, 220], 0.12); W('T_INT', [450, 310], [600, 310], 0.12);
   W('T_INT', [0, 290], [150, 290], 0.12); const wATM = W('T_INT', [150, 290], [150, 400], 0.12);
   W('T_INT', [140, 120], [140, 140], 0.12); W('T_INT', [140, 275], [140, 290], 0.12);
-  if (concept) W('T_INT', [140, 140], [140, 275], 0.12, { z: [0, 2.4] });
   const autoW = W('T_INT', [450, 310], [450, 400], 0.12);
   // puertas
   const D = (type, at, hand, host, width, o = {}) => m.doors.push(Object.assign({ id: nid(), level: 'L0', type, host: host.id, at: P(...at), hand, facing: [-hand[1], hand[0]], width, height: 2.1, z: 0, from_room: null, to_room: null, params: {} }, o));
@@ -78,32 +76,29 @@ function build(stage) {
   D('T_PTA', [450, 355], [0, 1], autoW, 1.6);
   // ventanas
   const V = (at, hand, host, width) => m.windows.push({ id: nid(), level: 'L0', type: 'T_VEN', host: host.id, at: P(...at), hand, facing: [-hand[1], hand[0]], width, height: 1.5, sill: 0.9, head: 2.4, z: 0.9, from_room: null, to_room: null, params: {} });
-  if (!concept) { [55, 165, 265, 355].forEach(y => V([600, y], [0, 1], wE, 1.5)); }
+  [55, 165, 265, 355].forEach(y => V([600, y], [0, 1], wE, 1.5));
   [340, 410].forEach(x => V([x, 0], [1, 0], wN, 1.5));
   // obstáculos
   const O = (type, category, footprint, z, o = {}) => m.obstacles.push(Object.assign({ id: nid(), level: 'L0', type, category, footprint, z, room: null, params: {} }, o));
   [[262, 178], [262, 222], [330, 178], [330, 222], [390, 200]].forEach(([x, y]) => O('T_BAN', 'Furniture', rectU(x, y, 40, 16), [0, 0.45]));
   [[525, 55], [525, 165], [525, 265]].forEach(([x, y]) => O('T_MES', 'Furniture', circleU(x, y, 16), [0, 0.75]));
   [[575, 40], [575, 150], [575, 250]].forEach(([x, y]) => O('T_ESC', 'Furniture', rectU(x, y, 14, 32), [0, 0.75]));
-  if (!concept) O('T_BAR', 'Furniture', rectU(136, 140, 8, 135), [0, 1.1]);
+  O('T_BAR', 'Furniture', rectU(136, 140, 8, 135), [0, 1.1]);
   [[105, 160], [105, 205], [105, 250]].forEach(([x, y]) => O('T_CAJ', 'Furniture', rectU(x, y, 20, 24), [0, 0.75]));
   O('T_ATM', 'Equipment', rectU(20, 330, 16, 40), [0, 1.7]); O('T_ATM', 'Equipment', rectU(50, 330, 16, 40), [0, 1.7]);
   O('T_BIEN', 'Furniture', circleU(300, 320, 14), [0, 1.0]);
-  if (!concept) O('T_GUA', 'Furniture', rectU(350, 372, 10, 10), [0, 1.1]);
+  O('T_GUA', 'Furniture', rectU(350, 372, 10, 10), [0, 1.1]);
   [[230, 140], [420, 140], [230, 290], [420, 290]].forEach(([x, y]) => O('T_COL', 'Columns', rectU(x - 5, y - 5, 10, 10), [0, 4.5]));
   [[180, 380], [420, 380]].forEach(([x, y]) => O('T_MAC', 'Planting', circleU(x, y, 9), [0, 1.6]));
   return m;
 }
 
 const out = path.join(__dirname);
-const both = [['Concepto', 'sucursal-concepto.json'], ['Esquemático', 'sucursal-esquematico.json']].map(([stage, file]) => {
-  const m = build(stage);
-  fs.writeFileSync(path.join(out, file), JSON.stringify(m));
-  console.log('escrito', file);
-  return m;
-});
+const m = build();
+fs.writeFileSync(path.join(out, 'sucursal.json'), JSON.stringify(m));
+console.log('escrito sucursal.json');
 // la misma sucursal para el botón "Ver sucursal de prueba" de la app (se carga con <script>, funciona desde file://)
 const sample = path.join(__dirname, '..', '..', 'samples', 'sucursal.js');
 fs.mkdirSync(path.dirname(sample), { recursive: true });
-fs.writeFileSync(sample, '// Sucursal de prueba (app/tests/fixtures/make-sucursal.js). No es un modelo real.\nwindow.SA_SAMPLE = ' + JSON.stringify({ models: both }) + ';\n');
+fs.writeFileSync(sample, '// Sucursal de prueba (app/tests/fixtures/make-sucursal.js). No es un modelo real.\nwindow.SA_SAMPLE = ' + JSON.stringify(m) + ';\n');
 console.log('escrito samples/sucursal.js');

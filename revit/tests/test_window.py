@@ -8,7 +8,6 @@ import os
 import re
 import xml.etree.ElementTree as ET
 
-from sa_model import STAGES
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 EXTENSION = os.path.normpath(os.path.join(HERE, "..", "SpaceAnalytics.extension"))
@@ -61,11 +60,25 @@ def test_every_event_in_the_xaml_has_its_method():
     assert events and events <= methods, sorted(events - methods)
 
 
-def test_one_stage_button_per_stage():
-    names = [e.attrib[X + "Name"] for e in xaml().iter() if re.match(r"stage_\d$", e.attrib.get(X + "Name", ""))]
-    assert names == ["stage_{0}".format(i) for i in range(len(STAGES))]
+def test_no_stage_picker():
+    """Se exporta un modelo a la vez, sin etapa: la ventana ya no la pide."""
+    names = [e.attrib.get(X + "Name", "") for e in xaml().iter()]
+    assert "setup_hint" in names and not [n for n in names if n.startswith("stage")]
 
 
 def test_the_window_has_the_app_mark():
     with open(os.path.join(BUTTON, "mark.png"), "rb") as f:
         assert f.read(8) == b"\x89PNG\r\n\x1a\n"
+
+
+def test_done_page_opens_the_app_the_summary_or_the_presentation():
+    names = set(e.attrib.get(X + "Name", "") for e in xaml().iter())
+    assert {"open_btn", "summary_btn", "present_btn"} <= names
+
+
+def test_the_window_is_narrow_and_the_main_action_is_not_black():
+    root = xaml()
+    assert int(root.attrib["Width"]) <= 440
+    primary = next(e for e in root.iter() if e.attrib.get(X + "Key") == "Primary")
+    background = [c.attrib["Value"] for c in primary if c.attrib.get("Property") == "Background"]
+    assert background == ["{StaticResource Accent}"]

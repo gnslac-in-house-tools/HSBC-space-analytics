@@ -5,7 +5,7 @@ from sa_model.text import count_list, counts, report, skipped_line, summary, war
 
 
 def doc(**kw):
-    base = {"source": {"file": "Sucursal.rvt", "stage": "Concepto", "links": []}, "levels": [{"id": "1"}],
+    base = {"source": {"file": "Sucursal.rvt", "links": []}, "levels": [{"id": "1"}],
             "rooms": [{"id": "r1"}], "floors": [{"id": "f1"}], "walls": [], "windows": [], "obstacles": [],
             "doors": [{"id": "d1", "type": "t1", "from_room": None, "to_room": "r1", "params": {}},
                       {"id": "d2", "type": "t2", "from_room": "r1", "to_room": "r2", "params": {"SA_Rol": "Entrada"}}],
@@ -70,11 +70,9 @@ def test_many_failures_are_cut_short():
 
 
 def test_summary():
-    msg, detail = summary(doc(), files=["C:/a.json", "C:/a.html"], compared=["Desarrollo"],
-                          skipped={"demolidos": 3, "rooms de otra fase": 0})
-    assert msg == "Sucursal.rvt · Concepto"
+    msg, detail = summary(doc(), files=["C:/a.json", "C:/a.html"], skipped={"demolidos": 3, "rooms de otra fase": 0})
+    assert msg == "Sucursal.rvt"
     assert "Accesos: 1 (2 con SA_Rol = Entrada)." in detail
-    assert "El HTML compara con: Desarrollo." in detail
     assert "Omitidos a propósito: 3 demolidos." in detail
     assert detail.endswith("Archivos:\nC:/a.json\nC:/a.html")
     assert "Avisos" not in detail
@@ -82,10 +80,9 @@ def test_summary():
 
 
 def test_report_has_the_summary_in_parts():
-    r = report(doc(), files=["C:/a.json"], compared=["Desarrollo"], note="Nota.", skipped={"demolidos": 3})
-    assert r["title"] == "Sucursal.rvt · Concepto"
+    r = report(doc(), files=["C:/a.json"], note="Nota.", skipped={"demolidos": 3})
+    assert r["title"] == "Sucursal.rvt"
     assert r["counts"] == count_list(doc()) and "1 rooms" in r["counts"]
-    assert r["lines"] == ["Accesos: 1 (2 con SA_Rol = Entrada).", "El HTML compara con: Desarrollo.",
-                          "Omitidos a propósito: 3 demolidos.", "Nota."]
+    assert r["lines"] == ["Accesos: 1 (2 con SA_Rol = Entrada).", "Omitidos a propósito: 3 demolidos.", "Nota."]
     assert r["warnings"] == [] and r["files"] == ["C:/a.json"]
     assert report(doc(rooms=[]))["warnings"][0].startswith("Sin rooms")

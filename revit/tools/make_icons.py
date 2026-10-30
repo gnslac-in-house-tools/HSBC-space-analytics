@@ -56,6 +56,16 @@ GLYPHS = {
         polyline((6, 10), (10, 6)),
         polyline((6.9, 6), (10, 6), (10, 9.1)),
     ],
+    "Analisis.panel/Resumen.pushbutton": [
+        # tres barras: los puntajes de un vistazo
+        polyline((6.2, 10.2), (6.2, 8.4)),
+        polyline((8, 10.2), (8, 5.8)),
+        polyline((9.8, 10.2), (9.8, 7.2)),
+    ],
+    "Analisis.panel/Presentar.pushbutton": [
+        # el triángulo de reproducir: la presentación
+        polyline((6.9, 5.7), (10.4, 8), (6.9, 10.3), closed=True),
+    ],
 }
 
 

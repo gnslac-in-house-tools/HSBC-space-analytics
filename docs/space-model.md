@@ -24,7 +24,7 @@ cambian ambos lados y sube `schema`.
   "source": {
     "app": "Revit", "version": "2025", "file": "Sucursal Reforma.rvt",
     "exported_at": "2026-10-29T18:20:00", "exporter": "0.1.0",
-    "stage": "Esquemático", "phase": "Nueva construcción",
+    "phase": "Nueva construcción",
     "links": ["Base building.rvt"]
   },
   "levels": [], "rooms": [], "floors": [], "walls": [], "doors": [], "windows": [], "obstacles": [],
@@ -32,8 +32,9 @@ cambian ambos lados y sube `schema`.
 }
 ```
 
-`stage` es una de `Concepto`, `Esquemático`, `Desarrollo` o `Documentación`; quien exporta la elige. La app carga
-varias exportaciones del mismo modelo (una por etapa) y el bisel del instrumento cambia entre ellas.
+Cada documento es **un** modelo y la app analiza uno a la vez: abrir otro reemplaza al anterior. No hay etapas de
+diseño en el contrato. Exportaciones viejas que traían `source.stage` o varios modelos se siguen leyendo: el campo se
+ignora y, de varios modelos, la app usa el último y lo avisa.
 
 ## Elementos
 
@@ -125,7 +126,7 @@ el prefijo (`GWP`, `Reciclado`…).
 ## El HTML portátil
 
 El botón Exportar escribe dos archivos en `Documentos\HSBC Space Analytics\` (la carpeta Documentos que reporta Windows, aunque esté en OneDrive) con el mismo nombre
-(`<modelo> · <etapa> · <aaaa-mm-dd hhmm>`):
+(`<modelo> · <aaaa-mm-dd hhmm>`):
 
 - el `.json`, que sigue este contrato;
 - el `.html`, que es la app con los datos dentro y se abre con doble clic sin servidor.
@@ -135,9 +136,8 @@ Para armar el `.html`, el exportador:
 1. lee `app/index.html`;
 2. cambia cada `<script src="X.js"></script>` que apunte a un archivo de `app/` por un `<script>` con su contenido;
 3. cambia el marcador exacto `<script id="space-model-data" type="application/json">null</script>` por la misma
-   etiqueta con `{"models": [ ... ]}` dentro, escapando `</` como `<\/`.
+   etiqueta con el documento (el mismo del `.json`) dentro, escapando `</` como `<\/`.
 
-`models` lleva la exportación nueva y, si existen en esa carpeta, la última `.json` de cada **otra** etapa del mismo
-archivo de Revit. Así el bisel tiene con qué comparar.
+El `.html` lleva solo la exportación nueva.
 
-Abierta sin datos, la app pide arrastrar uno o varios `.json`.
+Abierta sin datos, la app pide abrir o arrastrar un `.json`.

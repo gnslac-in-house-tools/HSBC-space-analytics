@@ -14,7 +14,7 @@ function box(opts) {
   opts = opts || {};
   const m = {
     schema: 'hsbc-space-analytics/space-model@1',
-    source: { stage: 'Esquemático', file: 'prueba.rvt' },
+    source: { file: 'prueba.rvt' },
     levels: [{ id: 'L0', name: 'Planta baja', elevation: 0 }],
     rooms: [
       { id: 'r1', level: 'L0', name: 'Bóveda', number: '1', area: 36, outline: [rect(0.1, 0.1, 5.9, 5.9)] },
@@ -48,7 +48,7 @@ test('rechaza lo que no es un space-model y normaliza lo que falta', () => {
   assert.strictEqual(models.length, 1);
   assert.strictEqual(warnings.length, 1);
   assert.deepStrictEqual(models[0].rooms, []);
-  assert.strictEqual(models[0].source.stage, 'Esquemático');
+  assert.deepStrictEqual(models[0].source, {});
 });
 
 test('los muros separan y la puerta conecta', () => {
@@ -278,4 +278,37 @@ test('edificio: sin escaleras, el piso de arriba no se alcanza y lo dice', () =>
 test('edificio: el elevador cuesta su espera', () => {
   const st = E.building(tower()), el = E.building(tower({ id: 'e1', kind: 'elevator', type: 'tst', footprint: rect(10, 4, 11.5, 5.5), z: [0, 4] }));
   assert.ok(el.links[0].cost > st.links[0].cost);
+});
+
+test('zona: un room promedia solo sus celdas y la zona completa empata con el nivel', () => {
+  const r = E.analyze(box(), 'L0');
+  const lobby = E.zoneStats(r, [1]), vault = E.zoneStats(r, [0]), all = E.zoneStats(r, [0, 1]);
+  assert.deepStrictEqual(lobby.rooms.map(x => x.name), ['Lobby']);
+  assert.strictEqual(lobby.area, 36);
+  assert.ok(lobby.freeArea > 0 && lobby.freeArea <= 36);
+  assert.ok(lobby.scores.flujo > vault.scores.flujo, 'el lobby está más cerca del acceso');
+  assert.ok(vault.avgD > lobby.avgD);
+  assert.strictEqual(all.area, 72);
+  assert.strictEqual(all.cells, lobby.cells + vault.cells);
+  // las celdas fuera de rooms (muros, huecos) no entran: comparar contra la media del nivel sobre celdas con room
+  ['flujo', 'visib', 'conf'].forEach(k => assert.ok(Math.abs(all.scores[k] - r.scores[k]) < 3, k));
+});
+
+test('zona: inaccesible, sin puestos de personal y rooms que no existen', () => {
+  const r = E.analyze(box({ noInnerDoor: true }), 'L0');
+  const z = E.zoneStats(r, [0, 99]);
+  assert.strictEqual(z.rooms.length, 1, 'el room 99 no existe y se ignora');
+  assert.ok(Math.abs(z.unreach - z.freeArea) < 1e-9, 'toda la bóveda queda sin ruta');
+  assert.strictEqual(z.avgD, null);
+  assert.strictEqual(z.blind == null, !r.G.watch.length, 'puntos ciegos solo si hay quien vigile');
+  const none = E.zoneStats(r, []);
+  assert.strictEqual(none.cells, 0);
+  assert.strictEqual(none.scores.flujo, null);
+});
+
+test('zona: sin rooms (null) es todo el nivel y empata con los puntajes del nivel', () => {
+  const r = E.analyze(box(), 'L0'), lv = E.zoneStats(r, null);
+  assert.strictEqual(lv.cells, r.G.freeCount);
+  ['flujo', 'visib', 'seg', 'conf'].forEach(k => assert.strictEqual(lv.scores[k], r.scores[k], k));
+  assert.strictEqual(lv.rooms.length, r.rooms.length);
 });

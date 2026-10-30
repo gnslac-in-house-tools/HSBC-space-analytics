@@ -7,7 +7,6 @@
   'use strict';
 
   const SCHEMA = 'hsbc-space-analytics/space-model@';
-  const STAGES = ['Concepto', 'Esquemático', 'Desarrollo', 'Documentación'];
   const MOVE_CUT = 0.5, MOVE_LOW = 0.1, SIGHT_CUT = 1.2;
   const OPEN = 0, OPAQUE = 1, GLASS_IN = 2, GLASS_OUT = 3;
   const MAX_CELLS = 250000;
@@ -71,7 +70,6 @@
       ['levels', 'rooms', 'floors', 'walls', 'doors', 'windows', 'obstacles', 'connectors'].forEach(k => { if (!Array.isArray(m[k])) m[k] = []; });
       if (!m.types || typeof m.types !== 'object') m.types = {};
       m.source = m.source || {};
-      if (STAGES.indexOf(m.source.stage) < 0) m.source.stage = STAGES[1];
       m.levels.sort((a, b) => a.elevation - b.elevation);
       models.push(m);
     });
@@ -796,7 +794,7 @@
     });
     ctx.result = {
       model: ctx.model, level: s.level, sel: s, G, fields: F, scores, metrics, rooms, table: ctx.table,
-      warnings: ctx.warnings, stage: ctx.model.source.stage
+      warnings: ctx.warnings
     };
     return `${Object.keys(F).length} pilares`;
   }
@@ -808,7 +806,32 @@
     return Math.min(va, op === 'conflict' ? 1 - vb : vb);
   }
 
-  const api = { SCHEMA, STAGES, load, levelsOf, select, plan, analyze, plantOf, connectorsOf, building, typesTable, applyTable, typeScore, crossAt, castRay, dijkstra, roleOf, inOutline, ringArea, ringCentroid, norm, OPEN, OPAQUE, GLASS_IN, GLASS_OUT };
+  /** Resultados de una zona: los rooms ks de un análisis ya hecho. El análisis sigue siendo del nivel completo
+   *  (la vista y las rutas dependen de todo el piso); aquí solo se promedian y suman las celdas libres de esos rooms.
+   *  ks = null toma todas las celdas libres del nivel: la base para comparar una zona con la misma vara. */
+  function zoneStats(res, ks) {
+    const G = res.G, F = res.fields, A = G.cell * G.cell, set = ks ? new Set(ks.filter(k => res.rooms[k])) : null;
+    const acc = {}; Object.keys(F).forEach(p => { acc[p] = [0, 0]; });
+    let cells = 0, blind = 0, unreach = 0, noisy = 0, lit = 0, dSum = 0, dN = 0, dMax = null;
+    for (let c = 0; c < G.n; c++) {
+      if (!G.free[c] || (set && !set.has(G.room[c]))) continue;
+      cells++;
+      Object.keys(F).forEach(p => { const v = F[p][c]; if (!isNaN(v)) { acc[p][0] += v; acc[p][1]++; } });
+      if (isFinite(G.dEnt[c])) { dSum += G.dEnt[c]; dN++; if (dMax == null || G.dEnt[c] > dMax) dMax = G.dEnt[c]; } else unreach++;
+      if (G.watch.length && G.seen[c] === 0) blind++;
+      if (G.noise[c] > 0.6) noisy++;
+      if (G.day[c] > 0.5) lit++;
+    }
+    const scores = {}; Object.keys(acc).forEach(p => { scores[p] = acc[p][1] ? Math.round(acc[p][0] / acc[p][1] * 1000) / 10 : null; });
+    const rooms = set ? [...set].map(k => res.rooms[k]) : res.rooms;
+    return {
+      rooms, cells, area: rooms.reduce((t, r) => t + (r.area || 0), 0), freeArea: cells * A, scores,
+      avgD: dN ? dSum / dN : null, maxD: dMax, unreach: unreach * A,
+      blind: G.watch.length ? blind * A : null, noisy: noisy * A, daylight: cells ? lit / cells * 100 : null
+    };
+  }
+
+  const api = { SCHEMA, load, levelsOf, select, plan, analyze, plantOf, connectorsOf, building, typesTable, applyTable, typeScore, crossAt, zoneStats, castRay, dijkstra, roleOf, inOutline, ringArea, ringCentroid, norm, OPEN, OPAQUE, GLASS_IN, GLASS_OUT };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.SAEngine = api;
 })(typeof window !== 'undefined' ? window : this);

@@ -1,6 +1,6 @@
 title: Exportar
 tooltip: >-
   Exporta el modelo (y los vínculos que elijas) a space-model.json más un HTML portátil con la app y los datos dentro,
-  en Documentos\HSBC Space Analytics. Pide la etapa y los vínculos en una ventana con el estilo de la app y al final
+  en Documentos\HSBC Space Analytics. Pide los vínculos en una ventana con el estilo de la app y al final
   ofrece abrir el HTML. Solo lee el modelo.
 author: Gensler · HSBC Space Analytics

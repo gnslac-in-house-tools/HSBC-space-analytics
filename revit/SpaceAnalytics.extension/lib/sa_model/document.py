@@ -241,7 +241,7 @@ def type_record(raw):
     }
 
 
-def source(version, file_name, stage, phase, links, when):
+def source(version, file_name, phase, links, when):
     """`source` de la raíz. `when` es un datetime local (sin zona), como lo escribe el contrato."""
     return {
         "app": "Revit",
@@ -249,7 +249,6 @@ def source(version, file_name, stage, phase, links, when):
         "file": file_name,
         "exported_at": when.strftime("%Y-%m-%dT%H:%M:%S"),
         "exporter": EXPORTER_VERSION,
-        "stage": stage,
         "phase": phase or "",
         "links": list(links or []),
     }

@@ -11,11 +11,10 @@ El contrato que sigue todo esto: docs/space-model.md (space-model.json v1).
 - document: los registros crudos de sa_revit (en pies) a los dicts del contrato (en metros)
 - roles:    categorías del contrato y lo que significan los parámetros SA_ (SA_Rol, accesos)
 - vertical: la circulación vertical (connectors): qué es cada pieza por su nombre y entre qué cotas va
-- exports:  nombres de archivo, la carpeta de salida y las exportaciones previas por etapa
+- exports:  nombres de archivo, la carpeta de salida y las exportaciones que ya hay
 - bundle:   el HTML portátil (la app con los datos dentro)
 - text:     el resumen que se muestra al terminar
 """
 
 EXPORTER_VERSION = "0.1.0"
 SCHEMA = "hsbc-space-analytics/space-model@1"
-STAGES = ["Concepto", "Esquemático", "Desarrollo", "Documentación"]

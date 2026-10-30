@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-"""La ventana de Exportar (export.xaml, en este mismo botón) con el estilo de la app: elegir etapa y vínculos, leer el
-modelo con su avance y mostrar el resumen. La lectura corre dentro de la ventana modal, en el contexto de la API de
+"""La ventana de Exportar (export.xaml, en este mismo botón) con el estilo de la app: elegir los vínculos, leer el
+modelo con su avance y mostrar lo exportado, con los botones para abrir la app, el resumen o la presentación. La lectura corre dentro de la ventana modal, en el contexto de la API de
 Revit como cualquier botón de pyRevit; cada avance deja que WPF se redibuje y atienda Cancelar."""
 from __future__ import absolute_import, division, print_function, unicode_literals
 
@@ -19,20 +19,16 @@ PUMP_EVERY = 0.05  # segundos entre redibujos mientras se lee el modelo
 
 
 class ExportWindow(forms.WPFWindow):
-    """`export(etapa, vínculos, tick)` hace la exportación y devuelve el informe (text.report más 'html', la ruta del
-    HTML escrito o None); `tick(hechos, total)` levanta `cancelled` si se pidió cancelar. Al cerrar, `open_path` es lo
-    que hay que abrir en el navegador (o None)."""
+    """`export(vínculos, tick)` hace la exportación y devuelve el informe (text.report más 'html', la ruta del
+    HTML escrito o None); `tick(hechos, total)` levanta `cancelled` si se pidió cancelar. Al cerrar, `open_path` es el
+    HTML que hay que abrir (o None) y `open_view`, en qué vista: "app", "summary" o "present"."""
 
-    def __init__(self, xaml, mark, info, stages, stage, hint, links, folder, export, cancelled):
+    def __init__(self, xaml, mark, info, hint, links, folder, export, cancelled):
         forms.WPFWindow.__init__(self, xaml)
         self.set_icon(mark)
         self.set_image_source(self.mark, mark)
         self.model_info.Text = info
-        self._stages = list(zip([self.stage_0, self.stage_1, self.stage_2, self.stage_3], stages))
-        for button, name in self._stages:
-            button.Content = name
-            button.IsChecked = name == stage
-        self.stage_hint.Text = hint
+        self.setup_hint.Text = hint
         self._links = []
         for label, inst in links:
             box = CheckBox()
@@ -43,11 +39,12 @@ class ExportWindow(forms.WPFWindow):
             self._links.append((box, inst))
         if not links:
             self.links_card.Visibility = Visibility.Collapsed
-        self.dest_path.Text = folder
+        self.dest_path.Text = os.path.join("Documentos", os.path.basename(folder))
+        self.dest_path.ToolTip = folder
         self._folder, self._export, self._cancelled = folder, export, cancelled
         self._busy = self._cancel = False
         self._last_pump = 0.0
-        self._html = self.open_path = None
+        self._html = self.open_path = self.open_view = None
         self.Closing += self._closing
 
     # ---- páginas
@@ -81,9 +78,6 @@ class ExportWindow(forms.WPFWindow):
             self.cancel_click(sender, None)
 
     def export_click(self, sender, args):
-        stage = next((name for button, name in self._stages if button.IsChecked), None)
-        if not stage:
-            return
         links = [inst for box, inst in self._links if box.IsChecked]
         self._page(self.page_work)
         self._busy, self._cancel = True, False
@@ -92,11 +86,11 @@ class ExportWindow(forms.WPFWindow):
         self.work_detail.Text = ""
         self._pump()
         try:
-            report = self._export(stage, links, self._tick)
+            report = self._export(links, self._tick)
         except self._cancelled:
             self._busy = False
             self._page(self.page_setup)
-            self.stage_hint.Text = "Exportación cancelada. No se escribió nada."
+            self.setup_hint.Text = "Exportación cancelada. No se escribió nada."
             return
         except Exception as ex:
             report = {"title": "No se pudo exportar", "counts": [], "lines": [], "warnings": ["{0}".format(ex)],
@@ -117,9 +111,18 @@ class ExportWindow(forms.WPFWindow):
     def folder_click(self, sender, args):
         shell.open_path(self._folder)
 
-    def open_click(self, sender, args):
-        self.open_path = self._html
+    def _open(self, view):
+        self.open_path, self.open_view = self._html, view
         self.Close()
+
+    def open_click(self, sender, args):
+        self._open("app")
+
+    def summary_click(self, sender, args):
+        self._open("summary")
+
+    def present_click(self, sender, args):
+        self._open("present")
 
     # ---- resumen
     def _show(self, report):
@@ -144,7 +147,7 @@ class ExportWindow(forms.WPFWindow):
         self.warn_text.Text = "\n".join("•  " + w for w in warn)
         if not warn:
             self.warn_card.Visibility = Visibility.Collapsed
-        self.files_text.Text = "\n".join(os.path.basename(f) for f in report["files"]) or "—"
         self._html = report.get("html")
         if not self._html:
-            self.open_btn.Visibility = Visibility.Collapsed
+            for b in (self.open_btn, self.summary_btn, self.present_btn):
+                b.Visibility = Visibility.Collapsed

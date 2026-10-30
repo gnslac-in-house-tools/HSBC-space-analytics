@@ -53,9 +53,9 @@ def find_app(ext_dir=None):
     return None
 
 
-def data_json(models):
-    """`{"models": [...]}` listo para ir dentro de un <script>: `</` escapado como `<\\/` (JSON lo lee igual)."""
-    text = json.dumps({"models": models}, ensure_ascii=False, separators=(",", ":"))
+def data_json(model):
+    """El modelo en JSON listo para ir dentro de un <script>: `</` escapado como `<\\/` (JSON lo lee igual)."""
+    text = json.dumps(model, ensure_ascii=False, separators=(",", ":"))
     if isinstance(text, bytes):
         text = text.decode("utf-8")
     return text.replace("</", "<\\/")
@@ -80,14 +80,14 @@ def _read(path):
         return f.read()
 
 
-def bundle(index_html, app_dir, models):
+def bundle(index_html, app_dir, model):
     """El HTML portátil a partir del texto de index.html. Devuelve (html, insertados, sin_insertar): las rutas src que
     se metieron en el HTML y las que se quedaron como estaban (remotas o que no están en app/).
     BundleError si el marcador no aparece exactamente una vez."""
     count = index_html.count(MARKER)
     if count != 1:
         raise BundleError("app/index.html tiene {0} marcadores de datos (debe tener uno: {1})".format(count, MARKER))
-    data = DATA_OPEN + data_json(models) + "</script>"
+    data = DATA_OPEN + data_json(model) + "</script>"
     inlined, kept = [], []
 
     def replace(match):
@@ -112,6 +112,6 @@ def bundle(index_html, app_dir, models):
     return html, inlined, kept
 
 
-def bundle_file(index_path, models):
+def bundle_file(index_path, model):
     """bundle() leyendo index.html de disco; los scripts se buscan junto a él."""
-    return bundle(_read(index_path), os.path.dirname(index_path), models)
+    return bundle(_read(index_path), os.path.dirname(index_path), model)
