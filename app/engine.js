@@ -68,7 +68,7 @@
       if (typeof m.schema !== 'string' || m.schema.indexOf(SCHEMA) !== 0) {
         warnings.push(`Entrada ${i + 1}: no es un space-model (schema "${m.schema}")`); return;
       }
-      ['levels', 'rooms', 'floors', 'walls', 'doors', 'windows', 'obstacles'].forEach(k => { if (!Array.isArray(m[k])) m[k] = []; });
+      ['levels', 'rooms', 'floors', 'walls', 'doors', 'windows', 'obstacles', 'connectors'].forEach(k => { if (!Array.isArray(m[k])) m[k] = []; });
       if (!m.types || typeof m.types !== 'object') m.types = {};
       m.source = m.source || {};
       if (STAGES.indexOf(m.source.stage) < 0) m.source.stage = STAGES[1];
@@ -105,6 +105,22 @@
     return v == null || v === '' ? null : v;
   };
 
+  // ---------- vegetación ----------
+  /** Un árbol o arbusto (categoría Planting): centro, radio de copa, alto, tipo y tronco. null si no es vegetación.
+   *  kind: 'tree' | 'conifer' | 'palm' | 'shrub', por el nombre de familia y tipo; lo de menos de 2.5 m es arbusto.
+   *  La copa sale del área de la caja (Revit la exporta girada con la instancia). trunk = radio del tronco, 0 en arbustos. */
+  function plantOf(model, o) {
+    if (!o || o.category !== 'Planting' || !o.footprint || o.footprint.length < 3) return null;
+    const t = model.types[o.type] || {}, n = norm((t.family || '') + ' ' + (t.name || ''));
+    const [x, y] = ringCentroid(o.footprint), r = Math.sqrt(ringArea(o.footprint)) / 2, h = o.z ? o.z[1] - o.z[0] : 0;
+    let kind = 'tree';
+    if (/palm|palma|palmera|cocotero|coconut|washingtonia|phoenix/.test(n)) kind = 'palm';
+    else if (/conifer|conifera|pine|pino|spruce|abeto|\bfir\b|cedar|cedro|cypress|cipres|juniper|enebro|hemlock|larch|sequoia|redwood|thuja|tuya|arborvitae/.test(n)) kind = 'conifer';
+    if (/shrub|arbusto|bush|seto|hedge|maceta|\bpot\b|planter|jardinera|flower|flor|grass|pasto|zacate/.test(n) || h < 2.5) kind = 'shrub';
+    return { kind, x, y, r, h, trunk: kind === 'shrub' ? 0 : Math.min(0.3, Math.max(0.12, r * 0.06)) };
+  }
+  const isTall = (model, o) => { const p = plantOf(model, o); return !!p && p.kind !== 'shrub'; };
+
   // ---------- selección por nivel ----------
   function select(model, level) {
     const e = level.elevation;
@@ -119,7 +135,9 @@
       walls: model.walls.filter(w => w.path && w.path.length > 1 && w.z && w.z[0] < e + 2.2 && w.z[1] > e + 0.05),
       doors: model.doors.filter(near),
       windows: model.windows.filter(near),
-      obstacles: model.obstacles.filter(o => o.footprint && o.footprint.length > 2 && o.z && o.z[0] < e + 2.2 && o.z[1] > e + 0.05),
+      // un árbol es del nivel donde está plantado, no de todos los que alcanza su copa
+      obstacles: model.obstacles.filter(o => o.footprint && o.footprint.length > 2 && o.z && o.z[0] < e + 2.2 && o.z[1] > e + 0.05 &&
+        (!isTall(model, o) || o.level === level.id || (o.z[0] >= e - 1 && o.z[0] < top - 0.5))),
       wallMoves: w => crosses(w.z, MOVE_CUT),
       wallSight: w => crosses(w.z, SIGHT_CUT),
       obsMoves: o => o.category === 'Columns' || (o.z[0] <= e + MOVE_CUT && o.z[1] >= e + MOVE_LOW),
@@ -273,15 +291,17 @@
       // también las celdas de afuera del piso: la visual que llega ahí ya cruzó el vidrio
       openingCells(wn, c => { if (G.sight[c] === OPAQUE) G.sight[c] = ext ? GLASS_OUT : GLASS_IN; });
     });
-    // columnas y mobiliario
+    // columnas, mobiliario y vegetación (de un árbol solo cuenta el tronco: bajo la copa se camina y se ve)
     s.obstacles.forEach(o => {
-      const moves = s.obsMoves(o), sees = s.obsSight(o);
+      const pl = plantOf(ctx.model, o), trunk = pl && pl.trunk;
+      const moves = trunk || s.obsMoves(o), sees = trunk || s.obsSight(o);
       if (!moves && !sees) return;
       const mark = c => { if (moves) G.move[c] = 1; if (sees) G.sight[c] = OPAQUE; };
+      const fp = trunk ? [[pl.x - trunk, pl.y - trunk], [pl.x + trunk, pl.y - trunk], [pl.x + trunk, pl.y + trunk], [pl.x - trunk, pl.y + trunk]] : o.footprint;
       let any = false;
-      fillOutline([o.footprint], c => { any = true; mark(c); });
+      fillOutline([fp], c => { any = true; mark(c); });
       if (!any) {
-        const [x, y] = ringCentroid(o.footprint);
+        const [x, y] = ringCentroid(fp);
         const i = Math.floor((x - ox) / cell), j = Math.floor((y - oy) / cell);
         if (i >= 0 && j >= 0 && i < nx && j < ny) mark(j * nx + i);
       }
@@ -295,40 +315,50 @@
 
   // ---------- grafo ----------
   const D8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
-  function dijkstra(G, sources, wantParent) {
-    const n = G.n, dist = new Float32Array(n).fill(Infinity), par = wantParent ? new Int32Array(n).fill(-1) : null;
-    const hi = new Int32Array(n * 4 + 16), hd = new Float32Array(n * 4 + 16);
-    let size = 0;
-    const push = (c, d) => {
-      let k = size++; hi[k] = c; hd[k] = d;
-      while (k > 0) { const p = (k - 1) >> 1; if (hd[p] <= hd[k]) break; swap(p, k); k = p; }
-    };
+  /** Montículo mínimo de (celda, distancia) con arreglos tipados; admite entradas repetidas (se descartan al sacarlas). */
+  function minHeap(cap) {
+    let hi = new Int32Array(cap), hd = new Float32Array(cap), size = 0;
     const swap = (a, b) => { const c = hi[a], d = hd[a]; hi[a] = hi[b]; hd[a] = hd[b]; hi[b] = c; hd[b] = d; };
-    const pop = () => {
-      const c = hi[0]; size--; hi[0] = hi[size]; hd[0] = hd[size];
-      let k = 0;
-      for (;;) {
-        const l = 2 * k + 1, r = l + 1; let m = k;
-        if (l < size && hd[l] < hd[m]) m = l; if (r < size && hd[r] < hd[m]) m = r;
-        if (m === k) break; swap(m, k); k = m;
+    return {
+      get size() { return size; },
+      get top() { return hd[0]; },
+      push(c, d) {
+        if (size === hi.length) { const h2 = new Int32Array(size * 2), d2 = new Float32Array(size * 2); h2.set(hi); d2.set(hd); hi = h2; hd = d2; }
+        let k = size++; hi[k] = c; hd[k] = d;
+        while (k > 0) { const p = (k - 1) >> 1; if (hd[p] <= hd[k]) break; swap(p, k); k = p; }
+      },
+      pop() {
+        const c = hi[0]; size--; hi[0] = hi[size]; hd[0] = hd[size];
+        let k = 0;
+        for (;;) {
+          const l = 2 * k + 1, r = l + 1; let m = k;
+          if (l < size && hd[l] < hd[m]) m = l; if (r < size && hd[r] < hd[m]) m = r;
+          if (m === k) break; swap(m, k); k = m;
+        }
+        return c;
       }
-      return c;
     };
-    sources.forEach(c => { if (c >= 0 && G.free[c] && dist[c] > 0) { dist[c] = 0; push(c, 0); } });
-    const { nx, ny, free } = G, step = G.cell, diag = G.cell * Math.SQRT2;
-    while (size) {
-      const d0 = hd[0], c = pop();
+  }
+  /** Relaja las 8 vecinas libres de c en la retícula G (sin cortar esquinas); `at` desplaza los índices (grafo del edificio). */
+  function relax8(G, c, d0, at, dist, par, H) {
+    const { nx, ny, free } = G, step = G.cell, diag = G.cell * Math.SQRT2, i = c % nx, j = (c - i) / nx;
+    for (let k = 0; k < 8; k++) {
+      const di = D8[k][0], dj = D8[k][1], ii = i + di, jj = j + dj;
+      if (ii < 0 || jj < 0 || ii >= nx || jj >= ny) continue;
+      const cc = jj * nx + ii;
+      if (!free[cc]) continue;
+      if (di && dj && (!free[j * nx + ii] || !free[jj * nx + i])) continue;
+      const nd = d0 + (di && dj ? diag : step);
+      if (nd < dist[at + cc]) { dist[at + cc] = nd; if (par) par[at + cc] = at + c; H.push(at + cc, nd); }
+    }
+  }
+  function dijkstra(G, sources, wantParent) {
+    const n = G.n, dist = new Float32Array(n).fill(Infinity), par = wantParent ? new Int32Array(n).fill(-1) : null, H = minHeap(n * 4 + 16);
+    sources.forEach(c => { if (c >= 0 && G.free[c] && dist[c] > 0) { dist[c] = 0; H.push(c, 0); } });
+    while (H.size) {
+      const d0 = H.top, c = H.pop();
       if (d0 > dist[c]) continue;
-      const i = c % nx, j = (c - i) / nx;
-      for (let k = 0; k < 8; k++) {
-        const di = D8[k][0], dj = D8[k][1], ii = i + di, jj = j + dj;
-        if (ii < 0 || jj < 0 || ii >= nx || jj >= ny) continue;
-        const cc = jj * nx + ii;
-        if (!free[cc]) continue;
-        if (di && dj && (!free[j * nx + ii] || !free[jj * nx + i])) continue;
-        const nd = d0 + (di && dj ? diag : step);
-        if (nd < dist[cc]) { dist[cc] = nd; if (par) par[cc] = c; push(cc, nd); }
-      }
+      relax8(G, c, d0, 0, dist, par, H);
     }
     return { dist, par };
   }
@@ -486,6 +516,98 @@
     });
     G.watch = points; G.seen = seen;
     return `${points.length} puestos`;
+  }
+
+  // ---------- edificio: los niveles unidos por escaleras, rampas y elevadores ----------
+  const VC = /escalera|stair|rampa|ramp|elevador|elevator|ascensor|\blift\b|escalator/;
+  const vcKind = n => /elevador|elevator|ascensor|\blift\b/.test(n) ? 'elevator' : /escalera electrica|escalator/.test(n) ? 'escalator' : /rampa|ramp/.test(n) ? 'ramp' : 'stair';
+  /** Lo que cuesta subir dz metros, en metros caminados: escalera ≈ 1.85·dz (huella 28 cm, peralte 18 cm),
+   *  rampa 1:12 ≈ 12·dz, escalera eléctrica como escalera, elevador = 15 m de espera + dz. */
+  const VCOST = { stair: dz => 1.85 * dz, escalator: dz => 1.85 * dz, ramp: dz => 12 * dz, elevator: dz => 15 + dz };
+
+  /** Los conectores del modelo con los niveles analizables que tocan, de abajo hacia arriba. Si el modelo no trae
+   *  ninguno, se deducen de rooms de escalera o elevador apilados en dos niveles seguidos (derived = true). */
+  function connectorsOf(model) {
+    const lv = levelsOf(model), ok = c => c.footprint && c.footprint.length > 2;
+    if (model.connectors.some(ok)) return model.connectors.filter(ok).map(c => {
+      const z = c.z || [0, 0], ids = c.levels && c.levels.length ? c.levels : lv.filter(L => L.elevation >= z[0] - 0.3 && L.elevation <= z[1] + 0.3).map(L => L.id);
+      return Object.assign({}, c, { kind: VCOST[c.kind] ? c.kind : 'stair', levels: lv.filter(L => ids.indexOf(L.id) >= 0).map(L => L.id) });
+    });
+    const out = [], vc = r => r.outline && r.outline.length && VC.test(norm(r.name));
+    for (let k = 0; k + 1 < lv.length; k++) {
+      const A = lv[k], B = lv[k + 1];
+      model.rooms.filter(r => r.level === A.id && vc(r)).forEach(ra => {
+        const [ax, ay] = ringCentroid(ra.outline[0]);
+        const rb = model.rooms.find(r => r.level === B.id && vc(r) && (inOutline(ax, ay, r.outline) || inOutline(...ringCentroid(r.outline[0]), ra.outline)));
+        if (rb) out.push({ id: `room:${ra.id}>${rb.id}`, kind: vcKind(norm(ra.name)), type: null, footprint: ra.outline[0], z: [A.elevation, B.elevation], levels: [A.id, B.id], derived: true });
+      });
+    }
+    return out;
+  }
+
+  /** El edificio: las retículas de todos los niveles en un solo grafo, unidas por los conectores, con la distancia
+   *  desde los accesos reales (puertas al exterior o SA_Rol = Entrada) de cualquier nivel.
+   *  opts.results = {levelId: resultado} reusa análisis ya hechos; opts.cell para los que falten.
+   *  route(k, c) y toRoom(k, room) dan la ruta más corta por tramos (legs), uno por nivel recorrido. */
+  function building(model, opts) {
+    opts = opts || {};
+    const warnings = [], levels = [];
+    let n = 0;
+    levelsOf(model).forEach(L => {
+      let res = opts.results && opts.results[L.id];
+      if (!res) { try { res = analyze(model, L.id, { cell: opts.cell || 0.5 }); } catch (e) { warnings.push(`${L.name}: ${e.message}`); return; } }
+      levels.push({ id: L.id, name: L.name, elevation: L.elevation, res, off: n }); n += res.G.n;
+    });
+    const li = id => levels.findIndex(x => x.id === id), links = [];
+    connectorsOf(model).forEach(c => {
+      const [x, y] = ringCentroid(c.footprint), r = Math.max(3, Math.sqrt(ringArea(c.footprint)));
+      for (let k = 0; k + 1 < c.levels.length; k++) {
+        const a = li(c.levels[k]), b = li(c.levels[k + 1]); if (a < 0 || b < 0) continue;
+        const ca = nearestFree(levels[a].res.G, x, y, r), cb = nearestFree(levels[b].res.G, x, y, r);
+        if (ca < 0 || cb < 0) { warnings.push(`El conector ${c.id} no llega a piso libre en ${levels[ca < 0 ? a : b].name}.`); continue; }
+        links.push({ id: c.id, kind: c.kind, derived: !!c.derived, a: { li: a, c: ca }, b: { li: b, c: cb }, cost: VCOST[c.kind](Math.abs(levels[b].elevation - levels[a].elevation)) });
+      }
+    });
+    if (levels.length > 1 && !links.length) warnings.push('No hay escaleras, rampas ni elevadores que unan los niveles (exporta los conectores o nombra los rooms "Escalera" o "Elevador"): cada nivel queda aislado.');
+    // Dijkstra sobre todo el edificio: 8 vecinas dentro del nivel y saltos por los conectores
+    const lvOf = new Uint16Array(n), jumps = new Map();
+    levels.forEach((L, k) => lvOf.fill(k, L.off, L.off + L.res.G.n));
+    links.forEach(l => {
+      const A = levels[l.a.li].off + l.a.c, B = levels[l.b.li].off + l.b.c;
+      (jumps.get(A) || jumps.set(A, []).get(A)).push([B, l.cost]); (jumps.get(B) || jumps.set(B, []).get(B)).push([A, l.cost]);
+    });
+    let seeds = [];
+    levels.forEach(L => L.res.G.entrances.forEach(e => { if (e.door) seeds.push(L.off + e.c); }));
+    if (!seeds.length && levels.length) seeds = levels[0].res.G.entrances.map(e => levels[0].off + e.c);
+    const dist = new Float32Array(n).fill(Infinity), par = new Int32Array(n).fill(-1), H = minHeap(n * 2 + 16);
+    seeds.forEach(g => { if (dist[g] > 0) { dist[g] = 0; H.push(g, 0); } });
+    while (H.size) {
+      const d0 = H.top, g = H.pop();
+      if (d0 > dist[g]) continue;
+      const L = levels[lvOf[g]];
+      relax8(L.res.G, g - L.off, d0, L.off, dist, par, H);
+      const J = jumps.get(g);
+      if (J) J.forEach(([t, w]) => { const nd = d0 + w; if (nd < dist[t]) { dist[t] = nd; par[t] = g; H.push(t, nd); } });
+    }
+    const route = (k, c) => {
+      const g0 = levels[k].off + c; if (!(g0 >= 0 && isFinite(dist[g0]))) return null;
+      const legs = []; let cur = null;
+      for (let g = g0, guard = 0; g >= 0 && guard < 1e7; g = par[g], guard++) {
+        const kk = lvOf[g]; if (!cur || cur.li !== kk) { cur = { li: kk, cells: [] }; legs.push(cur); }
+        cur.cells.push(g - levels[kk].off);
+      }
+      legs.reverse().forEach(l => l.cells.reverse());
+      return { legs, length: dist[g0], to: { li: k, c } };
+    };
+    const toRoom = (k, room) => {
+      const L = levels[k], G = L.res.G, rm = L.res.sel.rooms[room]; if (!rm) return null;
+      const [x, y] = ringCentroid(rm.outline[0]), c = nearestFree(G, x, y, 30, cc => G.room[cc] === room && isFinite(dist[L.off + cc]));
+      return c < 0 ? null : Object.assign(route(k, c), { room });
+    };
+    let far = -1;
+    for (let g = 0; g < n; g++) if (isFinite(dist[g]) && (far < 0 || dist[g] > dist[far])) far = g;
+    const farthest = far < 0 ? null : route(lvOf[far], far - levels[lvOf[far]].off);
+    return { levels, links, dist, par, lvOf, seeds, warnings, route, toRoom, farthest };
   }
 
   // ---------- sustentabilidad ----------
@@ -686,7 +808,7 @@
     return Math.min(va, op === 'conflict' ? 1 - vb : vb);
   }
 
-  const api = { SCHEMA, STAGES, load, levelsOf, select, plan, analyze, typesTable, applyTable, typeScore, crossAt, castRay, dijkstra, roleOf, inOutline, ringArea, ringCentroid, norm, OPEN, OPAQUE, GLASS_IN, GLASS_OUT };
+  const api = { SCHEMA, STAGES, load, levelsOf, select, plan, analyze, plantOf, connectorsOf, building, typesTable, applyTable, typeScore, crossAt, castRay, dijkstra, roleOf, inOutline, ringArea, ringCentroid, norm, OPEN, OPAQUE, GLASS_IN, GLASS_OUT };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.SAEngine = api;
 })(typeof window !== 'undefined' ? window : this);

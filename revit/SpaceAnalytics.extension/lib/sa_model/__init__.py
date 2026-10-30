@@ -10,6 +10,7 @@ El contrato que sigue todo esto: docs/space-model.md (space-model.json v1).
 - geometry: pies a metros, redondeo, polígonos, envolvente convexa, área
 - document: los registros crudos de sa_revit (en pies) a los dicts del contrato (en metros)
 - roles:    categorías del contrato y lo que significan los parámetros SA_ (SA_Rol, accesos)
+- vertical: la circulación vertical (connectors): qué es cada pieza por su nombre y entre qué cotas va
 - exports:  nombres de archivo, la carpeta de salida y las exportaciones previas por etapa
 - bundle:   el HTML portátil (la app con los datos dentro)
 - text:     el resumen que se muestra al terminar

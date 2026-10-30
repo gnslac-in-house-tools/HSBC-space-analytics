@@ -14,20 +14,27 @@ Registros crudos (las claves que faltan se toman como None):
 - door:     id, level_id, type, host, at=(x, y), hand=(x, y), facing=(x, y), width, height, z, from_room, to_room, params
 - window:   lo mismo que door, más sill y head (sobre el nivel del hueco)
 - obstacle: id, level_id, type, category, points=[(x, y)…], box=[(x, y)×4], z=(abajo, arriba), room, params
+- connector: id, kind, type, points=[(x, y)…], box=[(x, y)×4], z=(abajo, arriba), snap, params
 - type:     category, family, name, type_mark, description, manufacturer, model, cost, keynote,
             materials=[(nombre, espesor)], params
 
 `loops` son lazos cerrados de puntos (x, y); `params`, una lista de (nombre, valor, es_longitud). `level_id` es el id
 de un nivel del modelo anfitrión, o None (un elemento de un vínculo, o sin nivel): entonces su nivel es el más alto con
 elevación <= z inferior + 0.3 m.
+
+Un conector (escalera, rampa, elevador, escalera eléctrica) no tiene un nivel sino los que toca: los de elevación
+entre su z inferior y superior (± 0.3 m). Con `snap` (un elevador o una escalera eléctrica: su z sale de su caja, con
+el foso y lo que sobresale arriba) su z se ajusta a las elevaciones del primer y el último nivel que toca, si son al
+menos dos.
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 from sa_model import EXPORTER_VERSION, SCHEMA
+from sa_model import vertical
 from sa_model.geometry import footprint, m, m2, outline, point, polygon, polyline, r, rm, unit
 
 LEVEL_TOLERANCE = 0.3  # m: un elemento apoyado un poco por debajo de su nivel sigue siendo de ese nivel
-KINDS = ["rooms", "floors", "walls", "doors", "windows", "obstacles"]
+KINDS = ["rooms", "floors", "walls", "doors", "windows", "obstacles", "connectors"]
 
 
 def _num(value):
@@ -189,6 +196,35 @@ def obstacle(raw, levels):
     }
 
 
+def touched(z, levels):
+    """Los niveles (del contrato) que toca algo que va de z[0] a z[1] (metros), ± 0.3 m, de abajo hacia arriba."""
+    lo, hi = z[0] - LEVEL_TOLERANCE - 1e-9, z[1] + LEVEL_TOLERANCE + 1e-9
+    return sorted((l for l in levels if lo <= l["elevation"] <= hi), key=lambda l: l["elevation"])
+
+
+def connector(raw, levels):
+    if raw.get("kind") not in vertical.KINDS:
+        return None
+    shape = footprint(raw.get("points") or [])
+    if shape is None and raw.get("box"):
+        shape = polygon(raw["box"])
+    z = _z(raw)
+    if shape is None or z is None:
+        return None
+    near = touched(z, levels)
+    if raw.get("snap") and len(near) >= 2:
+        z = [near[0]["elevation"], near[-1]["elevation"]]
+    return {
+        "id": raw["id"],
+        "kind": raw["kind"],
+        "type": raw.get("type"),
+        "footprint": shape,
+        "z": z,
+        "levels": [l["id"] for l in near] or None,
+        "params": params(raw.get("params")),
+    }
+
+
 def type_record(raw):
     return {
         "category": raw.get("category") or "",
@@ -226,6 +262,7 @@ BUILDERS = {
     "doors": lambda raw, levels: opening(raw, levels, window=False),
     "windows": lambda raw, levels: opening(raw, levels, window=True),
     "obstacles": obstacle,
+    "connectors": connector,
 }
 
 

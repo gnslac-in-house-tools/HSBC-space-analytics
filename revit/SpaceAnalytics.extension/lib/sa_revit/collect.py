@@ -5,6 +5,11 @@ crudos en pies que sa_model.document convierte (el formato de cada registro est�
 Solo lee, sin transacción. Cada elemento va en su propio try: uno roto se cuenta en `failures` y la exportación
 sigue. Se omiten los demolidos (PHASE_DEMOLISHED con un id válido), los rooms sin colocar o de otra fase que la final y
 las piezas que no tienen geometría.
+
+La circulación vertical (`connectors`): las escaleras (OST_Stairs; las de una escalera de varios pisos, una por
+colocación), las rampas (OST_Ramps), lo que está en OST_VerticalCirculation si la versión la tiene y las familias de las
+categorías de obstáculos cuyo nombre dice elevador o escalera eléctrica (esas van también como obstáculo: la caja tapa
+y la app enlaza a la celda libre más cercana).
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 
@@ -12,14 +17,20 @@ from Autodesk.Revit.DB import (BuiltInCategory, FamilyInstance, FilteredElementC
                                HostObjAttributes, HostObject, HostObjectUtils, Level, LocationCurve, LocationPoint,
                                Mesh, Options, PlanarFace, RevitLinkInstance, Solid, SpatialElementBoundaryLocation,
                                SpatialElementBoundaryOptions, Wall, WallKind, XYZ)
+from Autodesk.Revit.DB.Architecture import MultistoryStairs, Stairs
 
-from sa_model import roles
+from sa_model import roles, vertical
 from sa_model.geometry import extent_along, unit
 from sa_revit.common import (Source, element_id_param, has_param, id_value, is_valid, model_name, name_of, number,
                              sa_params, text)
 
 WIDTHS = ["DOOR_WIDTH", "WINDOW_WIDTH", "FAMILY_WIDTH_PARAM", "FURNITURE_WIDTH", "GENERIC_WIDTH"]
 HEIGHTS = ["DOOR_HEIGHT", "WINDOW_HEIGHT", "FAMILY_HEIGHT_PARAM", "GENERIC_HEIGHT"]
+# Niveles de escaleras y rampas: el primero que tenga valor (los nombres cambian entre escaleras por componentes,
+# escaleras antiguas y rampas)
+BASE_LEVELS = ["STAIRS_BASE_LEVEL_PARAM", "STAIRS_BASE_LEVEL"]
+TOP_LEVELS = ["STAIRS_TOP_LEVEL_PARAM", "STAIRS_TOP_LEVEL"]
+UP_TO_LEVELS = ["STAIRS_MULTISTORY_TOP_LEVEL_PARAM", "STAIRS_MULTISTORY_UP_TO_LEVEL"]
 MAX_MESSAGE = 140
 
 # Los motivos de lo que se deja fuera a propósito, como los dice el resumen
@@ -44,13 +55,38 @@ def loaded_links(doc):
     return out
 
 
-def _elements(doc, bic_name):
-    bic = getattr(BuiltInCategory, bic_name)
+def _elements(doc, bic_name, optional=False):
+    """Las instancias de una categoría. Con optional=True, una categoría que esta versión de la API no tiene da []."""
+    bic = getattr(BuiltInCategory, bic_name, None) if optional else getattr(BuiltInCategory, bic_name)
+    if bic is None:
+        return []
     return list(FilteredElementCollector(doc).OfCategory(bic).WhereElementIsNotElementType().ToElements())
 
 
 def _demolished(element):
     return is_valid(element_id_param(element, "PHASE_DEMOLISHED"))
+
+
+def _names(doc, element):
+    """[familia, tipo] de un elemento, para reconocerlo por su nombre; ["", ""] si no se pueden leer."""
+    try:
+        t = doc.GetElement(element.GetTypeId())
+    except Exception:
+        return ["", ""]
+    try:
+        family = t.FamilyName if t is not None else ""
+    except Exception:
+        family = ""
+    return [family or "", name_of(t)]
+
+
+def _level_param(element, bip_names):
+    """El primer parámetro de nivel (ElementId) válido de la lista; None si ninguno."""
+    for name in bip_names:
+        level_id = element_id_param(element, name)
+        if is_valid(level_id):
+            return level_id
+    return None
 
 
 def _tessellated(curve, src):
@@ -104,7 +140,7 @@ class Collector(object):
         self.boundary = SpatialElementBoundaryOptions()
         self.boundary.SpatialElementBoundaryLocation = SpatialElementBoundaryLocation.Finish
         self.raw = {"levels": [], "rooms": [], "floors": [], "walls": [], "doors": [], "windows": [],
-                    "obstacles": [], "types": {}}
+                    "obstacles": [], "connectors": [], "types": {}}
         self.failures = []  # (clave, id, mensaje)
         self.dropped = {}   # clave -> sin geometría
         self.skipped = {}   # motivo -> cuántos
@@ -117,9 +153,22 @@ class Collector(object):
         jobs += [("walls", None, e) for e in _elements(src.doc, "OST_Walls")]
         jobs += [("doors", None, e) for e in _elements(src.doc, "OST_Doors")]
         jobs += [("windows", None, e) for e in _elements(src.doc, "OST_Windows")]
+        lifts = []  # elevadores y escaleras eléctricas modelados como obstáculo: también son conectores
         for bic_name, category in roles.OBSTACLE_CATEGORIES:
-            jobs += [("obstacles", category, e) for e in _elements(src.doc, bic_name)]
-        return jobs
+            found = _elements(src.doc, bic_name)
+            jobs += [("obstacles", category, e) for e in found]
+            for e in found:
+                kind = vertical.kind_by_name(_names(src.doc, e)) if isinstance(e, FamilyInstance) else None
+                if kind is not None:
+                    lifts.append(("connectors", (kind, category), e))
+        # los conectores van al final: un tipo que también es de un obstáculo conserva la categoría del obstáculo
+        jobs += [("connectors", ("stair", vertical.TYPE_CATEGORIES["stair"]), e)
+                 for e in _elements(src.doc, "OST_Stairs")]
+        jobs += [("connectors", ("ramp", vertical.TYPE_CATEGORIES["ramp"]), e)
+                 for e in _elements(src.doc, "OST_Ramps")]
+        jobs += [("connectors", ("vertical", vertical.TYPE_CATEGORIES["vertical"]), e)
+                 for e in _elements(src.doc, vertical.VERTICAL_CATEGORY, optional=True)]
+        return jobs + lifts
 
     def run(self):
         for lvl in FilteredElementCollector(self.host.doc).OfClass(Level).ToElements():
@@ -128,7 +177,7 @@ class Collector(object):
         work = [(src, job) for src in self.sources for job in self._jobs(src)]
         total = len(work)
         readers = {"rooms": self._room, "floors": self._floor, "walls": self._wall, "doors": self._door,
-                   "windows": self._window, "obstacles": self._obstacle}
+                   "windows": self._window, "obstacles": self._obstacle, "connectors": self._connector}
         for i, (src, (key, category, element)) in enumerate(work):
             if self.tick is not None:
                 self.tick(i, total)
@@ -142,7 +191,10 @@ class Collector(object):
                 if record is False:
                     self.dropped[key] = self.dropped.get(key, 0) + 1
                     continue
-                self.raw[key].append(record)
+                if isinstance(record, list):  # una escalera de varios pisos: un registro por colocación
+                    self.raw[key].extend(record)
+                else:
+                    self.raw[key].append(record)
             except Cancelled:
                 raise
             except Exception as ex:
@@ -200,7 +252,7 @@ class Collector(object):
             "params": sa_params(t),
         }
 
-    # ---- cada categoría: un registro crudo, None (fuera a propósito) o False (sin geometría) ----
+    # ---- cada categoría: un registro crudo (o una lista), None (fuera a propósito) o False (sin geometría) ----
 
     def _room(self, src, e, _category):
         if e.Area <= 0:
@@ -367,6 +419,87 @@ class Collector(object):
             "room": _room_of(src, e, "Room") if isinstance(e, FamilyInstance) else None,
             "params": sa_params(e),
         }
+
+    def _connector(self, src, e, category):
+        """Una escalera, rampa, elevador o escalera eléctrica. `category` es (pista, categoría de su tipo): la pista es
+        stair o ramp (su categoría de Revit), vertical (OST_VerticalCirculation: decide el nombre) o el kind que ya dio
+        el nombre de una familia de obstáculo. Una escalera de varios pisos da una lista: un registro por colocación."""
+        if isinstance(e, MultistoryStairs):
+            return None  # el contenedor: sus escaleras llegan solas en OST_Stairs
+        hint, type_category = category
+        kind = vertical.kind_by_name(_names(src.doc, e), vertical=True) if hint == "vertical" else hint
+        box = src.box(e)
+        points = [src.xyz(p) for p in geometry_points(e)]
+        if box is None and not points:
+            return False
+        if box is not None:
+            box_z = box["z"]
+        else:
+            zs = [p.Z for p in points]
+            box_z = (min(zs), max(zs))
+        record = {
+            "id": src.ref(e.Id),
+            "kind": kind,
+            "type": self._type(src, e, type_category),
+            "points": [(p.X, p.Y) for p in points],
+            "box": box["rect"] if box is not None else None,
+            "z": box_z,
+            "snap": False,
+            "params": sa_params(e),
+        }
+        if kind not in ("stair", "ramp"):
+            # un elevador va de su punto de inserción (su nivel, sin el foso) a lo alto de su caja; una escalera
+            # eléctrica, su caja entera (su punto de inserción puede estar arriba). sa_model ajusta la z a los niveles
+            # que toca
+            loc = e.Location
+            bottom = None
+            if kind == "elevator":
+                bottom = src.xyz(loc.Point).Z if isinstance(loc, LocationPoint) else src.level_z(e.LevelId)
+            record["z"] = (bottom if bottom is not None else box_z[0], box_z[1])
+            record["snap"] = True
+            return record
+        z = self._stair_z(src, e)
+        if z is None:  # sin niveles legibles (p. ej. una familia de escalera): su caja, ajustada a los niveles
+            record["snap"] = True
+            return record
+        own = _level_param(e, BASE_LEVELS)
+        out = []
+        for level_id, copy_z in self._stair_copies(src, e, z, own):
+            item = dict(record, z=copy_z)
+            if level_id is not None and (own is None or id_value(level_id) != id_value(own)):
+                item["id"] = "{0}@{1}".format(record["id"], id_value(level_id))
+            out.append(item)
+        return out
+
+    def _stair_z(self, src, e):
+        """(abajo, arriba) absolutos, en pies, de una escalera o rampa: nivel base + desfase a nivel superior + desfase
+        (o abajo + su altura si no tiene nivel superior). None si no tiene nivel base."""
+        height = None
+        if isinstance(e, Stairs):
+            try:
+                height = e.TopElevation - e.BaseElevation  # la diferencia no depende de desde dónde las mida Revit
+            except Exception:
+                height = None
+        if height is None or height <= 0:
+            height = number(e, ["STAIRS_STAIRS_HEIGHT"], positive=True)
+        up_to = None  # "nivel superior de varios pisos" de rampas y escaleras antiguas; no en una MultistoryStairs
+        if not (isinstance(e, Stairs) and is_valid(e.MultistoryStairsId)):
+            up_to = src.level_z(_level_param(e, UP_TO_LEVELS))
+        return vertical.stair_z(src.level_z(_level_param(e, BASE_LEVELS)), number(e, ["STAIRS_BASE_OFFSET"]),
+                                src.level_z(_level_param(e, TOP_LEVELS)), number(e, ["STAIRS_TOP_OFFSET"]),
+                                height, up_to)
+
+    def _stair_copies(self, src, e, z, own):
+        """[(id del nivel o None, z)]: la escalera sola o, si es de un grupo de una escalera de varios pisos, una copia
+        por nivel donde se coloca (MultistoryStairs.GetStairsPlacementLevels; las copias no son elementos). `own` es
+        el nivel base de la escalera."""
+        if not isinstance(e, Stairs) or not is_valid(e.MultistoryStairsId):
+            return [(None, z)]
+        group = src.doc.GetElement(e.MultistoryStairsId)
+        if not isinstance(group, MultistoryStairs):
+            return [(None, z)]
+        placements = [(level_id, src.level_z(level_id)) for level_id in group.GetStairsPlacementLevels(e)]
+        return vertical.stacked(z, src.level_z(own), placements)
 
 
 def collect(doc, links=None, tick=None):

@@ -41,6 +41,8 @@ def test_every_obstacle_category_of_the_contract():
 def test_counts():
     assert counts(doc()) == "1 niveles · 1 rooms · 1 pisos · 2 puertas · 2 tipos"
     assert counts({"rooms": []}) == "0 rooms"
+    assert counts(doc(connectors=[{"id": "c1"}, {"id": "c2"}])) == \
+        "1 niveles · 1 rooms · 1 pisos · 2 puertas · 2 circulaciones verticales · 2 tipos"
 
 
 def test_a_complete_model_has_no_warnings():

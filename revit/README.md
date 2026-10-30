@@ -52,6 +52,12 @@ para arrastrar uno o varios `.json`.
   tabla del contrato. Todo parámetro cuyo nombre empiece con `SA_` se exporta: los de tipo en `types`, los de
   instancia en el elemento.
 - El *Type Mark* de cada tipo: une la tabla de Excel por objeto con `types` desde la app.
+- La circulación vertical (`connectors` del contrato) sale sola de las escaleras (*Stairs*; una escalera de varios
+  pisos da una por piso, con id `"<idEscalera>@<idNivel>"` en los pisos que no son el suyo), las rampas (*Ramps*) y la
+  categoría *Vertical Circulation*. Un elevador o una escalera eléctrica modelados en otra categoría (modelo genérico,
+  equipo especializado…) se reconocen si el nombre de su familia o su tipo dice elevador, elevator, ascensor, lift,
+  escalera eléctrica, escalera mecánica o escalator; siguen yendo también como obstáculo. Su `z` va de su nivel a lo
+  alto de su caja, ajustada a los niveles que toca: modélalos como una sola pieza por cubo, no una por piso.
 
 ## Desarrollar
 

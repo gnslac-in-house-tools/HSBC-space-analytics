@@ -7,7 +7,7 @@ from datetime import datetime
 import pytest
 
 from sa_model import EXPORTER_VERSION, SCHEMA
-from sa_model.document import build, opening, params, resolve_level, source, type_record
+from sa_model.document import build, connector, opening, params, resolve_level, source, touched, type_record
 
 F = 1 / 0.3048  # un metro en pies
 WHEN = datetime(2026, 10, 29, 18, 20, 5)
@@ -88,7 +88,8 @@ def test_the_root_follows_the_contract(built):
                              "exported_at": "2026-10-29T18:20:05", "exporter": EXPORTER_VERSION,
                              "stage": "Esquemático", "phase": "Nueva construcción", "links": ["Base building.rvt"]}
     assert sorted(doc) == sorted(["schema", "source", "levels", "rooms", "floors", "walls", "doors", "windows",
-                                  "obstacles", "types"])
+                                  "obstacles", "connectors", "types"])
+    assert doc["connectors"] == []
     json.dumps(doc, ensure_ascii=False)  # todo serializable
 
 
@@ -200,3 +201,66 @@ def test_a_type_with_nothing_still_has_every_field():
     assert type_record({}) == {"category": "", "family": "", "name": "", "type_mark": "", "description": "",
                                "manufacturer": "", "model": "", "cost": None, "keynote": "", "materials": [],
                                "params": {}}
+
+
+LEVELS = [{"id": "10", "name": "N1", "elevation": 0.0}, {"id": "20", "name": "N2", "elevation": 4.0},
+          {"id": "30", "name": "N3", "elevation": 8.0}, {"id": "40", "name": "Azotea", "elevation": 12.0}]
+
+
+def test_a_stair_touches_the_levels_it_joins():
+    raw = {"id": "700", "kind": "stair", "type": "908", "points": [], "box": square(2, 2, 3), "z": (0.0, 4 * F),
+           "snap": False, "params": [("SA_Rol", "Evacuación", False)]}
+    assert connector(raw, LEVELS) == {"id": "700", "kind": "stair", "type": "908",
+                                      "footprint": [[2, 2], [5, 2], [5, 5], [2, 5]], "z": [0.0, 4.0],
+                                      "levels": ["10", "20"], "params": {"SA_Rol": "Evacuación"}}
+
+
+def test_a_stair_s_footprint_from_its_geometry_when_there_is_some():
+    raw = {"id": "701", "kind": "ramp", "points": [(0, 0), (2 * F, 0), (2 * F, F), (0, F)], "box": square(0, 0, 9),
+           "z": (0.0, 0.5 * F)}
+    c = connector(raw, LEVELS)
+    assert c["footprint"] == [[0, 0], [2, 0], [2, 1], [0, 1]]
+    assert c["z"] == [0.0, 0.5] and c["levels"] == ["10"] and c["type"] is None and c["params"] == {}
+
+
+def test_an_elevator_snaps_to_the_levels_it_serves():
+    # de su nivel (0) a lo alto de su caja, con el sobrepaso por encima de N3
+    raw = {"id": "5:702", "kind": "elevator", "type": "5:909", "box": square(6, 6, 2), "z": (0.0, 9.5 * F),
+           "snap": True}
+    c = connector(raw, LEVELS)
+    assert c["z"] == [0.0, 8.0] and c["levels"] == ["10", "20", "30"]
+
+
+def test_an_elevator_on_a_single_level_keeps_its_box():
+    raw = {"id": "703", "kind": "elevator", "box": square(6, 6, 2), "z": (4 * F, 6.5 * F), "snap": True}
+    c = connector(raw, LEVELS)
+    assert c["z"] == [4.0, 6.5] and c["levels"] == ["20"]
+
+
+def test_a_connector_without_levels_or_shape_or_kind():
+    raw = {"id": "704", "kind": "stair", "box": square(0, 0, 1), "z": (-10 * F, -6 * F)}
+    assert connector(raw, LEVELS)["levels"] is None
+    assert connector(dict(raw, box=None), LEVELS) is None
+    assert connector(dict(raw, z=None), LEVELS) is None
+    assert connector(dict(raw, kind="tobogán"), LEVELS) is None
+
+
+def test_touched_with_the_tolerance_of_a_level():
+    assert [l["id"] for l in touched([0.3, 3.7], LEVELS)] == ["10", "20"]
+    assert [l["id"] for l in touched([0.31, 3.69], LEVELS)] == []
+
+
+def test_connectors_in_the_document_with_their_types():
+    raw = raw_model()
+    raw["connectors"] = [
+        {"id": "700", "kind": "stair", "type": "908", "box": square(2, 2, 3), "z": (0.0, 4 * F)},
+        {"id": "700@20", "kind": "stair", "type": "908", "box": square(2, 2, 3), "z": (4 * F, 8 * F)},
+        {"id": "705", "kind": "escalator", "type": "910", "box": None, "z": (0.0, 4 * F)},
+    ]
+    raw["types"]["908"] = {"category": "Stairs", "family": "Escalera ensamblada", "name": "Concreto"}
+    raw["types"]["910"] = {"category": "VerticalCirculation", "family": "Escalera eléctrica", "name": "1000"}
+    doc, dropped = build(source("2025", "a.rvt", "Concepto", "", [], WHEN), raw)
+    assert [(c["id"], c["z"], c["levels"]) for c in doc["connectors"]] == [
+        ("700", [0.0, 4.0], ["10", "20"]), ("700@20", [4.0, 8.0], ["20"])]
+    assert dropped["connectors"] == 1  # sin caja ni geometría
+    assert doc["types"]["908"]["category"] == "Stairs" and "910" not in doc["types"]

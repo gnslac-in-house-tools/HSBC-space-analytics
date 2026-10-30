@@ -28,6 +28,7 @@ LABELS = [
     ("doors", "puertas"),
     ("windows", "ventanas"),
     ("obstacles", "obstáculos"),
+    ("connectors", "circulaciones verticales"),
     ("types", "tipos"),
 ]
 

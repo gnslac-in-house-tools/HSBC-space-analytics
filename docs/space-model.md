@@ -28,7 +28,7 @@ cambian ambos lados y sube `schema`.
     "links": ["Base building.rvt"]
   },
   "levels": [], "rooms": [], "floors": [], "walls": [], "doors": [], "windows": [], "obstacles": [],
-  "types": {}
+  "connectors": [], "types": {}
 }
 ```
 
@@ -46,8 +46,13 @@ varias exportaciones del mismo modelo (una por etapa) y el bisel del instrumento
 | `doors[]` | `OST_Doors` (`FamilyInstance`) | `id`, `level` *opcional*, `type`, `host` *opcional* (id del muro), `at` `[x, y]`, `hand` `[dx, dy]` unitario (a lo largo del muro), `facing` `[dx, dy]` unitario, `width`, `height`, `z` (abajo), `from_room`, `to_room` *opcionales* (ids; null = exterior), `params` *opcional* |
 | `windows[]` | `OST_Windows` | igual que `doors`, más `sill` y `head` (alturas sobre el nivel del hueco, en metros) |
 | `obstacles[]` | columnas (`OST_Columns`, `OST_StructuralColumns`), mobiliario (`OST_Furniture`, `OST_FurnitureSystems`, `OST_Casework`, `OST_SpecialityEquipment`, `OST_PlumbingFixtures`, `OST_Planting`, `OST_GenericModel`) | `id`, `level` *opcional*, `type`, `category` (`Columns`, `Furniture`, `Casework`, `Equipment`, `Plumbing`, `Planting`, `Generic`), `footprint` (envolvente convexa en planta de su geometría; si falla, el rectángulo de su bounding box), `z` = `[abajo, arriba]`, `room` *opcional*, `params` *opcional* |
+| `connectors[]` *opcional* | circulación vertical: escaleras (`OST_Stairs`, una por tramo de una escalera de varios pisos), rampas (`OST_Ramps`), elevadores y escaleras eléctricas (`OST_VerticalCirculation` en las versiones que la tienen, o familias cuyo nombre de familia o tipo diga elevador, elevator, ascensor, lift, escalera eléctrica o escalator) | `id`, `kind` (`stair`, `ramp`, `elevator`, `escalator`), `type`, `footprint` (contorno en planta: el rectángulo de su bounding box si no hay otro), `z` = `[abajo, arriba]` (elevaciones absolutas: en escaleras y rampas, su base y su remate con los desfases; en elevadores, las de los niveles extremos que toca), `levels` *opcional* (ids de los niveles a ±0.30 m de su recorrido, de abajo hacia arriba), `params` *opcional* |
 
 `type` es siempre el id del tipo (`ElementType`) y su ficha va en `types`.
+
+Una escalera de varios pisos (`MultistoryStairs`) sale como un conector por copia. Las copias no tienen id propio en
+Revit: la del nivel de la escalera conserva su id y las demás llevan `<id>@<id del nivel>` (por ejemplo `999@123`, o
+`5:999@123` si viene de un vínculo).
 
 ## `types`
 
@@ -95,6 +100,23 @@ el prefijo (`GWP`, `Reciclado`…).
   - tapan: los muros, las columnas y los obstáculos más altos que 1.20 m;
   - dejan ver: el muro cortina y las ventanas cuyo `sill < 1.20 < head`;
   - una visual que sale del edificio a través de vidrio cuenta como **vista al exterior**.
+- **Vegetación** (`category = "Planting"`):
+  - la copa sale del área de la caja (radio = √área / 2, aunque la caja venga girada) y el tipo, del nombre de familia y
+    tipo: palmera, conífera o frondoso; lo que dice arbusto, seto, maceta, etc., o mide menos de 2.5 m, es arbusto;
+  - de un árbol solo tapan el tronco (radio 6 % de la copa, entre 0.12 y 0.30 m): bajo la copa se camina y se ve;
+  - un arbusto tapa como cualquier obstáculo;
+  - un árbol pertenece al nivel donde está plantado, no a todos los que alcanza su copa;
+  - se dibuja con su símbolo (copa, nervaduras, tronco) en planta y en 3D.
+- **Entre niveles** (`connectors`):
+  - cada conector une los niveles seguidos de su lista `levels` (si no viene, los que caen dentro de su `z`), por la
+    celda libre más cercana al centro de su contorno en cada nivel;
+  - si el modelo no trae conectores, se deducen de rooms de escalera o elevador (nombre con escalera, stair, rampa,
+    elevador, ascensor, lift…) apilados en dos niveles seguidos;
+  - costo de cada salto, en metros caminados: escalera y escalera eléctrica 1.85 × desnivel, rampa 12 × desnivel,
+    elevador 15 m de espera + desnivel;
+  - con eso la app arma un grafo de todo el edificio con las distancias desde los accesos reales de cualquier nivel: la
+    ruta más larga del edificio y la ruta del acceso a cualquier room, aunque esté en otro nivel. Los puntajes de cada
+    nivel no cambian.
 - **Puertas**:
   - son las aristas del grafo entre rooms;
   - una puerta con un lado sin room es un acceso;

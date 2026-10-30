@@ -31,7 +31,9 @@ const ICON={flujo:'<circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 
 const S = {stage:-1,bez:0,bezT:0,w:{flujo:.7,visib:.6,seg:.8,conf:.9,sust:.75},inc:{flujo:true,visib:true,seg:true,conf:true,sust:true},ds:{flujo:0,visib:0,seg:0,conf:0,sust:0},
  rels:new Set(['flujo|conf','visib|seg']),focus:{type:'pillar',k:'seg'},link:false,linkFirst:null,t:0,view:'plan',cell:0.5,min:0,thr:.65,vals:false,
  selFam:new Set(),iso:false,hlRooms:[],undo:[],famCur:null,famQ:'',famCat:'Todas',famSort:'fam',famDir:1,
- models:{},level:null,cache:{},res:null,path:null,mark:null,zoom:null,busy:false,thrBy:{},thrUser:{}};
+ models:{},level:null,cache:{},res:null,path:null,mark:null,zoom:null,busy:false,again:false,warnOpen:false,thrBy:{},thrUser:{},
+ rot:0,cam3:{k:1,x:0,y:0}, // 3D: giro en grados y cámara (acercamiento y desplazamiento)
+ stack:false,gap:1,bld:null,broute:null}; // 3D con todos los niveles (gap = separación entre ellos, 1 = automática) y rutas del edificio
 const $ = id => document.getElementById(id);
 const NS = 'http://www.w3.org/2000/svg';
 function el(tag, a = {}, p) { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); p && p.appendChild(e); return e; }
@@ -66,6 +68,17 @@ function resultSync(st) {
   return S.cache[k];
 }
 function prevRes() { for (let i = S.stage - 1; i >= 0; i--) if (S.models[i]) return resultSync(i); return null; }
+/** El edificio de la etapa actual: todos sus niveles analizados (de la caché) unidos por escaleras, rampas y elevadores. */
+function bld() { const m = cur(); if (!m) return null;
+ const results = {};
+ E.levelsOf(m.model).forEach(L => { const k = cacheKey(S.stage, L.id, S.cell); if (!S.cache[k]) { try { S.cache[k] = E.analyze(m.model, L.id, {cell: S.cell}); } catch (e) { return; } } results[L.id] = S.cache[k]; });
+ const key = `${S.stage}|${S.cell}`, b = S.bld;
+ if (b && b.key === key && b.levels.length === Object.keys(results).length && b.levels.every(L => results[L.id] === L.res)) return b;
+ return (S.bld = Object.assign(E.building(m.model, {results, cell: S.cell}), {key})); }
+const bldNow = () => S.bld && S.bld.key === `${S.stage}|${S.cell}` ? S.bld : null; // sin calcular nada
+const bRoute = () => S.broute && bldNow() && S.broute.key === S.bld.key ? S.broute : null;
+const multiLevel = () => !!cur() && E.levelsOf(cur().model).length > 1;
+const allWarnings = () => S.res ? S.res.warnings.concat(bldNow() ? S.bld.warnings : []) : [];
 function prevStageName() { for (let i = S.stage - 1; i >= 0; i--) if (S.models[i]) return STAGES[i]; return null; }
 
 function addModels(json, from) {
@@ -91,9 +104,11 @@ function readFiles(files) {
   });
 }
 
-/** Corre el análisis del nivel y la etapa actuales; con animación de respiración si no está en caché. */
+/** Corre el análisis del nivel y la etapa actuales; con animación de respiración si no está en caché.
+ *  Si ya hay uno corriendo, deja el pedido pendiente: al terminar se vuelve a correr con el nivel, la celda y la etapa de ese momento. */
 function runAnalysis(force) {
-  const m = cur(); if (!m || S.busy) return;
+  const m = cur(); if (!m) return;
+  if (S.busy) { S.again = true; return; }
   const L = levelFor(m.model); if (!L) { toast('El modelo no tiene niveles'); return; }
   S.level = L.name;
   const k = cacheKey(S.stage, L.id, S.cell);
@@ -103,7 +118,9 @@ function runAnalysis(force) {
   B.classList.add('on'); rows.innerHTML = steps.map(s => `<div class="brow"><span>${s.label}</span><span class="mono muted">…</span><div class="bb"><i></i></div></div>`).join('');
   let inh = true; const bt = $('bt'); bt.textContent = 'inhala'; const iv = setInterval(() => { inh = !inh; bt.textContent = inh ? 'inhala' : 'exhala'; }, 2000);
   const t0 = performance.now(); let i = 0;
-  const done = ok => { clearInterval(iv); B.classList.remove('on'); S.busy = false; if (ok) { S.cache[k] = ctx.result; setResult(ctx.result); toast('Análisis listo', `${fmt(ctx.result.G.freeCount)} celdas libres · ${fmt((performance.now() - t0) / 1000, 1)} s`); } };
+  const done = ok => { clearInterval(iv); B.classList.remove('on'); S.busy = false; if (ok) S.cache[k] = ctx.result;
+    if (S.again) { S.again = false; runAnalysis(); return; }
+    if (ok) { setResult(ctx.result); toast('Análisis listo', `${fmt(ctx.result.G.freeCount)} celdas libres · ${fmt((performance.now() - t0) / 1000, 1)} s`); } };
   const next = () => {
     if (i >= steps.length) { setTimeout(() => done(true), 350); return; }
     const row = rows.children[i];
@@ -120,7 +137,7 @@ function setResult(r) {
   const changed = !S.res || S.res.G.nx !== r.G.nx || S.res.level.id !== r.level.id;
   S.res = r; const G = r.G;
   F = {x0: G.ox, y1: G.oy + G.ny * G.cell, W: G.nx * G.cell * SC, H: G.ny * G.cell * SC};
-  if (changed) S.zoom = null;
+  if (changed) { S.zoom = null; S.cam3 = {k: 1, x: 0, y: 0}; }
   S.hlRooms = []; S.selFam = new Set([...S.selFam].filter(id => r.model.types[id]));
   if (!S.famCur || !r.model.types[S.famCur]) S.famCur = r.table[0] && r.table[0].id;
   updateTop(); renderLevels(); renderAll();
@@ -147,8 +164,8 @@ function renderLevels() {
 }
 
 /* ===================== campo de análisis ===================== */
-function valueAt(c) {
-  const Fd = S.res.fields;
+function valueAt(c, r = S.res) {
+  const Fd = r.fields;
   if (S.focus.type === 'rel') { const [a, b] = S.focus.k.split('|'); return E.crossAt(Fd, a, b, R[S.focus.k].op, c); }
   return Fd[S.focus.k][c];
 }
@@ -262,8 +279,9 @@ const X = x => (x - F.x0) * SC, Y = y => (F.y1 - y) * SC;
 const pts = list => list.map(p => X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join(' ');
 const wallsById = () => { const o = {}; S.res.sel.walls.forEach(w => { o[w.id] = w; }); return o; };
 function css(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
-function heatImage() {
- const G = S.res.G, k = Math.max(3, Math.min(24, Math.floor(2400 / Math.max(G.nx, G.ny))));
+/** El campo enfocado de un nivel como imagen (una celda = k px); r = el resultado del nivel. */
+function heatImage(r = S.res) {
+ const G = r.G, k = Math.max(3, Math.min(24, Math.floor(2400 / Math.max(G.nx, G.ny))));
  const cv = document.createElement('canvas'); cv.width = G.nx * k; cv.height = G.ny * k; const x = cv.getContext('2d');
  const line = css('--line'), ink = css('--ink'), col = focusColor(), dim = S.iso && S.selFam.size ? .35 : 1, rel = S.focus.type === 'rel';
  const round = (px, py, w, h, r) => { if (!r || !x.roundRect) { x.fillRect(px, py, w, h); return; } x.beginPath(); x.roundRect(px, py, w, h, r); x.fill(); };
@@ -272,7 +290,7 @@ function heatImage() {
   const c = j * G.nx + i; if (!G.inside[c]) continue; const px = i * k, py = (G.ny - 1 - j) * k;
   if (k >= 6) { x.strokeStyle = line; x.lineWidth = 1; x.strokeRect(px + .5, py + .5, k - 1, k - 1); }
   if (!G.free[c]) continue;
-  const v = valueAt(c);
+  const v = valueAt(c, r);
   if (S.mark === 'blind' && G.watch.length && G.seen[c] === 0 || S.mark === 'unreach' && !isFinite(G.dEnt[c])) { x.strokeStyle = ink; x.setLineDash([2, 2]); x.lineWidth = 1.2; x.strokeRect(px + 1.5, py + 1.5, k - 3, k - 3); x.setLineDash([]); }
   if (isNaN(v) || v < S.min) continue;
   const cls = Math.min(4, Math.floor(v * 5));
@@ -299,6 +317,30 @@ function drawOpening(g, o, kind, wb) {
  }
 }
 const selTypes = () => S.selFam;
+
+/* ===================== vegetación: un símbolo por tipo de familia ===================== */
+const seedOf = id => { let h = 7; for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) % 9973; return h / 9973 * 2 * Math.PI; };
+/** La copa alrededor de (0, 0) con radio R: frondoso festoneado, conífera en estrella, palmera en hojas, arbusto irregular.
+ *  ribs = puntas a las que van las nervaduras desde el centro. */
+function plantShape(kind, R, seed) {
+ const n = kind === 'palm' ? 8 : Math.max(7, Math.min(16, Math.round(R / 5))), N = n * 10, ring = [], ribs = [];
+ for (let i = 0; i < N; i++) { const a = seed + i / N * 2 * Math.PI, t = (i / N * n) % 1;
+  const f = kind === 'conifer' ? .7 + .3 * (1 - Math.abs(t * 2 - 1))
+   : kind === 'palm' ? .28 + .72 * Math.pow(Math.abs(Math.cos(Math.PI * t)), 3)
+   : kind === 'shrub' ? .84 + .1 * Math.sin(5 * a + seed) + .06 * Math.sin(9 * a + 2.3 * seed)
+   : .84 + .16 * Math.abs(Math.sin(Math.PI * t));
+  ring.push([Math.cos(a) * R * f, Math.sin(a) * R * f]); }
+ if (kind === 'conifer' || kind === 'palm') for (let k = 0; k < n; k++) { const a = seed + (k + (kind === 'conifer' ? .5 : 0)) / n * 2 * Math.PI; ribs.push([Math.cos(a) * R * .94, Math.sin(a) * R * .94]); }
+ return {ring, ribs};
+}
+/** En planta: copa, nervaduras, tronco. */
+function drawPlant(g, pl, id) {
+ const cx = X(pl.x), cy = Y(pl.y), R = pl.r * SC, {ring, ribs} = plantShape(pl.kind, R, seedOf(id)), t = el('g', {transform: `translate(${cx.toFixed(1)} ${cy.toFixed(1)})`}, g);
+ el('polygon', {points: ring.map(p => p.map(v => v.toFixed(1)).join(',')).join(' '), class: 'tree-c'}, t);
+ ribs.forEach(p => el('line', {x1: 0, y1: 0, x2: p[0].toFixed(1), y2: p[1].toFixed(1), class: 'tree-l'}, t));
+ if (pl.kind === 'tree') el('circle', {cx: 0, cy: 0, r: (R * .48).toFixed(1), class: 'tree-l', 'stroke-dasharray': '2 3'}, t);
+ if (pl.trunk) el('circle', {cx: 0, cy: 0, r: Math.max(1.4, pl.trunk * SC).toFixed(1), class: 'tree-t'}, t);
+}
 function drawPlan(svg, opts = {}) { svg.innerHTML = ''; svg.classList.add('plan');
  const r = S.res, G = r.G, s = r.sel, wb = wallsById();
  const vb = !opts.full && S.zoom ? S.zoom : [-14, -14, F.W + 28, F.H + 44];
@@ -311,7 +353,8 @@ function drawPlan(svg, opts = {}) { svg.innerHTML = ''; svg.classList.add('plan'
   if (wl.curtain) { el('polyline', {points: p, fill: 'none', class: 'glass-w', 'stroke-width': t}, w); el('polyline', {points: p, fill: 'none', stroke: 'var(--wall)', 'stroke-width': .7}, w); }
   else el('polyline', {points: p, fill: 'none', stroke: 'var(--wall)', 'stroke-width': t, 'stroke-linejoin': 'miter', 'stroke-linecap': 'square'}, w); });
  s.doors.forEach(d => drawOpening(w, d, 'door', wb)); s.windows.forEach(o => drawOpening(w, o, 'window', wb));
- s.obstacles.forEach(o => el('polygon', {points: pts(o.footprint), class: 'furn', style: o.category === 'Columns' ? 'fill:var(--wall);fill-opacity:.55' : ''}, w));
+ s.obstacles.forEach(o => { const pl = E.plantOf(r.model, o); if (pl) { drawPlant(w, pl, o.id); return; }
+  el('polygon', {points: pts(o.footprint), class: 'furn', style: o.category === 'Columns' ? 'fill:var(--wall);fill-opacity:.55' : ''}, w); });
  // puestos de personal y accesos
  const showWatch = S.focus.k.indexOf('seg') >= 0;
  if (showWatch) G.watch.forEach(p => { const [x, y] = G.xy(p.c); el('circle', {cx: X(x), cy: Y(y), r: 4.2, class: 'pin', stroke: BY.seg.c1}, w); el('circle', {cx: X(x), cy: Y(y), r: 1.6, fill: BY.seg.c1}, w); });
@@ -320,13 +363,15 @@ function drawPlan(svg, opts = {}) { svg.innerHTML = ''; svg.classList.add('plan'
  if (S.path && G.paths[S.path]) { const ps = G.paths[S.path].cells.map(c => G.xy(c)), col = S.path === 'cash' ? BY.seg.c1 : BY.flujo.c1;
   el('polyline', {points: pts(ps), class: 'route', stroke: 'var(--floor)', 'stroke-width': 6}, w); el('polyline', {points: pts(ps), class: 'route flow', stroke: col}, w);
   [ps[0], ps[ps.length - 1]].forEach(p => el('circle', {cx: X(p[0]), cy: Y(p[1]), r: 4.5, fill: col, stroke: 'var(--floor)', 'stroke-width': 1.5}, w)); }
+ const br = bRoute(); if (br) planRouteLegs(w, br);
  // etiquetas
  s.rooms.forEach(rm => { const [cx, cy] = E.ringCentroid(rm.outline[0]); const t = el('text', {x: X(cx), y: Y(cy), 'text-anchor': 'middle', class: 'lbl'}, svg); t.textContent = rm.name || rm.number; });
  S.hlRooms.forEach(k => { const rm = s.rooms[k]; if (rm) el('polygon', {points: pts(rm.outline[0]), fill: 'none', stroke: 'var(--ink)', 'stroke-width': 1.8, 'stroke-dasharray': '6 4'}, svg); });
  // selección de familias
  const st = selTypes();
  if (st.size) {
-  s.obstacles.filter(o => st.has(o.type)).forEach(o => el('polygon', {points: pts(o.footprint), class: 'selshape'}, svg));
+  s.obstacles.filter(o => st.has(o.type)).forEach(o => { const pl = E.plantOf(r.model, o);
+   if (pl) el('circle', {cx: X(pl.x), cy: Y(pl.y), r: pl.r * SC, class: 'selshape'}, svg); else el('polygon', {points: pts(o.footprint), class: 'selshape'}, svg); });
   s.walls.filter(o => st.has(o.type)).forEach(o => el('polyline', {points: pts(o.path), fill: 'none', class: 'selshape', 'stroke-width': 5}, svg));
   s.floors.filter(o => st.has(o.type)).forEach(o => el('polygon', {points: pts(o.outline[0]), class: 'selshape', 'stroke-width': 2}, svg));
   [].concat(s.doors, s.windows).filter(o => st.has(o.type) && o.at).forEach(o => el('circle', {cx: X(o.at[0]), cy: Y(o.at[1]), r: Math.max(5, o.width * SC / 2), class: 'selshape'}, svg));
@@ -334,6 +379,16 @@ function drawPlan(svg, opts = {}) { svg.innerHTML = ''; svg.classList.add('plan'
  const sc = el('g', {transform: `translate(0 ${F.H + 14})`}, svg); [0, 1, 2, 3, 4].forEach(i => el('rect', {x: i * SC, y: 0, width: SC, height: 3, fill: i % 2 ? 'var(--floor)' : 'var(--ink)', stroke: 'var(--ink)', 'stroke-width': .5}, sc)); const stx = el('text', {x: 5 * SC + 4, y: 4, class: 'lbl'}, sc); stx.textContent = '5 m';
  const c = G.cell * SC; svg._probe = el('g', {opacity: 0}, svg); el('rect', {x: -c / 2, y: -c / 2, width: c, height: c, fill: 'none', stroke: 'var(--ink)', 'stroke-width': 1.2}, svg._probe);
 }
+/** Los tramos de la ruta del edificio que caen en el nivel de la planta, con su marca donde llega de otro nivel o sube/baja a otro. */
+function planRouteLegs(g, br) {
+ const b = S.bld, col = BY.flujo.c1, legs = br.r.legs;
+ legs.forEach((l, i) => { const L = b.levels[l.li]; if (L.id !== S.res.level.id) return;
+  const ps = l.cells.map(c => L.res.G.xy(c));
+  el('polyline', {points: pts(ps), class: 'route', stroke: 'var(--floor)', 'stroke-width': 6}, g); el('polyline', {points: pts(ps), class: 'route flow', stroke: col}, g);
+  [[ps[0], legs[i - 1], 'desde'], [ps[ps.length - 1], legs[i + 1], '']].forEach(([p, other, from]) => {
+   el('circle', {cx: X(p[0]), cy: Y(p[1]), r: 4.5, fill: col, stroke: 'var(--floor)', 'stroke-width': 1.5}, g);
+   if (!other) return; const O = b.levels[other.li], up = O.elevation > L.elevation;
+   const t = el('text', {x: X(p[0]) + 9, y: Y(p[1]) - 7, class: 'tag'}, g); t.textContent = from ? `desde ${O.name}` : `${up ? '↑ sube' : '↓ baja'} a ${O.name}`; }); }); }
 /** Lo que hay bajo el puntero: una instancia con familia (obstáculo, puerta o ventana). */
 function hitElement(x, y) {
  const s = S.res.sel;
@@ -368,14 +423,18 @@ function probe(svg) { const tip = $('tip'); let drag = null;
  svg.addEventListener('pointerup', e => { const d = drag; drag = null; if (!d || d.moved) return;
   const pt = svgPt(svg, e), x = F.x0 + pt.x / SC, y = F.y1 - pt.y / SC, hit = hitElement(x, y);
   if (hit && S.res.model.types[hit.type]) { openFam(hit.type); return; }
-  const c = cellOf(x, y), k = c >= 0 ? S.res.G.room[c] : -1; if (k >= 0) { S.hlRooms = [k]; renderViewport(); Snd.click(); } });
+  const c = cellOf(x, y), k = c >= 0 ? S.res.G.room[c] : -1; if (k >= 0) roomClick(k); });
  svg.addEventListener('wheel', e => { e.preventDefault(); const pt = svgPt(svg, e), vb = svg._vb, f = e.deltaY > 0 ? 1.15 : 1 / 1.15, w = Math.min(F.W * 3, Math.max(F.W / 12, vb[2] * f)), h = vb[3] * w / vb[2];
   S.zoom = [pt.x - (pt.x - vb[0]) * w / vb[2], pt.y - (pt.y - vb[1]) * h / vb[3], w, h]; svg.setAttribute('viewBox', S.zoom.join(' ')); svg._vb = S.zoom; }, {passive: false});
  svg.addEventListener('dblclick', () => { S.zoom = null; renderViewport(); }); }
 
 /* ===================== VIEWPORT: 3D maqueta blanca cortada a 1.20 m ===================== */
 const KA = .866 * .62, KB = .5 * .62;
-const ISO = (x, y, z = 0) => [(x - y) * KA, (x + y) * KB - z * .62];
+let ROT = {c: 1, s: 0, x: 0, y: 0}; // giro de la maqueta alrededor del centro de la planta (lo fija drawAxo)
+const turn = (x, y) => { const dx = x - ROT.x, dy = y - ROT.y; return [ROT.x + dx * ROT.c - dy * ROT.s, ROT.y + dx * ROT.s + dy * ROT.c]; };
+let ZOFF = 0; // altura de dibujo del nivel que se está dibujando (3D con todos los niveles)
+const ISO = (x, y, z = 0) => { const [u, v] = turn(x, y); return [(u - v) * KA, (u + v) * KB - (z + ZOFF) * .62]; };
+const DEPTH = (x, y) => { const [u, v] = turn(x, y); return u + v; }; // mayor = más cerca del observador
 const quad = list => list.map(p => ISO(p[0], p[1], p[2] || 0).map(v => v.toFixed(1)).join(',')).join(' ');
 /** Tramos de un muro con sus huecos: puertas (vacío) y ventanas (antepecho + vidrio). */
 function wallPieces(wl, openings) {
@@ -391,45 +450,128 @@ function wallPieces(wl, openings) {
  }
  return out;
 }
+/** Encuadre del 3D: el círculo que contiene la planta, así no cambia de tamaño al girar; S.cam3 lo acerca y lo desplaza.
+ *  zTop = altura de dibujo del nivel más alto cuando se ven todos. */
+function axoBox(zTop = 0) {
+ const R = Math.hypot(F.W, F.H) / 2, [cx, cy] = ISO(ROT.x, ROT.y, 0), w = 2 * R * KA * Math.SQRT2 + 40, h = 2 * R * KB * Math.SQRT2 + 80 + zTop * .62, k = S.cam3.k;
+ return [cx + S.cam3.x - w / 2 / k, cy - 20 - zTop * .31 + S.cam3.y - h / 2 / k, w / k, h / k];
+}
+/** Los niveles que dibuja el 3D: el actual, o todos apilados. La separación respeta la proporción entre elevaciones,
+ *  pero en promedio es el 42 % del alto de la planta en pantalla (× S.gap), para que cada nivel se asome bajo el de arriba. */
+function axoLayers() {
+ const b = S.stack && multiLevel() ? bld() : null;
+ if (!b || b.levels.length < 2) return [{r: S.res, z: 0, cur: true, name: S.res.level.name}];
+ const e0 = b.levels[0].elevation, span = (b.levels[b.levels.length - 1].elevation - e0) || 1;
+ const k = Math.hypot(F.W, F.H) * KB * Math.SQRT2 / .62 * .42 * S.gap * (b.levels.length - 1) / span;
+ return b.levels.map(L => ({r: L.res, z: (L.elevation - e0) * k, cur: L.id === S.res.level.id, name: L.name}));
+}
 function drawAxo(svg) { svg.innerHTML = ''; svg.classList.add('plan');
- const r = S.res, s = r.sel, e = s.e, CUT = 1.2, col = focusColor();
- const corners = [[0, 0], [F.W, 0], [F.W, F.H], [0, F.H]].map(([x, y]) => ISO(x, y, 0));
- const xs = corners.map(p => p[0]), ys = corners.map(p => p[1]);
- svg.setAttribute('viewBox', `${Math.min(...xs) - 20} ${Math.min(...ys) - 40} ${Math.max(...xs) - Math.min(...xs) + 40} ${Math.max(...ys) - Math.min(...ys) + 60}`);
- s.floors.forEach(f => { el('polygon', {points: quad(f.outline[0].map(p => [X(p[0]), Y(p[1]), -6])), fill: 'var(--line)'}, svg); el('polygon', {points: quad(f.outline[0].map(p => [X(p[0]), Y(p[1]), 0])), fill: 'var(--floor)', stroke: 'var(--wall)', 'stroke-width': .6}, svg); });
- el('image', {href: heatImage(), x: 0, y: 0, width: F.W, height: F.H, preserveAspectRatio: 'none', transform: `matrix(${KA} ${KB} ${-KA} ${KB} 0 0)`}, svg);
+ const ang = S.rot * Math.PI / 180, layers = axoLayers(), stack = layers.length > 1;
+ ROT = {c: Math.cos(ang), s: Math.sin(ang), x: F.W / 2, y: F.H / 2};
+ ZOFF = 0;
+ svg.setAttribute('viewBox', axoBox(layers[layers.length - 1].z).join(' '));
+ // el norte de la planta (arriba en el dibujo) visto en la maqueta girada
+ const nn = svg.parentNode && svg.parentNode.querySelector('.north'); if (nn) { const p0 = ISO(ROT.x, ROT.y), p1 = ISO(ROT.x, ROT.y - 10); nn.innerHTML = `N <span style="display:inline-block;transform:rotate(${(Math.atan2(p1[0] - p0[0], p0[1] - p1[1]) * 180 / Math.PI).toFixed(0)}deg)">↑</span>`; }
+ svg._heat = svg._heat || {};
+ layers.forEach((Ly, i) => drawLayer3D(stack ? el('g', {opacity: Ly.cur ? 1 : .78}, svg) : svg, Ly, svg._heat, stack, i));
+ ZOFF = 0;
+ const br = bRoute(); if (br) drawRoute3D(svg, br, layers);
+}
+/** Un nivel de la maqueta a la altura Ly.z: losa, campo, muros y huecos, obstáculos y vegetación, rutas y nombres. */
+function drawLayer3D(g, Ly, heat, stack, i) {
+ const r = Ly.r, s = r.sel, e = s.e, CUT = 1.2, G = r.G;
+ ZOFF = Ly.z;
+ s.floors.forEach(f => { el('polygon', {points: quad(f.outline[0].map(p => [X(p[0]), Y(p[1]), -6])), fill: 'var(--line)'}, g); el('polygon', {points: quad(f.outline[0].map(p => [X(p[0]), Y(p[1]), 0])), fill: 'var(--floor)', 'fill-opacity': stack && i ? .82 : 1, stroke: 'var(--wall)', 'stroke-width': .6}, g); });
+ // la imagen del campo se calcula una vez por vista y nivel; al girar o mover solo cambia su transformación
+ const o0 = ISO(0, 0), o1 = ISO(1, 0), o2 = ISO(0, 1), id = r.level.id;
+ el('image', {href: heat[id] || (heat[id] = heatImage(r)), x: X(G.ox), y: Y(G.oy + G.ny * G.cell), width: G.nx * G.cell * SC, height: G.ny * G.cell * SC, preserveAspectRatio: 'none', transform: `matrix(${o1[0] - o0[0]} ${o1[1] - o0[1]} ${o2[0] - o0[0]} ${o2[1] - o0[1]} ${o0[0]} ${o0[1]})`}, g);
  const items = [], hOf = z => Math.max(.05, Math.min(CUT, z - e)) * SC;
  const openings = [].concat(s.doors, s.windows);
  s.walls.forEach(wl => { if (!(s.wallMoves(wl) || s.wallSight(wl))) return; const H = hOf(wl.z[1]);
   wallPieces(wl, openings.filter(o => o.host === wl.id)).forEach(pc => { const A = [X(pc.a[0]), Y(pc.a[1])], B = [X(pc.b[0]), Y(pc.b[1])];
-   items.push({d: (A[0] + A[1] + B[0] + B[1]) / 2, draw: () => {
+   items.push({d: (DEPTH(A[0], A[1]) + DEPTH(B[0], B[1])) / 2, draw: () => {
     if (wl.curtain || pc.kind === 'win') { const z0 = pc.kind === 'win' ? Math.min(H, (pc.sill || 0) * SC) : 0;
-     if (z0 > 0) el('polygon', {points: quad([[A[0], A[1], 0], [B[0], B[1], 0], [B[0], B[1], z0], [A[0], A[1], z0]]), fill: 'var(--surface-2)', stroke: 'var(--wall)', 'stroke-width': .6}, svg);
-     el('polygon', {points: quad([[A[0], A[1], z0], [B[0], B[1], z0], [B[0], B[1], H], [A[0], A[1], H]]), fill: '#8DBBD9', 'fill-opacity': .22, stroke: '#8DBBD9', 'stroke-width': .6}, svg); return; }
-    if (pc.kind === 'door') { const [a1, b1] = ISO(A[0], A[1], 0), [a2, b2] = ISO(B[0], B[1], 0); el('line', {x1: a1, y1: b1, x2: a2, y2: b2, stroke: 'var(--wall)', 'stroke-width': .5, 'stroke-dasharray': '2 2'}, svg); return; }
-    el('polygon', {points: quad([[A[0], A[1], 0], [B[0], B[1], 0], [B[0], B[1], H], [A[0], A[1], H]]), fill: 'var(--surface-2)', 'fill-opacity': .94, stroke: 'var(--wall)', 'stroke-width': .7, 'stroke-linejoin': 'round'}, svg);
-    const [a, b] = ISO(A[0], A[1], H), [cx, cy] = ISO(B[0], B[1], H); el('line', {x1: a, y1: b, x2: cx, y2: cy, stroke: 'var(--wall)', 'stroke-width': Math.max(1.6, wl.thickness * SC * .5), 'stroke-linecap': 'round'}, svg); }}); }); });
+     if (z0 > 0) el('polygon', {points: quad([[A[0], A[1], 0], [B[0], B[1], 0], [B[0], B[1], z0], [A[0], A[1], z0]]), fill: 'var(--surface-2)', stroke: 'var(--wall)', 'stroke-width': .6}, g);
+     el('polygon', {points: quad([[A[0], A[1], z0], [B[0], B[1], z0], [B[0], B[1], H], [A[0], A[1], H]]), fill: '#8DBBD9', 'fill-opacity': .22, stroke: '#8DBBD9', 'stroke-width': .6}, g); return; }
+    if (pc.kind === 'door') { const [a1, b1] = ISO(A[0], A[1], 0), [a2, b2] = ISO(B[0], B[1], 0); el('line', {x1: a1, y1: b1, x2: a2, y2: b2, stroke: 'var(--wall)', 'stroke-width': .5, 'stroke-dasharray': '2 2'}, g); return; }
+    el('polygon', {points: quad([[A[0], A[1], 0], [B[0], B[1], 0], [B[0], B[1], H], [A[0], A[1], H]]), fill: 'var(--surface-2)', 'fill-opacity': .94, stroke: 'var(--wall)', 'stroke-width': .7, 'stroke-linejoin': 'round'}, g);
+    const [a, b] = ISO(A[0], A[1], H), [cx, cy] = ISO(B[0], B[1], H); el('line', {x1: a, y1: b, x2: cx, y2: cy, stroke: 'var(--wall)', 'stroke-width': Math.max(1.6, wl.thickness * SC * .5), 'stroke-linecap': 'round'}, g); }}); }); });
  const st = selTypes();
- s.obstacles.forEach(o => { const H = hOf(o.z[1]), fp = o.footprint.map(p => [X(p[0]), Y(p[1])]), cx = fp.reduce((a, p) => a + p[0] + p[1], 0) / fp.length, sel = st.has(o.type);
+ s.obstacles.forEach(o => { const pl = E.plantOf(r.model, o); if (pl) { items.push({d: DEPTH(X(pl.x), Y(pl.y)), draw: () => drawPlant3D(g, pl, o.id, hOf(o.z[1]), st.has(o.type))}); return; }
+  const H = hOf(o.z[1]), fp = o.footprint.map(p => [X(p[0]), Y(p[1])]), cx = fp.reduce((a, p) => a + DEPTH(p[0], p[1]), 0) / fp.length, sel = st.has(o.type);
   items.push({d: cx, draw: () => {
-   const edges = fp.map((p, i) => [p, fp[(i + 1) % fp.length]]).sort((u, v) => (u[0][0] + u[0][1] + u[1][0] + u[1][1]) - (v[0][0] + v[0][1] + v[1][0] + v[1][1]));
-   edges.forEach(([p, q]) => el('polygon', {points: quad([[p[0], p[1], 0], [q[0], q[1], 0], [q[0], q[1], H], [p[0], p[1], H]]), fill: o.category === 'Columns' ? 'var(--line-2)' : 'var(--line)', stroke: 'var(--wall)', 'stroke-width': .35}, svg));
-   el('polygon', {points: quad(fp.map(p => [p[0], p[1], H])), fill: 'var(--surface-2)', stroke: 'var(--wall)', 'stroke-width': .5, class: sel ? 'selshape' : ''}, svg); }}); });
+   const edges = fp.map((p, i) => [p, fp[(i + 1) % fp.length]]).sort((u, v) => (DEPTH(u[0][0], u[0][1]) + DEPTH(u[1][0], u[1][1])) - (DEPTH(v[0][0], v[0][1]) + DEPTH(v[1][0], v[1][1])));
+   edges.forEach(([p, q]) => el('polygon', {points: quad([[p[0], p[1], 0], [q[0], q[1], 0], [q[0], q[1], H], [p[0], p[1], H]]), fill: o.category === 'Columns' ? 'var(--line-2)' : 'var(--line)', stroke: 'var(--wall)', 'stroke-width': .35}, g));
+   el('polygon', {points: quad(fp.map(p => [p[0], p[1], H])), fill: 'var(--surface-2)', stroke: 'var(--wall)', 'stroke-width': .5, class: sel ? 'selshape' : ''}, g); }}); });
  items.sort((a, b) => a.d - b.d).forEach(it => it.draw());
- if (S.path && r.G.paths[S.path]) { const ps = r.G.paths[S.path].cells.map(c => r.G.xy(c)); el('polyline', {points: ps.map(p => ISO(X(p[0]), Y(p[1]), 2).map(v => v.toFixed(1)).join(',')).join(' '), class: 'route flow', stroke: S.path === 'cash' ? BY.seg.c1 : BY.flujo.c1}, svg); }
- s.rooms.forEach(rm => { const [cx, cy] = E.ringCentroid(rm.outline[0]); const [x, y] = ISO(X(cx), Y(cy), 0); const t = el('text', {x, y, 'text-anchor': 'middle', class: 'lbl'}, svg); t.textContent = rm.name || rm.number; });
- void col;
+ if (Ly.cur && S.path && G.paths[S.path]) { const ps = G.paths[S.path].cells.map(c => G.xy(c)); el('polyline', {points: ps.map(p => ISO(X(p[0]), Y(p[1]), 2).map(v => v.toFixed(1)).join(',')).join(' '), class: 'route flow', stroke: S.path === 'cash' ? BY.seg.c1 : BY.flujo.c1}, g); }
+ if (Ly.cur) s.rooms.forEach(rm => { const [cx, cy] = E.ringCentroid(rm.outline[0]); const [x, y] = ISO(X(cx), Y(cy), 0); const t = el('text', {x, y, 'text-anchor': 'middle', class: 'lbl'}, g); t.textContent = rm.name || rm.number; });
+ if (stack) { // el nombre del nivel junto a su esquina más a la izquierda
+  const cs = [[G.ox, G.oy], [G.ox + G.nx * G.cell, G.oy], [G.ox, G.oy + G.ny * G.cell], [G.ox + G.nx * G.cell, G.oy + G.ny * G.cell]].map(([x, y]) => ISO(X(x), Y(y), 0)).sort((a, b) => a[0] - b[0])[0];
+  const t = el('text', {x: cs[0] - 8, y: cs[1], 'text-anchor': 'end', class: 'lvtag' + (Ly.cur ? ' cur' : '')}, g); t.textContent = Ly.name; }
 }
+/** La ruta del edificio en 3D: cada tramo sobre su nivel y un salto punteado donde sube o baja por la escalera.
+ *  Con un solo nivel a la vista, solo sus tramos. */
+function drawRoute3D(svg, br, layers) {
+ const b = S.bld, col = BY.flujo.c1, at = {}; layers.forEach(Ly => { at[Ly.r.level.id] = Ly.z; });
+ const line = ps => ps.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ');
+ let prev = null; const ends = [];
+ br.r.legs.forEach(l => { const L = b.levels[l.li], z = at[L.id];
+  if (z == null) { prev = null; return; }
+  const ps = l.cells.map(c => L.res.G.xy(c)).map(p => ISO(X(p[0]), Y(p[1]), z + 2));
+  if (prev) el('line', {x1: prev[0].toFixed(1), y1: prev[1].toFixed(1), x2: ps[0][0].toFixed(1), y2: ps[0][1].toFixed(1), class: 'route', stroke: col, 'stroke-width': 2.2, 'stroke-dasharray': '4 3'}, svg);
+  el('polyline', {points: line(ps), class: 'route', stroke: 'var(--floor)', 'stroke-width': 5}, svg);
+  el('polyline', {points: line(ps), class: 'route flow', stroke: col}, svg);
+  if (!ends.length) ends.push(ps[0]); prev = ps[ps.length - 1]; });
+ if (prev) ends.push(prev);
+ ends.forEach(p => el('circle', {cx: p[0].toFixed(1), cy: p[1].toFixed(1), r: 4.5, fill: col, stroke: 'var(--floor)', 'stroke-width': 1.5}, svg));
+}
+/** En 3D: sombra en el piso, tronco y la copa en planta levantada justo sobre el corte, para no tapar la maqueta.
+ *  Un arbusto es su mata a su altura (hasta el corte). */
+function drawPlant3D(svg, pl, id, H, sel) {
+ const cx = X(pl.x), cy = Y(pl.y), {ring, ribs} = plantShape(pl.kind, pl.r * SC, seedOf(id));
+ const at = z => quad(ring.map(p => [cx + p[0], cy + p[1], z]));
+ el('polygon', {points: at(0), class: 'tree-sh'}, svg);
+ const zc = pl.trunk ? 1.2 * SC + 6 : H;
+ if (pl.trunk) { const [a, b] = ISO(cx, cy, 0), [c, d] = ISO(cx, cy, zc); el('line', {x1: a, y1: b, x2: c, y2: d, class: 'tree-t3', 'stroke-width': Math.max(1.4, pl.trunk * SC * .9)}, svg); }
+ el('polygon', {points: at(zc), class: 'tree-c' + (sel ? ' selshape' : '')}, svg);
+ ribs.forEach(p => { const [a, b] = ISO(cx, cy, zc), [c, d] = ISO(cx + p[0], cy + p[1], zc); el('line', {x1: a, y1: b, x2: c, y2: d, class: 'tree-l'}, svg); });
+}
+/** 3D: arrastrar = desplazar, Shift + arrastrar o botón derecho = girar, rueda = acercar, doble clic = encuadrar. */
+function axoNav(svg) { let drag = null, raf = 0;
+ const redraw = () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; drawAxo(svg); }); };
+ svg.style.cursor = 'grab';
+ svg.addEventListener('contextmenu', e => e.preventDefault());
+ svg.addEventListener('pointerdown', e => { drag = {x: e.clientX, y: e.clientY, orbit: e.shiftKey || e.button !== 0, cam: {...S.cam3}, rot: S.rot, k: 1 / svg.getScreenCTM().a}; svg.setPointerCapture(e.pointerId); svg.style.cursor = drag.orbit ? 'ew-resize' : 'grabbing'; });
+ svg.addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (drag.orbit) S.rot = drag.rot + dx * .4; else S.cam3 = {k: drag.cam.k, x: drag.cam.x - dx * drag.k, y: drag.cam.y - dy * drag.k};
+  redraw(); });
+ const end = () => { drag = null; svg.style.cursor = 'grab'; };
+ svg.addEventListener('pointerup', end); svg.addEventListener('pointercancel', end);
+ // el punto bajo el puntero se queda quieto al acercar
+ svg.addEventListener('wheel', e => { e.preventDefault(); const pt = svgPt(svg, e), vb = svg.viewBox.baseVal, k = Math.min(12, Math.max(.5, S.cam3.k * (e.deltaY > 0 ? 1 / 1.15 : 1.15))), q = S.cam3.k / k, cx = vb.x + vb.width / 2, cy = vb.y + vb.height / 2;
+  S.cam3 = {k, x: S.cam3.x + (cx - pt.x) * (q - 1), y: S.cam3.y + (cy - pt.y) * (q - 1)}; drawAxo(svg); }, {passive: false});
+ svg.addEventListener('dblclick', () => { S.cam3 = {k: 1, x: 0, y: 0}; drawAxo(svg); }); }
 function renderViewport() { const vb = $('vbody'); vb.className = 'vbody' + (S.view === 'split' ? ' split' : ''); vb.innerHTML = '';
  if (!S.res) { renderEmpty(vb); $('vlegend').innerHTML = ''; renderSelChip(); return; }
  const mk = (type, cap) => { const d = document.createElement('div'); d.className = 'vp'; d.innerHTML = `<span class="cap">${cap}</span><span class="north">N ↑</span>`; const s = document.createElementNS(NS, 'svg'); s.setAttribute('aria-label', cap); d.appendChild(s); vb.appendChild(d);
   (type === 'plan' ? drawPlan : drawAxo)(s);
   if (type === 'plan') { probe(s); const z = document.createElement('div'); z.className = 'zoom'; z.innerHTML = '<button class="btn sq" data-z="in" aria-label="Acercar">+</button><button class="btn sq" data-z="out" aria-label="Alejar">−</button><button class="btn sq" data-z="fit" aria-label="Ver todo" title="Ver todo (doble clic)">⤢</button>'; d.appendChild(z);
    z.onclick = ev => { const b = ev.target.closest('[data-z]'); if (!b) return; if (b.dataset.z === 'fit') S.zoom = null; else { const v = s._vb, f = b.dataset.z === 'in' ? 1 / 1.4 : 1.4, w = v[2] * f, h = v[3] * f; S.zoom = [v[0] + (v[2] - w) / 2, v[1] + (v[3] - h) / 2, w, h]; } renderViewport(); }; }
+  else { axoNav(s);
+   if (multiLevel()) { const sk = document.createElement('span'); sk.className = 'seg vstack'; sk.title = 'Niveles en el 3D'; sk.innerHTML = `<button data-s="0" aria-pressed="${!S.stack}">1 nivel</button><button data-s="1" aria-pressed="${S.stack}">Todos</button>`; d.appendChild(sk);
+    sk.onclick = e => { const b = e.target.closest('[data-s]'); if (b) setStack(b.dataset.s === '1'); }; }
+   const z = document.createElement('div'); z.className = 'zoom'; z.innerHTML = '<button class="btn sq" data-r="-45" aria-label="Girar a la izquierda" title="Girar 45° (Shift + arrastrar para girar libre)">⟲</button><button class="btn sq" data-r="45" aria-label="Girar a la derecha" title="Girar 45°">⟳</button><button class="btn sq" data-z="in" aria-label="Acercar">+</button><button class="btn sq" data-z="out" aria-label="Alejar">−</button><button class="btn sq" data-z="fit" aria-label="Encuadrar" title="Encuadrar (doble clic)">⤢</button>' + (S.stack && multiLevel() ? '<button class="btn sq" data-g="-.25" aria-label="Juntar niveles" title="Juntar niveles">⇊</button><button class="btn sq" data-g=".25" aria-label="Separar niveles" title="Separar niveles">⇈</button>' : ''); d.appendChild(z);
+   z.onclick = ev => { const b = ev.target.closest('button'); if (!b) return; const c = S.cam3;
+    if (b.dataset.r) S.rot = Math.round((S.rot + +b.dataset.r) / 45) * 45;
+    else if (b.dataset.g) { S.gap = Math.max(.25, Math.min(2.5, S.gap + +b.dataset.g)); d.querySelector('.cap').textContent = `3D · TODOS LOS NIVELES · SEPARACIÓN ×${fmt(S.gap, 2)}`; }
+    else if (b.dataset.z === 'fit') S.cam3 = {k: 1, x: 0, y: 0};
+    else S.cam3 = {k: Math.min(12, Math.max(.5, c.k * (b.dataset.z === 'in' ? 1.4 : 1 / 1.4))), x: c.x, y: c.y};
+    drawAxo(s); Snd.click(); }; }
   return s; };
  const lv = S.res.level.name.toUpperCase();
  if (S.view !== 'axo') mk('plan', `PLANTA · ${esc(lv)} · RETÍCULA ${fmt(S.res.G.cell, 1)} m`);
- if (S.view !== 'plan') mk('axo', '3D · MAQUETA BLANCA · CORTE A 1.20 m');
+ if (S.view !== 'plan') mk('axo', S.stack && multiLevel() ? `3D · TODOS LOS NIVELES · SEPARACIÓN ×${fmt(S.gap, 2)}` : '3D · MAQUETA BLANCA · CORTE A 1.20 m');
  renderLegend(); renderSelChip(); }
 function renderEmpty(vb) {
  const d = document.createElement('div'); d.className = 'drop'; d.id = 'drop';
@@ -444,24 +586,37 @@ function renderLegend() { const col = focusColor(), isRel = S.focus.type === 're
  const G = S.res.G, path = S.path && G.paths[S.path];
  $('vlegend').innerHTML = `<span class="eyebrow">Capa</span><b style="font:500 12.5px Outfit">${name}</b><span class="scale">${OPAC.map(o => `<i style="background:${col};opacity:${o}"></i>`).join('')}</span><span class="scale-l" style="width:148px"><span>0</span><span>.2</span><span>.4</span><span>.6</span><span>.8</span><span>1</span></span><span class="muted mono" style="font-size:10px">${unit}</span><span class="sp"></span>` +
   (path ? `<span class="chip">${S.path === 'cash' ? 'Ruta de efectivo' : 'Ruta más lejana'} · <span class="mono">${fmt(path.length, 1)} m</span> <button id="pathx" aria-label="Quitar ruta">✕</button></span>` : '') +
+  (bRoute() ? `<span class="chip">${esc(S.broute.label)} · <span class="mono">${fmt(S.broute.r.length, 1)} m</span> <button id="brx" aria-label="Quitar ruta">✕</button></span>` : '') +
   (S.mark ? `<span class="chip">${S.mark === 'blind' ? 'Puntos ciegos' : 'Áreas inaccesibles'} (borde punteado) <button id="markx" aria-label="Quitar marca">✕</button></span>` : '') +
   (isRel ? `<span class="chip" title="${S.thrUser[S.focus.k] ? 'Ajustado a mano' : 'Automático: percentil 80 de la relación'}">Umbral${S.thrUser[S.focus.k] ? '' : ' auto'} <span class="step" style="border:0;height:20px"><button id="thr-">−</button><span class="mono">${S.thr.toFixed(2)}</span><button id="thr+">+</button></span></span><span class="chip mono">${fmtA(crossArea())} m² sobre umbral</span>` : '');
  $('pathx') && ($('pathx').onclick = () => { S.path = null; renderViewport(); });
  $('markx') && ($('markx').onclick = () => { S.mark = null; renderViewport(); });
+ $('brx') && ($('brx').onclick = () => { S.broute = null; renderViewport(); });
  if (isRel) { $('thr-').onclick = () => setThr(-.05); $('thr+').onclick = () => setThr(.05); } }
-function renderSelChip() { const n = S.selFam.size, w = S.res ? S.res.warnings.length : 0;
- $('selchip').innerHTML = (w ? `<span class="chip wchip" id="warnchip" title="Ver avisos del análisis">⚠ ${w} aviso${w > 1 ? 's' : ''}</span> ` : '') + (n ? `<span class="chip sel">${n} familia${n > 1 ? 's' : ''} seleccionada${n > 1 ? 's' : ''}${S.iso ? ' · aisladas' : ''} <button aria-label="Limpiar selección" id="selx">✕</button></span>` : (S.hlRooms.length ? `<span class="chip">${S.hlRooms.length} room${S.hlRooms.length > 1 ? 's' : ''} resaltado${S.hlRooms.length > 1 ? 's' : ''} <button id="roomx">✕</button></span>` : ''));
+function renderSelChip() { const n = S.selFam.size, w = allWarnings().length;
+ if (!w) S.warnOpen = false;
+ $('selchip').innerHTML = (w ? `<button class="chip wchip" id="warnchip" aria-expanded="${S.warnOpen}" aria-controls="warnpop" title="Ver avisos del análisis">⚠ ${w} aviso${w > 1 ? 's' : ''}</button>${S.warnOpen ? warnPop() : ''} ` : '') + (n ? `<span class="chip sel">${n} familia${n > 1 ? 's' : ''} seleccionada${n > 1 ? 's' : ''}${S.iso ? ' · aisladas' : ''} <button aria-label="Limpiar selección" id="selx">✕</button></span>` : (S.hlRooms.length ? `<span class="chip">${S.hlRooms.length} room${S.hlRooms.length > 1 ? 's' : ''} resaltado${S.hlRooms.length > 1 ? 's' : ''} <button id="roomx">✕</button></span>` : ''));
  $('selx') && ($('selx').onclick = () => { S.selFam.clear(); S.iso = false; renderViewport(); }); $('roomx') && ($('roomx').onclick = () => { S.hlRooms = []; renderViewport(); });
- $('warnchip') && ($('warnchip').onclick = () => { const c = $('insp').querySelector('.warn'); c && c.scrollIntoView({behavior: 'smooth'}); }); }
+ $('warnchip') && ($('warnchip').onclick = () => { S.warnOpen = S.warnEnter = !S.warnOpen; renderSelChip(); Snd.click(); }); }
 
 /* ===================== INSPECTOR ===================== */
-function warnCard() { const w = S.res.warnings; return w.length ? `<div class="card warn"><div class="eyebrow" style="color:#B07818">Avisos del análisis</div><ul>${w.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''; }
+/** Los avisos del análisis: una ventana bajo el botón de avisos, solo cuando se abre. */
+function warnPop() { const w = allWarnings(), enter = S.warnEnter; S.warnEnter = false; return w.length ? `<div class="warnpop${enter ? ' enter' : ''}" id="warnpop" role="dialog" aria-label="Avisos del análisis"><div class="eyebrow" style="color:#B07818">Avisos del análisis</div><ul>${w.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''; }
+/** Flujo entre niveles: qué conecta los niveles y las rutas que los cruzan. */
+function levelsCard() {
+ const cs = E.connectorsOf(cur().model), n = {}; cs.forEach(c => { n[c.kind] = (n[c.kind] || 0) + Math.max(1, c.levels.length - 1); });
+ const NAME = {stair: ['tramo de escalera', 'tramos de escalera'], ramp: ['rampa', 'rampas'], elevator: ['parada de elevador', 'paradas de elevador'], escalator: ['escalera eléctrica', 'escaleras eléctricas']};
+ const what = Object.keys(n).map(k => `${n[k]} ${NAME[k][n[k] === 1 ? 0 : 1]}`).join(', ');
+ return `<div class="card" style="animation-delay:.12s"><div class="eyebrow" style="margin-bottom:4px">Entre niveles</div>
+  <div class="feel" style="font-size:12.5px">${cs.length ? `${what}${cs.some(c => c.derived) ? ', deducidos de rooms de escalera o elevador apilados' : ''}.` : 'Sin escaleras ni elevadores: cada nivel queda aislado. Exporta de nuevo o nombra los rooms "Escalera" o "Elevador".'}</div>
+  <div class="relto" style="margin-top:8px"><button class="has" data-broute="far">Ruta más larga del edificio</button><button class="has" data-stack="1">Todos los niveles en 3D</button></div>
+  <div class="muted" style="font-size:11px;margin-top:6px">Clic en un room (en la lista o en la planta) para ver su ruta desde el acceso, aunque esté en otro nivel.</div></div>`; }
 function renderInspector() { const box = $('insp');
  if (!S.res) { box.innerHTML = `<div><div class="eyebrow">Inspector</div><h2 style="margin-top:4px">Sin modelo</h2><div class="feel" style="margin-top:3px">El análisis se arma con lo que trae el modelo de Revit.</div></div>
   <div class="card"><div class="eyebrow" style="margin-bottom:6px">Qué lee de Revit</div><table>
   <tr><td>Pisos del nivel</td><td class="v">retícula</td></tr><tr><td>Muros</td><td class="v">separan</td></tr><tr><td>Muro cortina y ventanas</td><td class="v">vista afuera</td></tr><tr><td>Puertas</td><td class="v">conectan</td></tr><tr><td>Columnas y muebles</td><td class="v">obstáculos</td></tr><tr><td>Parámetros SA_</td><td class="v">roles y materiales</td></tr></table></div>
   <div class="card insight">Cada exportación lleva su etapa. Carga varias del mismo modelo y gira el bisel para compararlas.</div>`; return; }
- const st = S.stage, pr = prevRes(), pn = prevStageName(); let h = warnCard();
+ const st = S.stage, pr = prevRes(), pn = prevStageName(); let h = '';
  if (S.focus.type === 'pillar') { const p = BY[S.focus.k], sc = score(p.k), psc = pr && pr.scores[p.k] != null ? Math.round(pr.scores[p.k]) : null, dv = sc != null && psc != null ? sc - psc : null, rooms = roomsBy(p.k), ms = S.res.metrics[p.k], pms = pr ? pr.metrics[p.k] : null;
   h += `<div><div class="eyebrow" style="color:${p.c1}">Pilar · ${p.s}</div><h2 style="margin-top:4px">${p.name}</h2><div class="feel" style="margin-top:3px">“${p.feel}”</div></div>
   <div class="card"><div class="kpi"><div class="n">${sc == null ? '—' : sc}</div><div class="u">/ 100 · META ${p.target}<br>${dv == null ? `<span class="muted">${pn ? 'sin dato en ' + pn.toLowerCase() : 'sin etapa previa'}</span>` : `<span class="${dv >= 0 ? 'up' : 'dn'}">${dv >= 0 ? '▲' : '▼'} ${Math.abs(dv)} vs ${pn.toLowerCase()}</span>`}</div><span class="sp"></span><div class="u" style="text-align:right">PESO<br><span class="step" style="margin-top:3px;width:76px"><button id="iw-">−</button><span>${Math.round(S.w[p.k] * 100)}%</span><button id="iw+">+</button></span></div></div>
@@ -471,6 +626,7 @@ function renderInspector() { const box = $('insp');
     return `<tr><td>${row[0]}<small>${esc(row[5])}</small></td><td class="v">${fmt(now, row[3])} ${row[2]}</td><td class="d ${z ? '' : good ? 'up' : 'dn'}">${z ? '·' : (dd > 0 ? '+' : '−') + fmt(Math.abs(dd), row[3])}</td></tr>`; }).join('')}</table>
    ${p.k === 'flujo' ? `<div class="relto" style="margin-top:8px"><button class="has" data-path="farthest">Ver ruta más lejana</button><button class="has" data-path="cash">Ver ruta de efectivo</button><button class="has" data-mark="unreach">Áreas inaccesibles</button></div>` : ''}
    ${p.k === 'seg' ? `<div class="relto" style="margin-top:8px"><button class="has" data-mark="blind">Ver puntos ciegos</button><button class="has" data-path="cash">Ruta de efectivo</button></div>` : ''}</div>
+  ${p.k === 'flujo' && multiLevel() ? levelsCard() : ''}
   ${rooms.length ? `<div class="card" style="animation-delay:.15s"><div style="display:flex;justify-content:space-between"><div class="eyebrow">Rooms · peor a mejor</div><span class="mono muted" style="font-size:9.5px">media de celdas</span></div><div class="rooms" style="margin-top:6px">${rooms.slice(0, 8).map(r => `<div class="room-r" data-r="${r.k}"><span>${esc(r.n)}</span><span class="mini"><i style="width:${r.v}%;background:${p.c1}"></i></span><span class="v">${r.v}</span></div>`).join('')}</div></div>` : ''}`; }
  else { const r = R[S.focus.k], [a, b] = S.focus.k.split('|'), area = crossArea(), free = S.res.G.freeCount * cellArea(), top = relRooms().slice(0, 3);
   const text = `${fmtA(area)} m² (${fmt(free ? area / free * 100 : 0)} % del área libre) son ${r.d}.` + (top.length ? ` Se concentran en ${top.map(x => `${esc(x.n)} (${fmtA(x.a)} m²)`).join(', ')}.` : '');
@@ -486,15 +642,31 @@ function renderInspector() { const box = $('insp');
  box.innerHTML = h;
  $('iw-') && ($('iw-').onclick = () => bumpW(S.focus.k, -.05)); $('iw+') && ($('iw+').onclick = () => bumpW(S.focus.k, .05));
  box.querySelectorAll('.relto [data-o]').forEach(b => b.onclick = () => { const rk = key(S.focus.k, b.dataset.o); if (S.rels.has(rk)) focus('rel', rk); else createRel(S.focus.k, b.dataset.o); });
- box.querySelectorAll('[data-r]').forEach(r => r.onclick = () => { S.hlRooms = [+r.dataset.r]; renderViewport(); Snd.click(); });
+ box.querySelectorAll('[data-r]').forEach(r => r.onclick = () => roomClick(+r.dataset.r));
+ box.querySelectorAll('[data-broute]').forEach(b => b.onclick = () => showBuildingRoute('far'));
+ box.querySelectorAll('[data-stack]').forEach(b => b.onclick = () => setStack(true));
  box.querySelectorAll('[data-p]').forEach(r => r.onclick = () => focus('pillar', r.dataset.p));
  box.querySelectorAll('[data-path]').forEach(b => b.onclick = () => showPath(b.dataset.path));
  box.querySelectorAll('[data-mark]').forEach(b => b.onclick = () => showMark(b.dataset.mark));
  $('i-pres') && ($('i-pres').onclick = present); $('i-rm') && ($('i-rm').onclick = () => removeRel(S.focus.k)); }
+/** Clic en un room: lo resalta; en Flujo además traza su ruta desde el acceso, aunque haya que subir de nivel. */
+function roomClick(k) { S.hlRooms = [k]; if (S.focus.type === 'pillar' && S.focus.k === 'flujo') showBuildingRoute('room', k); else { renderViewport(); Snd.click(); } }
 function showPath(k) { if (!S.res) return; const p = S.res.G.paths[k];
  if (!p) { toast(k === 'cash' ? 'No hay ruta de efectivo' : 'No hay ruta', k === 'cash' ? 'falta un room "Bóveda" o una caja (SA_Rol, o familia de mostrador/cajero)' : 'no se encontró acceso'); return; }
- S.path = k; renderViewport(); Snd.tone(k === 'cash' ? BY.seg.f : BY.flujo.f, 1.2, .04);
+ S.path = k; S.broute = null; renderViewport(); Snd.tone(k === 'cash' ? BY.seg.f : BY.flujo.f, 1.2, .04);
  toast(k === 'cash' ? 'Ruta de efectivo · bóveda → caja' : 'Ruta más lejana desde el acceso', `${fmt(p.length, 1)} m`); }
+/** Ruta del edificio: 'far' = la más larga desde el acceso; 'room' = del acceso al room k del nivel li (por omisión, el actual). */
+function showBuildingRoute(kind, k, li) {
+ const b = bld(); if (!b) return;
+ if (li == null) li = b.levels.findIndex(L => L.id === S.res.level.id);
+ const L = b.levels[li], r = kind === 'far' ? b.farthest : L ? b.toRoom(li, k) : null;
+ if (!r) { toast('No hay ruta', b.levels.length > 1 && !b.links.length ? 'faltan escaleras o elevadores entre niveles (ver avisos)' : 'ese room no se alcanza desde el acceso'); return; }
+ const label = kind === 'far' ? 'Ruta más larga del edificio' : `Ruta a ${L.res.sel.rooms[k].name || 'room'}`;
+ S.path = null; S.broute = {key: b.key, r, label}; renderViewport(); Snd.tone(BY.flujo.f, 1.2, .04);
+ toast(label, `${fmt(r.length, 1)} m · ${[...new Set(r.legs.map(l => b.levels[l.li].name))].join(' → ')}`); }
+function setStack(v) { if (v && !multiLevel()) { toast('El modelo tiene un solo nivel'); return; }
+ const go = () => { S.stack = v; S.cam3 = {k: 1, x: 0, y: 0}; if (v && S.view === 'plan') setView('axo'); else renderViewport(); Snd.click(); };
+ if (v && !bldNow()) { toast('Analizando todos los niveles…', `${E.levelsOf(cur().model).length} niveles`); setTimeout(() => { bld(); go(); }, 40); } else go(); }
 function showMark(k) { if (!S.res) return; S.mark = k; if (k === 'blind') focus('pillar', 'seg'); else focus('pillar', 'flujo');
  const G = S.res.G; let n = 0; for (let c = 0; c < G.n; c++) if (G.free[c] && (k === 'blind' ? G.watch.length && G.seen[c] === 0 : !isFinite(G.dEnt[c]))) n++;
  toast(k === 'blind' ? 'Puntos ciegos' : 'Áreas inaccesibles', `${fmt(n * cellArea(), 1)} m²`); }
@@ -572,6 +744,9 @@ function commands() { const c = []; const g = (grp, t, run, col = '#999', k = ''
   g('Consultas del espacio', '¿Dónde hay estrés? · Flujo × Confort', () => { if (!S.rels.has('flujo|conf')) createRel('flujo', 'conf'); else focus('rel', 'flujo|conf'); }, '#D42A3C');
   g('Consultas del espacio', 'Ruta de efectivo · bóveda → caja', () => { focus('pillar', 'seg'); showPath('cash'); }, BY.seg.c1);
   g('Consultas del espacio', 'Ruta más lejana desde el acceso', () => { focus('pillar', 'flujo'); showPath('farthest'); }, BY.flujo.c1);
+  if (multiLevel()) { g('Consultas del espacio', 'Ruta más larga del edificio · entre niveles', () => { focus('pillar', 'flujo'); showBuildingRoute('far'); }, BY.flujo.c1);
+   g('Vista', '3D · todos los niveles', () => setStack(true), '#8C7BF5'); g('Vista', '3D · un nivel', () => setStack(false), '#8C7BF5');
+   E.levelsOf(cur().model).forEach(L => cur().model.rooms.filter(r => r.level === L.id).forEach(rm => g('Rutas desde el acceso', `${rm.name || rm.number} · ${L.name}`, () => { const b = bld(), li = b.levels.findIndex(x => x.id === L.id), k = li < 0 ? -1 : b.levels[li].res.sel.rooms.findIndex(x => x.id === rm.id); if (k < 0) { toast('Ese room no está en el análisis'); return; } focus('pillar', 'flujo'); showBuildingRoute('room', k, li); }, BY.flujo.c1))); }
   g('Consultas del espacio', 'Puntos ciegos · nadie del personal los ve', () => showMark('blind'), BY.seg.c1);
   g('Consultas del espacio', 'Áreas inaccesibles desde el acceso', () => showMark('unreach'), BY.flujo.c1);
   g('Consultas del espacio', 'Rooms bajo meta en Confort', () => { focus('pillar', 'conf'); S.hlRooms = roomsBy('conf').filter(r => r.v < BY.conf.target).map(r => r.k); renderViewport(); toast(`${S.hlRooms.length} rooms bajo meta`, `Confort < ${BY.conf.target}`); }, BY.conf.c1);
@@ -637,11 +812,14 @@ addEventListener('dragenter', e => { if (e.dataTransfer && [...e.dataTransfer.ty
 addEventListener('dragleave', () => { dragN = Math.max(0, dragN - 1); if (!dragN) $('dropall').classList.remove('on'); });
 addEventListener('dragover', e => e.preventDefault());
 addEventListener('drop', e => { e.preventDefault(); dragN = 0; $('dropall').classList.remove('on'); if (e.dataTransfer.files.length) readFiles(e.dataTransfer.files); });
+// un clic fuera cierra la ventana de avisos
+addEventListener('click', e => { if (S.warnOpen && !e.target.closest('#warnpop, #warnchip')) { S.warnOpen = false; renderSelChip(); } });
 addEventListener('keydown', e => { const k = e.key.toLowerCase();
  if ((e.ctrlKey || e.metaKey) && k === 'k') { e.preventDefault(); openPal(); return; }
  if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); undo(); return; }
  if ((e.ctrlKey || e.metaKey) && k === 'o') { e.preventDefault(); $('file-model').click(); return; }
  if ($('pal').classList.contains('on')) return;
+ if (e.key === 'Escape' && S.warnOpen) { S.warnOpen = false; renderSelChip(); return; }
  if (e.key === 'Escape') { closePresent(); closeFam(); setLink(false); $('anat').classList.remove('on'); return; }
  if ($('present').classList.contains('on')) { if (e.key === 'ArrowRight') { pIdx++; present(); } if (e.key === 'ArrowLeft') { pIdx--; present(); } return; }
  if ($('modal').classList.contains('on') || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;

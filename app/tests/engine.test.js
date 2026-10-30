@@ -178,3 +178,104 @@ test('un muro de doble altura corta los dos niveles', () => {
   assert.strictEqual(r.G.free[cellAt(r, 3, 3)], 0, 'el muro alto aparece arriba');
   assert.strictEqual(r.G.free[cellAt(r, 6, 3)], 1, 'el muro de 3 m no');
 });
+
+/** Un árbol RPC: su caja es la copa (rotada 45°, como la exporta Revit). */
+const tree = (id, x, y, side, h, type) => ({ id, level: 'L0', type, category: 'Planting', z: [-0.2, h],
+  footprint: [[x, y - side / Math.SQRT2], [x + side / Math.SQRT2, y], [x, y + side / Math.SQRT2], [x - side / Math.SQRT2, y]] });
+function garden() {
+  const m = box();
+  Object.assign(m.types, {
+    tt: { category: 'Planting', family: 'M_RPC Tree - Deciduous', name: 'Scarlet Oak - 12.5 Meters', params: {} },
+    tp: { category: 'Planting', family: 'Palmera', name: 'Washingtonia 9 m', params: {} },
+    tn: { category: 'Planting', family: 'M_RPC Tree - Conifer', name: 'Blue Spruce', params: {} },
+    ts: { category: 'Planting', family: 'M_RPC Shrub', name: 'Barberry - 1.0 Meters', params: {} }
+  });
+  m.obstacles.push(tree('oak', 9.2, 3.2, 4, 12.5, 'tt'), tree('bush', 3.2, 3.2, 1.6, 1, 'ts'));
+  return m;
+}
+
+test('vegetación: tipo por familia, copa y tronco', () => {
+  const m = garden();
+  const kind = (type, h) => E.plantOf(m, { category: 'Planting', type, footprint: rect(0, 0, 2, 2), z: [0, h] }).kind;
+  assert.strictEqual(kind('tt', 12), 'tree');
+  assert.strictEqual(kind('tp', 9), 'palm');
+  assert.strictEqual(kind('tn', 8), 'conifer');
+  assert.strictEqual(kind('ts', 1), 'shrub');
+  assert.strictEqual(kind('tt', 1.5), 'shrub', 'un árbol de 1.5 m se comporta como arbusto');
+  assert.strictEqual(E.plantOf(m, { category: 'Furniture', type: 'tb', footprint: rect(0, 0, 1, 1), z: [0, 1] }), null);
+  const oak = E.plantOf(m, m.obstacles[0]);
+  assert.ok(Math.abs(oak.r - 2) < 1e-6, 'radio de copa = lado / 2 aunque la caja venga girada');
+  assert.ok(Math.abs(oak.x - 9.2) < 1e-6 && Math.abs(oak.y - 3.2) < 1e-6);
+  assert.ok(oak.trunk > 0 && oak.trunk < 0.4);
+});
+
+test('un árbol solo estorba con el tronco; el arbusto tapa el paso', () => {
+  const r = E.analyze(garden(), 'L0');
+  assert.strictEqual(r.G.free[cellAt(r, 9.2, 3.2)], 0, 'el tronco ocupa su celda');
+  assert.strictEqual(r.G.free[cellAt(r, 10.2, 3)], 1, 'bajo la copa se camina');
+  assert.notStrictEqual(r.G.sight[cellAt(r, 10.2, 3)], E.OPAQUE, 'y se ve a 1.20 m');
+  assert.strictEqual(r.G.free[cellAt(r, 3.3, 3)], 0, 'el arbusto ocupa toda su mata');
+});
+
+test('un árbol en planta baja no aparece en los niveles de arriba', () => {
+  const m = garden();
+  m.levels.push({ id: 'L1', name: 'Nivel 1', elevation: 4 });
+  m.floors.push({ id: 'f2', level: 'L1', type: 'tf', outline: [rect(0, 0, 12, 6)], top: 4, area: 72 });
+  const r = E.analyze(m, 'L1');
+  assert.ok(!r.sel.obstacles.some(o => o.id === 'oak'));
+  assert.strictEqual(r.G.free[cellAt(r, 9.2, 3.2)], 1);
+});
+
+/** Dos niveles iguales (12 × 6 m); la entrada solo abajo. Arriba se llega por la escalera. */
+function tower(conn) {
+  const m = box();
+  m.levels.push({ id: 'L1', name: 'Nivel 1', elevation: 4 });
+  m.floors.push({ id: 'f2', level: 'L1', type: 'tf', outline: [rect(0, 0, 12, 6)], top: 4, area: 72 });
+  m.rooms.push({ id: 'r3', level: 'L1', name: 'Oficina', number: '3', area: 36, outline: [rect(0.1, 0.1, 5.9, 5.9)] },
+               { id: 'r4', level: 'L1', name: 'Sala', number: '4', area: 36, outline: [rect(6.1, 0.1, 11.9, 5.9)] });
+  ['w1', 'w2', 'w3', 'w4', 'wmid'].forEach((id, k) => { const w = m.walls[k]; m.walls.push(Object.assign({}, w, { id: id + 'u', level: 'L1', z: [4, 7] })); });
+  m.doors.push(door([6, 3], [0, 1], { id: 'dmidu', host: 'wmidu', level: 'L1', z: 4 }));
+  if (conn !== false) m.connectors = [conn || { id: 's1', kind: 'stair', type: 'tst', footprint: rect(10, 4, 11.5, 5.5), z: [0, 4] }];
+  m.types.tst = { category: 'Stairs', family: 'Escalera', name: 'Recta', params: {} };
+  return E.load(m).models[0];
+}
+const atLevel = (b, id) => b.levels.findIndex(L => L.id === id);
+
+test('edificio: la escalera une los niveles y la ruta los cruza', () => {
+  const m = tower(), b = E.building(m);
+  assert.strictEqual(b.links.length, 1);
+  const up = b.levels[atLevel(b, 'L1')], c = cellAt(up.res, 3, 3);
+  const d = b.dist[up.off + c];
+  assert.ok(isFinite(d), 'arriba se alcanza por la escalera');
+  const down = b.levels[atLevel(b, 'L0')], toStair = down.res.G.dEnt[cellAt(down.res, 10.7, 4.7)];
+  assert.ok(d > toStair + 4, 'cuesta más que llegar al pie de la escalera');
+  const r = b.route(atLevel(b, 'L1'), c);
+  assert.deepStrictEqual(r.legs.map(l => b.levels[l.li].id), ['L0', 'L1']);
+  assert.ok(Math.abs(r.length - d) < 1e-3);
+  assert.strictEqual(b.levels[b.farthest.legs[b.farthest.legs.length - 1].li].id, 'L1', 'lo más lejos está arriba');
+});
+
+test('edificio: sin conectores, se deducen de rooms de escalera apilados', () => {
+  const m = tower(false);
+  m.rooms.push({ id: 'e0', level: 'L0', name: 'Escalera', number: 'E', area: 2, outline: [rect(10, 4, 11.5, 5.5)] },
+               { id: 'e1', level: 'L1', name: 'Stair', number: 'E', area: 2, outline: [rect(10, 4, 11.5, 5.5)] });
+  const b = E.building(m);
+  assert.strictEqual(b.links.length, 1);
+  assert.strictEqual(b.links[0].kind, 'stair');
+  assert.ok(b.links[0].derived);
+  const up = b.levels[atLevel(b, 'L1')];
+  assert.ok(isFinite(b.dist[up.off + cellAt(up.res, 3, 3)]));
+});
+
+test('edificio: sin escaleras, el piso de arriba no se alcanza y lo dice', () => {
+  const b = E.building(tower(false));
+  assert.strictEqual(b.links.length, 0);
+  const up = b.levels[atLevel(b, 'L1')];
+  assert.ok(!isFinite(b.dist[up.off + cellAt(up.res, 3, 3)]));
+  assert.ok(b.warnings.some(w => /escaleras|conectores/i.test(w)));
+});
+
+test('edificio: el elevador cuesta su espera', () => {
+  const st = E.building(tower()), el = E.building(tower({ id: 'e1', kind: 'elevator', type: 'tst', footprint: rect(10, 4, 11.5, 5.5), z: [0, 4] }));
+  assert.ok(el.links[0].cost > st.links[0].cost);
+});
