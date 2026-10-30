@@ -75,49 +75,98 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px so
 .itools .hint{font-size:10.5px;line-height:1.3;color:var(--muted);flex:1;min-width:110px}
 .btn.link[aria-pressed=true]{background:#8C7BF5;color:#fff}
 [hidden]{display:none!important}
-/* tablero de pilares y capas */
-.lbody{flex:1;min-height:0;overflow:auto;padding:6px 8px 10px;display:flex;flex-direction:column;gap:14px;scrollbar-width:thin}
-.lsenses{flex:1;min-height:0;display:flex;flex-direction:column}
-.lsec{display:flex;flex-direction:column;gap:3px}
-.lsec>.eyebrow{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:0 6px 3px}.lsec>.eyebrow small{font:400 9.5px Manrope;letter-spacing:0;text-transform:none}
-.pb{display:block;width:100%;text-align:left;border:0;background:transparent;color:var(--ink);font:inherit;padding:8px 9px 9px 10px;border-radius:12px;cursor:pointer;position:relative;transition:background .15s,box-shadow .15s}
-.pb:hover{background:var(--line)}
-.pb.on{background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line-2),0 8px 18px -14px rgba(0,0,0,.45)}
-.pb.on::before{content:'';position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--c)}
-.pb-h{display:flex;align-items:center;gap:7px}.pb-h .pico{color:var(--c);flex:none}
-.pb-n{font:500 12.5px Manrope;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pb-s{display:inline-flex;align-items:center;gap:4px;font:600 10.5px Manrope;color:var(--ink);white-space:nowrap}.pb-s .sico{width:12px;height:12px}.pb-s.none{color:var(--muted);font-weight:500}
-.pb-h b{font:400 20px/1 Outfit;min-width:28px;text-align:right;letter-spacing:-.02em}
-.pb-bar{display:block;position:relative;height:4px;margin:8px 0 0 22px;border-radius:2px;background:var(--line)}
-.pb-bar i{position:absolute;inset:0 auto 0 0;border-radius:2px;background:var(--c);transition:width .6s cubic-bezier(.2,.8,.2,1)}
-.pb-bar em{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:var(--ink);border-radius:1px}
-.rcs{display:flex;flex-wrap:wrap;gap:5px;padding:0 4px}
-.rc{display:inline-flex;align-items:center;gap:3px;height:28px;padding:0 10px 0 8px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font:500 11px Manrope;cursor:pointer;max-width:100%}
-.rc:hover{border-color:var(--line-2)}.rc i{width:8px;height:8px;border-radius:50%;flex:none}.rc i+i{margin:0 4px 0 -3px;box-shadow:0 0 0 1.5px var(--surface-2)}
-.rc.on{border-color:#D42A3C;box-shadow:inset 0 0 0 1px #D42A3C}.rcs .lnote{padding:0 2px}
-.lyg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:0 4px}
-.lt{display:flex;align-items:center;gap:6px;height:28px;padding:0 8px;border-radius:8px;border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink);font:500 11.5px Manrope;cursor:pointer;min-width:0;text-align:left;transition:background .15s,color .15s,border-color .15s}
-.lt span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lt.wide{grid-column:1/-1}
-.lt:hover{border-color:color-mix(in srgb,#8C7BF5 50%,transparent)}
-.lt[aria-pressed=false]{background:transparent;border-color:var(--line);color:var(--muted)}
-.eye{width:14px;height:14px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.eye .off{display:none}
-.lt .eye{color:#8C7BF5}.lt[aria-pressed=false] .eye{color:var(--muted)}.lt[aria-pressed=false] .eye .on{display:none}.lt[aria-pressed=false] .eye .off{display:inline}
-.lyo{display:grid;gap:2px;padding:8px 6px 0}
+/* ===== lenguaje de los paneles laterales: tablero (izq.) e inspector (der.) =====
+   Encabezado fijo (.phd) y cuerpo con scroll (.pbody) de secciones planas (.sec) separadas por una línea.
+   Lo enfocado va en una tarjeta (.hero / .row.on). Una sola barra (.b4), valor (.val), estado (.pst), fila (.row),
+   chip (.rc) y botón de ícono (.ib). Escala de texto: 10 · 11 · 12.5 · 17 · 20 · 38. Acento: violeta, nunca negro. */
+:root{--acc-t:color-mix(in srgb,#8C7BF5 13%,var(--surface-2));--acc-b:color-mix(in srgb,#8C7BF5 45%,transparent);--acc-i:#6F5CE8}
+[data-theme=noche]{--acc-i:#B3A7FF}
+.side{display:flex;flex-direction:column}
+.phd{display:flex;align-items:flex-start;gap:8px;padding:12px 14px 11px;border-bottom:1px solid var(--line);flex:none}
+.phd-t{flex:1;min-width:0}
+.phd h3{display:flex;align-items:center;gap:7px;font:500 17px/1.2 Outfit;letter-spacing:-.01em;margin-top:3px}
+.phd h3 .pico{color:var(--c);flex:none}.phd h3>span:last-child{min-width:0}
+.phd p{font-size:11.5px;line-height:1.4;color:var(--muted);margin-top:3px}
+.phd-a{display:flex;gap:6px;flex:none}
+.pbody{flex:1;min-height:0;overflow:auto;padding:0 8px 10px;scrollbar-width:thin}
+.sec{padding:12px 6px;border-top:1px solid var(--line)}.sec:first-child{border-top:0;padding-top:8px}
+.sec-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px}
+.sec-m{font:400 10.5px Manrope;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sec p{font-size:11.5px;line-height:1.45;color:var(--muted)}.sec p b{color:var(--ink);font-weight:600}
+.hero{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 18px -14px rgba(0,0,0,.45)}
+.dots{display:inline-flex;flex:none}.dots i{width:9px;height:9px;border-radius:50%}.dots i+i{margin-left:-3px;box-shadow:0 0 0 1.5px var(--surface-2)}
+/* valor, texto secundario y estado */
+.val{font:400 20px/1 Outfit;letter-spacing:-.02em;white-space:nowrap}.val small{font:400 10px 'JetBrains Mono';letter-spacing:0;color:var(--muted);margin-left:3px}
+.val.xl{font-size:38px;font-weight:300;letter-spacing:-.03em}.val.xl small{font-size:11px}
+.val.s{font-size:14px;text-align:right}
+.meta{font:400 11px/1.45 Manrope;color:var(--muted)}.meta b{color:var(--ink);font-weight:600}
+.side .pst{font:600 11px Manrope;gap:5px}.side .pst .sico{width:12px;height:12px}.side .pst.none{font-weight:500}
+/* barra: 4 px, relleno del color del pilar, raya de la meta (6 px en la tarjeta enfocada) */
+.b4{display:block;position:relative;height:4px;border-radius:2px;background:var(--line)}
+.b4 i{position:absolute;inset:0 auto 0 0;border-radius:2px;background:var(--c,var(--ink));transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.b4 em{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;border-radius:1px;background:var(--ink)}
+.b4.l{height:6px;border-radius:3px}.b4.l i{border-radius:3px}.b4.l em{top:-4px;bottom:-4px}
+/* fila: etiqueta a la izquierda, estado y valor a la derecha; segunda línea a todo lo ancho */
+.list{display:grid;gap:1px}
+.list.div>.row+.row{border-top:1px solid var(--line);border-radius:0}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:7px 10px;width:100%;padding:8px;border:0;border-radius:10px;background:transparent;color:var(--ink);font:inherit;text-align:left;position:relative}
+button.row{cursor:pointer;transition:background .15s,box-shadow .15s}button.row:hover{background:var(--line)}
+.row .lab{display:flex;align-items:center;gap:7px;min-width:0;font:500 12.5px/1.3 Manrope}.row .lab>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .lab .pico{color:var(--c);flex:none}
+.row .end{display:flex;align-items:center;gap:8px}
+.row .full{grid-column:1/-1}.row .b4.ind{margin-left:22px}
+.row.on{background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--line-2),0 8px 18px -14px rgba(0,0,0,.45)}
+.row.on::before{content:'';position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--c)}
+.row.s{grid-template-columns:minmax(0,1fr) 72px 34px;padding:6px 8px;gap:10px}.row.s .lab{font-weight:400;font-size:12px}
+.row.m{align-items:start;padding:9px 2px}.row.m .lab>span{white-space:normal}.row.m .end{gap:6px}
+.row.kv{padding:7px 2px}.row.kv .lab{font-weight:400;font-size:12px}
+.mt{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px}.mt .src{flex-basis:100%;font-size:10.5px}
+.ib-ph{width:26px;flex:none}
+/* chips: relaciones (izq.), relacionar con y acciones (der.) */
+.rcs{display:flex;flex-wrap:wrap;gap:5px}
+.rc{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 11px 0 9px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font:500 11.5px Manrope;cursor:pointer;max-width:100%;transition:border-color .15s,background .15s,color .15s}
+.rc:hover{border-color:var(--acc-b)}.rc .dots i{width:8px;height:8px}
+.rc.on{border-color:#D42A3C;box-shadow:inset 0 0 0 1px #D42A3C}
+.rc.new{background:transparent;border-style:dashed;color:var(--muted)}.rc.new:hover{color:var(--ink)}
+/* botón de ícono: capas y ojo de las métricas */
+.ib{position:relative;display:grid;place-items:center;width:28px;height:28px;padding:0;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;flex:none;transition:background .15s,color .15s,border-color .15s}
+.ib:hover{border-color:var(--acc-b);color:var(--ink)}
+.ib[aria-pressed=true]{background:var(--acc-t);border-color:var(--acc-b);color:var(--acc-i)}
+.ib svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.ib svg .f{fill:currentColor;stroke:none}
+.ib.sm{width:26px;height:22px;border-radius:7px}.ib.sm svg{width:14px;height:14px}
+.ib.tg[aria-pressed=false]::after{content:'';position:absolute;left:50%;top:50%;width:21px;height:1.5px;border-radius:1px;background:currentColor;transform:translate(-50%,-50%) rotate(-45deg);box-shadow:0 0 0 1.5px var(--bg)}
+.eye .off{display:none}
+/* capas */
+.lyg{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}.lyg .ib{width:auto;height:30px}
+.lyo{display:grid;gap:2px;margin-top:10px}
 .ly-op{display:grid;grid-template-columns:48px 1fr 38px;align-items:center;gap:8px;min-height:26px;font-size:11px;color:var(--muted);transition:opacity .2s}
-.ly-op input{width:100%;margin:0;accent-color:#8C7BF5}.ly-op output{font:500 10px 'JetBrains Mono';text-align:right;color:var(--ink)}
+.ly-op input{width:100%;margin:0;height:14px;background:transparent;cursor:pointer;-webkit-appearance:none;appearance:none}
+.ly-op input::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(90deg,#8C7BF5 var(--v,100%),var(--line) var(--v,100%))}
+.ly-op input::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;margin-top:-4px;border-radius:50%;background:var(--surface-2);border:2px solid #8C7BF5;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.ly-op input::-moz-range-track{height:4px;border-radius:2px;background:var(--line)}.ly-op input::-moz-range-progress{height:4px;border-radius:2px;background:#8C7BF5}
+.ly-op input::-moz-range-thumb{width:9px;height:9px;border-radius:50%;background:var(--surface-2);border:2px solid #8C7BF5}
+.ly-op output{font:500 10px 'JetBrains Mono';text-align:right;color:var(--ink)}
 .ly-op[aria-disabled=true]{opacity:.4;pointer-events:none}
 .ly-op.mn{grid-template-columns:48px auto 1fr}.ly-op.mn .btn{justify-self:end}.ly-op .step{width:74px}
 .btn.mini{height:22px;font-size:10.5px;padding:0 9px}
-.ly-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 6px 2px;font:500 12px Manrope}
+.ly-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:6px;font:500 12px Manrope}
 .ly-row .seg{height:26px}.ly-row .seg button{height:22px;padding:0 8px;font-size:10.5px}
-.prio{border-top:1px solid var(--line);padding-top:8px}
-.prio summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;min-height:30px;padding:2px 6px;border-radius:9px;font:600 9.5px Manrope;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
+/* tarjeta enfocada del inspector */
+.hk{padding:12px 12px 11px}
+.hk-top{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-bottom:11px}.hk-top .pst{margin-bottom:5px}
+.hk-m{display:flex;justify-content:space-between;margin-top:8px}
+.hk-d{margin-top:9px;padding-top:8px;border-top:1px solid var(--line)}
+/* acciones sugeridas */
+.acts{list-style:none;padding:0;display:grid;gap:5px}.acts li{position:relative;padding-left:15px;font-size:12px;line-height:1.4}.acts li::before{content:'';position:absolute;left:2px;top:.5em;width:6px;height:6px;border-radius:50%;border:1.5px solid #D42A3C}
+/* prioridades del cliente */
+.prio summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:6px;margin:-4px -6px;padding:4px 6px;border-radius:8px}
 .prio summary:hover{background:var(--line)}.prio summary::-webkit-details-marker{display:none}
-.prio summary::before{content:'›';font:500 15px/1 Manrope;letter-spacing:0;transition:transform .2s}.prio[open] summary::before{transform:rotate(90deg)}
-.prio summary b{margin-left:auto;font:400 13px Outfit;letter-spacing:0;text-transform:none;color:var(--ink)}
-.prio .mixer{padding:2px 0 0}
-.lnote{font-size:11px;line-height:1.45;color:var(--muted);padding:4px 6px 8px}.lnote b{color:var(--ink);font-weight:600}
-@media (prefers-reduced-motion:reduce){.pb-bar i,.lt,.ly-op{transition:none}}
+.prio summary::before{content:'›';font:500 14px/1 Manrope;color:var(--muted);transition:transform .2s}.prio[open] summary::before{transform:rotate(90deg)}
+.prio #prio-ix{margin-left:auto;font:400 14px Outfit;color:var(--ink)}
+.prio[open] summary{margin-bottom:6px}.prio .mixer{padding:4px 0 0}
+.side .mrow{height:30px;font-size:12px;border-radius:10px}
+.lsenses{flex:1;min-height:0;display:flex;flex-direction:column}
+@media (prefers-reduced-motion:reduce){.b4 i,.ib,.ly-op,.rc{transition:none}}
 .anat{position:absolute;inset:6px;z-index:5;display:none;padding:12px;border-radius:14px;background:var(--surface-2);border:1px solid var(--line);box-shadow:var(--shadow);overflow:auto}
 .anat.on{display:block;animation:fade .25s both}
 .anat dl{display:grid;grid-template-columns:auto 1fr;gap:7px 10px;margin-top:8px;font-size:11.5px;line-height:1.4}
@@ -189,17 +238,6 @@ button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px so
 .kpi{display:flex;align-items:flex-end;gap:8px}
 .kpi .n{font:300 36px/0.9 Outfit;letter-spacing:-.03em}
 .kpi .u{font:500 9.5px 'JetBrains Mono';color:var(--muted);padding-bottom:2px}
-.ikpi .kpi{align-items:flex-end}.ikpi .kpi .pst{align-self:center;font-size:11px}.ikpi .bar{margin-top:10px}
-.ik-m{display:flex;justify-content:space-between;margin-top:7px;font:400 10.5px 'JetBrains Mono';color:var(--muted)}.ik-m b{color:var(--ink);font-weight:500}
-.ik-d{margin-top:8px;padding-top:7px;border-top:1px solid var(--line);font-size:11px;line-height:1.4;color:var(--muted)}.ik-d b{color:var(--ink);font-weight:600;margin-right:2px}
-.ims{display:grid;margin-top:2px}
-.im{padding:8px 0 7px;border-bottom:1px solid var(--line)}.im:last-child{border-bottom:0;padding-bottom:1px}
-.im-h{display:flex;align-items:baseline;gap:6px;font-size:12px;line-height:1.3}.im-h>span{flex:1;min-width:0}
-.im-h b{font:400 18px/1 Outfit;letter-spacing:-.01em;white-space:nowrap}.im-h b small{font:400 10px 'JetBrains Mono';color:var(--muted)}
-.im-f{display:flex;flex-wrap:wrap;gap:3px 8px;margin-top:5px;font:400 9.5px/1.4 'JetBrains Mono';color:var(--muted)}.im-f .pst{font:600 10.5px Manrope;gap:4px}.im-f .sico{width:12px;height:12px}
-.im-eye{align-self:center;flex:none;display:grid;place-items:center;width:26px;height:22px;padding:0;border-radius:7px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer}
-.im-eye:hover{border-color:var(--line-2);color:var(--ink)}
-.im-eye[aria-pressed=true]{background:color-mix(in srgb,#8C7BF5 16%,var(--surface-2));border-color:color-mix(in srgb,#8C7BF5 50%,transparent);color:var(--ink)}
 .bar{position:relative;height:7px;border-radius:5px;background:var(--line);margin-top:7px}
 .bar .f{position:absolute;inset:0 auto 0 0;border-radius:5px;transition:width .8s cubic-bezier(.2,.8,.2,1)}
 .bar .tg{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink)}
@@ -219,7 +257,6 @@ td small{display:block;color:var(--muted);font:400 9px/1.35 'JetBrains Mono'}
 .relto button{display:inline-flex;gap:5px;align-items:center;border:1px dashed var(--line-2);background:transparent;color:var(--ink);border-radius:999px;height:24px;padding:0 8px;font:500 10.5px Manrope;cursor:pointer}
 .relto button.has{border-style:solid;background:var(--surface-2)}
 .relto i{width:7px;height:7px;border-radius:50%}
-.acts{list-style:none;padding:0;display:grid;gap:4px}.acts li{position:relative;padding-left:14px;font-size:12px;line-height:1.4}.acts li::before{content:'';position:absolute;left:2px;top:.55em;width:6px;height:6px;border-radius:50%;border:1.5px solid #D42A3C}
 .insight{border-left:3px solid #8C7BF5;padding:1px 0 1px 9px;font-size:11.5px}
 /* modal familias */
 .modal{position:fixed;inset:0;z-index:25;display:none;place-items:center;background:rgba(10,8,20,.22);backdrop-filter:blur(3px)}
@@ -433,15 +470,15 @@ select.lvl{height:28px;border:1px solid var(--line);border-radius:999px;backgrou
   </div>
 
   <div class="ws">
-    <section class="glass panel" aria-label="Pilares y capas">
-      <div class="ph"><div><div class="eyebrow" id="lp-eye">Diagnóstico</div><h3 id="lp-h">Pilares</h3></div>
-        <div style="display:flex;gap:6px"><button class="btn" id="b-back" hidden title="Volver al tablero de pilares">← Tablero</button><button class="btn sq" id="b-anat" hidden aria-label="Cómo leer el instrumento" title="Cómo leer">?</button><button class="btn sq" id="b-undo" aria-label="Deshacer" title="Deshacer (Ctrl Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg></button></div></div>
-      <div class="lbody" id="lboard">
-        <div class="lsec"><div class="eyebrow">Puntaje contra meta <small>clic: pintarlo en el plano</small></div><div id="pboard"></div></div>
-        <div class="lsec"><div class="eyebrow">Relaciones</div><div class="rcs" id="prels"></div></div>
-        <div class="lsec"><div class="eyebrow">Capas del plano</div><div id="layers"></div></div>
-        <details class="prio" id="prio"><summary>Prioridades del cliente<b id="prio-ix"></b></summary>
-          <p class="lnote">El <b>peso</b> dice cuánto le importa cada pilar al cliente y solo mueve el <b>índice ponderado</b>: no cambia el plano ni los puntajes. Sin pesos acordados con el cliente, el índice es orientativo.</p>
+    <section class="glass panel side" aria-label="Pilares y capas">
+      <header class="phd"><div class="phd-t"><div class="eyebrow" id="lp-eye">Diagnóstico</div><h3 id="lp-h">Pilares</h3><p id="lp-p">Puntaje contra meta. Clic en un pilar para pintarlo en el plano.</p></div>
+        <div class="phd-a"><button class="btn" id="b-back" hidden title="Volver al tablero de pilares">← Tablero</button><button class="btn sq" id="b-anat" hidden aria-label="Cómo leer el instrumento" title="Cómo leer">?</button><button class="btn sq" id="b-undo" aria-label="Deshacer" title="Deshacer (Ctrl Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg></button></div></header>
+      <div class="pbody" id="lboard">
+        <section class="sec"><div class="list" id="pboard"></div></section>
+        <section class="sec"><div class="sec-h"><span class="eyebrow">Relaciones</span><span class="sec-m">clic: pintarla en el plano</span></div><div class="rcs" id="prels"></div></section>
+        <section class="sec"><div class="sec-h"><span class="eyebrow">Capas del plano</span><span class="sec-m" id="ly-name" aria-live="polite"></span></div><div id="layers"></div></section>
+        <details class="sec prio" id="prio"><summary><span class="eyebrow">Prioridades del cliente</span><span id="prio-ix"></span></summary>
+          <p>El <b>peso</b> dice cuánto le importa cada pilar al cliente y solo mueve el <b>índice ponderado</b>: no cambia el plano ni los puntajes. Sin pesos acordados con el cliente, el índice es orientativo.</p>
           <div class="mixer"></div></details>
       </div>
       <div class="lsenses" id="lsenses" hidden>
@@ -481,7 +518,7 @@ select.lvl{height:28px;border:1px solid var(--line);border-radius:999px;backgrou
       <div class="zpop" id="zpop" role="dialog" aria-label="Ficha del room"></div>
     </section>
 
-    <section class="glass panel" aria-label="Inspector"><div class="insp" id="insp"></div></section>
+    <section class="glass panel side" aria-label="Inspector"><header class="phd" id="insp-h"></header><div class="pbody" id="insp"></div></section>
   </div>
 </div>
 

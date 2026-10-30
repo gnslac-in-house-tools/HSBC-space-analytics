@@ -245,36 +245,50 @@ function renderMixer() { const html = `<div class="mhead"><span></span><span>PIL
   r.addEventListener('click', e => { if (e.target.closest('button,input')) return; focus('pillar', k); });
   r.querySelectorAll('[data-w]').forEach(b => b.onclick = () => bumpW(k, b.dataset.w === '+' ? .05 : -.05));
   r.querySelector('input').onchange = e => { snapshot(`índice ${BY[k].s}`); S.inc[k] = e.target.checked; renderAll(); toast(`${BY[k].s} ${S.inc[k] ? 'incluido en' : 'excluido del'} índice`, '', {label: 'Deshacer', run: undo}); }; }); });
- const ix = S.res ? idxNow() : null; $('prio-ix').textContent = ix ? `Índice ${fmt(ix.v, 1)}` : ''; }
+ const ix = S.res ? idxNow() : null; $('prio-ix').textContent = ix ? `índice ${fmt(ix.v, 1)}` : ''; }
 /* ===================== tablero de pilares y capas (panel izquierdo) ===================== */
 const RATE_S = {ok: 'Cumple', mid: 'Mejorar', low: 'Atención'}; // RATE en corto, para la fila del tablero
-/** Cada pilar: puntaje contra su meta, con estado (ícono + texto). Clic = esa capa en el plano. Debajo, las relaciones activas. */
+/** Cada pilar es una fila: puntaje contra su meta, con estado (ícono + texto). Clic = esa capa en el plano. Debajo, las relaciones activas. */
 function renderBoard() { const b = $('pboard');
- if (!S.res) { b.innerHTML = '<p class="lnote">Carga un modelo para ver sus pilares.</p>'; $('prels').innerHTML = ''; return; }
+ if (!S.res) { b.innerHTML = '<p class="meta">Carga un modelo para ver sus pilares.</p>'; $('prels').innerHTML = ''; return; }
  b.innerHTML = P.map(p => { const sc = score(p.k), rt = ratePillar(sc, p.target), on = S.focus.type === 'pillar' && S.focus.k === p.k;
-  return `<button class="pb${on ? ' on' : ''}" data-k="${p.k}" aria-pressed="${on}" style="--c:${p.c1}" title="${p.name}: ${sc == null ? 'sin datos' : sc} de 100, meta ${p.target}. Clic para pintarlo en el plano.">
-   <span class="pb-h">${pIcon(p.k, 15)}<span class="pb-n">${p.s}</span>${rt ? `<span class="pb-s">${sIcon(rt)}${RATE_S[rt]}</span>` : '<span class="pb-s none">Sin datos</span>'}<b>${sc == null ? '—' : sc}</b></span>
-   <span class="pb-bar" aria-hidden="true"><i style="width:${sc || 0}%"></i><em style="left:${p.target}%"></em></span></button>`; }).join('');
- b.querySelectorAll('.pb').forEach(x => x.onclick = () => { const k = x.dataset.k; focus('pillar', k); Snd.tone(BY[k].f, 1.2, .04); });
+  return `<button class="row${on ? ' on' : ''}" data-k="${p.k}" aria-pressed="${on}" style="--c:${p.c1}" title="${p.name}: ${sc == null ? 'sin datos' : sc} de 100, meta ${p.target}${rt ? ' · ' + RATE[rt] : ''}. Clic para pintarlo en el plano.">
+   <span class="lab">${pIcon(p.k, 15)}<span>${p.s}</span></span><span class="end">${rt ? `<span class="pst">${sIcon(rt)}${RATE_S[rt]}</span>` : '<span class="pst none">Sin datos</span>'}<span class="val">${sc == null ? '—' : sc}</span></span>
+   <span class="b4 ind full" aria-hidden="true"><i style="width:${sc || 0}%"></i><em style="left:${p.target}%"></em></span></button>`; }).join('');
+ b.querySelectorAll('.row').forEach(x => x.onclick = () => { const k = x.dataset.k; focus('pillar', k); Snd.tone(BY[k].f, 1.2, .04); });
  $('prels').innerHTML = [...S.rels].map(rk => { const [a, c] = rk.split('|'), on = S.focus.type === 'rel' && S.focus.k === rk;
-  return `<button class="rc${on ? ' on' : ''}" data-rk="${rk}" aria-pressed="${on}" title="${R[rk].q}"><i style="background:${BY[a].c1}"></i><i style="background:${BY[c].c1}"></i>${R[rk].n}</button>`; }).join('')
-  || '<p class="lnote">Ninguna. Créalas desde el inspector: <b>Relacionar con</b>.</p>';
+  return `<button class="rc${on ? ' on' : ''}" data-rk="${rk}" aria-pressed="${on}" title="${R[rk].q}">${dots(BY[a].c1, BY[c].c1)}${R[rk].n}</button>`; }).join('')
+  || '<p class="meta">Ninguna. Créalas desde el inspector: <b>Relacionar con</b>.</p>';
  $('prels').querySelectorAll('[data-rk]').forEach(x => x.onclick = () => focus('rel', x.dataset.rk)); }
 
 /** Capas del plano (y del 3D): qué se ve y qué tan fuerte. Se arman una vez; syncLayers() solo refleja el estado. */
-const LAYS = [['heat', 'Mapa de calor'], ['grid', 'Retícula'], ['labels', 'Nombres'], ['furn', 'Mobiliario'], ['plants', 'Vegetación'], ['ent', 'Accesos'],
- ['watch', 'Puestos de personal', 'Puestos de personal: en Seguridad se ven siempre']];
+// [capa, nombre, ícono, nota]: una fila de íconos; el nombre sale en el título de la sección al pasar el cursor
+const LAYS = [
+ ['heat', 'Mapa de calor', '<rect x="3.5" y="3.5" width="7" height="7" rx="1.5" class="f" opacity=".95"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5" class="f" opacity=".55"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5" class="f" opacity=".35"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5" class="f" opacity=".75"/>'],
+ ['grid', 'Retícula', '<rect x="3.5" y="3.5" width="17" height="17" rx="2"/><path d="M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17"/>'],
+ ['labels', 'Nombres de rooms', '<path d="M5 7V5h14v2M12 5v14M9 19h6"/>'],
+ ['furn', 'Mobiliario y columnas', '<path d="M6 11V8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3"/><path d="M4 11a2 2 0 0 1 2 2v2h12v-2a2 2 0 1 1 4 0v4H2v-4a2 2 0 0 1 2-2Z"/><path d="M5 19v1.5M19 19v1.5"/>'],
+ ['plants', 'Vegetación', '<path d="M12 21v-5"/><path d="M12 16a5 5 0 0 0 5-5c0-3-2.4-6-5-8-2.6 2-5 5-5 8a5 5 0 0 0 5 5Z"/>'],
+ ['ent', 'Accesos', '<path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M3 12h11M10 8l4 4-4 4"/>'],
+ ['watch', 'Puestos de personal', '<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>', 'en Seguridad se ven siempre']];
 const OPS = [['heatOp', 'heat', 'Calor'], ['furnOp', 'furn', 'Muebles']];
 const EYE = '<svg class="eye" viewBox="0 0 24 24" aria-hidden="true"><g class="on"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></g><g class="off"><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3 3.9M6.6 6.6C3.9 8.4 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/></g></svg>';
 let vpRaf = 0; const vpSoon = () => { cancelAnimationFrame(vpRaf); vpRaf = requestAnimationFrame(renderViewport); };
+/** El tramo lleno del deslizador (como las barras del tablero). */
+const rangeFill = r => r.style.setProperty('--v', (r.value - r.min) / (r.max - r.min) * 100 + '%');
+/** El nombre de la capa bajo el cursor (o cuántas se ven) junto al título de la sección. */
+function layName(b) { const t = $('ly-name'); if (!t) return;
+ if (b) { const L = LAYS.find(x => x[0] === b.dataset.l); t.textContent = `${L[1]} · ${S.lay[L[0]] ? 'visible' : 'oculta'}`; return; }
+ t.textContent = `${LAYS.filter(x => S.lay[x[0]]).length} de ${LAYS.length} visibles`; }
 function buildLayers() { const box = $('layers');
- box.innerHTML = `<div class="lyg">${LAYS.map(([k, n, t]) => `<button class="lt${k === 'watch' ? ' wide' : ''}" data-l="${k}" aria-pressed="false" title="${t || 'Mostrar u ocultar: ' + n.toLowerCase()}">${EYE}<span>${n}</span></button>`).join('')}</div>
+ box.innerHTML = `<div class="lyg">${LAYS.map(([k, n, ic, note]) => `<button class="ib tg" data-l="${k}" aria-pressed="false" aria-label="${n}" title="${n}${note ? ' · ' + note : ''}"><svg class="li" viewBox="0 0 24 24" aria-hidden="true">${ic}</svg></button>`).join('')}</div>
   <div class="lyo">${OPS.map(([op, of, n]) => `<label class="ly-op" data-of="${of}"><span>${n}</span><input type="range" min="10" max="100" step="5" data-op="${op}" aria-label="Opacidad: ${n.toLowerCase()}"><output></output></label>`).join('')}
    <div class="ly-op mn" data-of="heat"><span>Mín</span><span class="step"><button data-min="-" aria-label="Bajar el valor mínimo">−</button><span class="mono" id="minv">0.0</span><button data-min="+" aria-label="Subir el valor mínimo">+</button></span><button class="btn mini" id="ly-vals" aria-pressed="false" title="Escribir el valor en cada celda (con zoom)">Valores</button></div></div>
   <div class="ly-row"><span>Ruta</span><span class="seg" id="ly-path"><button data-p="">Ninguna</button><button data-p="farthest">Más lejana</button><button data-p="cash">Efectivo</button></span></div>
   <div class="ly-row"><span>Marcar</span><span class="seg" id="ly-mark"><button data-m="">Nada</button><button data-m="blind">Ciegos</button><button data-m="unreach">Inaccesibles</button></span></div>`;
- box.querySelectorAll('.lt').forEach(b => b.onclick = () => { const k = b.dataset.l; S.lay[k] = !S.lay[k]; Snd.click(); renderViewport(); });
- box.querySelectorAll('[data-op]').forEach(r => r.oninput = () => { S.lay[r.dataset.op] = r.value / 100; r.nextElementSibling.textContent = r.value + ' %'; vpSoon(); });
+ box.querySelectorAll('.lyg .ib').forEach(b => { b.onclick = () => { const k = b.dataset.l; S.lay[k] = !S.lay[k]; Snd.click(); renderViewport(); layName(b); };
+  b.onmouseenter = b.onfocus = () => layName(b); b.onmouseleave = b.onblur = () => layName(); });
+ box.querySelectorAll('[data-op]').forEach(r => r.oninput = () => { S.lay[r.dataset.op] = r.value / 100; r.nextElementSibling.textContent = r.value + ' %'; rangeFill(r); vpSoon(); });
  box.querySelectorAll('[data-min]').forEach(b => b.onclick = () => { S.min = Math.max(0, Math.min(.8, +(S.min + (b.dataset.min === '+' ? .2 : -.2)).toFixed(1))); renderViewport(); Snd.click(); });
  $('ly-vals').onclick = () => { S.vals = !S.vals; renderViewport(); };
  $('ly-path').onclick = e => { const b = e.target.closest('[data-p]'); if (!b || !S.res) return; if (b.dataset.p) { focus('pillar', b.dataset.p === 'cash' ? 'seg' : 'flujo'); showPath(b.dataset.p); } else { S.path = null; S.broute = null; renderViewport(); } };
@@ -282,17 +296,18 @@ function buildLayers() { const box = $('layers');
  syncLayers(); }
 /** Refleja el estado en las capas y en los ojos de las métricas del inspector (la ruta o la marca que se ve en el plano). */
 function syncLayers() { const box = $('layers'); if (!box.firstChild) return;
- box.querySelectorAll('.lt').forEach(b => b.setAttribute('aria-pressed', !!S.lay[b.dataset.l]));
+ box.querySelectorAll('.lyg .ib').forEach(b => b.setAttribute('aria-pressed', !!S.lay[b.dataset.l])); layName();
  box.querySelectorAll('[data-of]').forEach(d => d.setAttribute('aria-disabled', !S.lay[d.dataset.of]));
- box.querySelectorAll('[data-op]').forEach(r => { const v = Math.round(S.lay[r.dataset.op] * 100); if (+r.value !== v) r.value = v; r.nextElementSibling.textContent = v + ' %'; });
+ box.querySelectorAll('[data-op]').forEach(r => { const v = Math.round(S.lay[r.dataset.op] * 100); if (+r.value !== v) r.value = v; r.nextElementSibling.textContent = v + ' %'; rangeFill(r); });
  $('minv').textContent = S.min.toFixed(1); $('ly-vals').setAttribute('aria-pressed', S.vals);
  const p = bRoute() ? null : S.path || ''; $('ly-path').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.p === p));
  $('ly-mark').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.m === (S.mark || '')));
- document.querySelectorAll('#insp .im-eye').forEach(b => { const [t, v] = b.dataset.ly.split(':'), on = (t === 'path' ? S.path : S.mark) === v; b.setAttribute('aria-pressed', on); b.title = (on ? 'Ocultar' : 'Ver') + ' en el plano'; }); }
+ document.querySelectorAll('#insp [data-ly]').forEach(b => { const [t, v] = b.dataset.ly.split(':'), on = (t === 'path' ? S.path : S.mark) === v; b.setAttribute('aria-pressed', on); b.title = (on ? 'Ocultar' : 'Ver') + ' en el plano'; }); }
 /** Tablero (por omisión) o Senses: el instrumento de antes, para quien lo busque en Ctrl K. */
 function setLeft(m) { const sn = m === 'senses'; S.left = sn ? 'senses' : 'board';
  $('lboard').hidden = sn; $('lsenses').hidden = !sn; $('b-anat').hidden = !sn; $('b-back').hidden = !sn;
  $('lp-eye').textContent = sn ? 'Instrumento' : 'Diagnóstico'; $('lp-h').textContent = sn ? 'Senses' : 'Pilares';
+ $('lp-p').textContent = sn ? 'Arco = puntaje · largo = peso.' : 'Puntaje contra meta. Clic en un pilar para pintarlo en el plano.';
  if (!sn) { setLink(false); $('anat').classList.remove('on'); } Snd.click(); }
 
 /* ===================== VIEWPORT: planta ===================== */
@@ -633,10 +648,10 @@ function levelsCard() {
  const cs = E.connectorsOf(cur().model), n = {}; cs.forEach(c => { n[c.kind] = (n[c.kind] || 0) + Math.max(1, c.levels.length - 1); });
  const NAME = {stair: ['tramo de escalera', 'tramos de escalera'], ramp: ['rampa', 'rampas'], elevator: ['parada de elevador', 'paradas de elevador'], escalator: ['escalera eléctrica', 'escaleras eléctricas']};
  const what = Object.keys(n).map(k => `${n[k]} ${NAME[k][n[k] === 1 ? 0 : 1]}`).join(', ');
- return `<div class="card" style="animation-delay:.12s"><div class="eyebrow" style="margin-bottom:4px">Entre niveles</div>
-  <div class="feel" style="font-size:12.5px">${cs.length ? `${what}${cs.some(c => c.derived) ? ', deducidos de rooms de escalera o elevador apilados' : ''}.` : 'Sin escaleras ni elevadores: cada nivel queda aislado. Exporta de nuevo o nombra los rooms "Escalera" o "Elevador".'}</div>
-  <div class="relto" style="margin-top:8px"><button class="has" data-broute="far">Ruta más larga del edificio</button><button class="has" data-stack="1">Todos los niveles en 3D</button></div>
-  <div class="muted" style="font-size:11px;margin-top:6px">Clic en un room (en la lista o en la planta) para ver su ruta desde el acceso, aunque esté en otro nivel.</div></div>`; }
+ return `<section class="sec"><div class="sec-h"><span class="eyebrow">Entre niveles</span></div>
+  <p>${cs.length ? `${what}${cs.some(c => c.derived) ? ', deducidos de rooms de escalera o elevador apilados' : ''}.` : 'Sin escaleras ni elevadores: cada nivel queda aislado. Exporta de nuevo o nombra los rooms "Escalera" o "Elevador".'}</p>
+  <div class="rcs" style="margin-top:8px"><button class="rc" data-broute="far">Ruta más larga del edificio</button><button class="rc" data-stack="1">Todos los niveles en 3D</button></div>
+  <p style="margin-top:8px">Clic en un room (en la lista o en la planta) para ver su ruta desde el acceso, aunque esté en otro nivel.</p></section>`; }
 /* ===================== ZONA (ficha flotante de los rooms seleccionados) ===================== */
 /** m² de la zona (set de rooms) por encima del umbral de la relación rk; el mismo umbral que en la planta. */
 function zoneRelArea(rk, set) { const G = S.res.G, [a, b] = rk.split('|'), thr = thrFor(rk); let n = 0;
@@ -691,37 +706,41 @@ function placeZone() { const z = $('zpop'); if (!z.classList.contains('on')) ret
   x0 -= host.left; x1 -= host.left; y0 -= host.top; y1 -= host.top; y = (y0 + y1) / 2 - 40;
   x = x1 + w + 12 <= host.width - 8 ? x1 + 12 : x0 - w - 12 >= 8 ? x0 - w - 12 : (x0 + x1) / 2 + 12; }
  z.style.left = Math.max(8, Math.min(host.width - w - 8, x)) + 'px'; z.style.top = Math.max(48, Math.min(host.height - h - 8, y)) + 'px'; }
+/** Encabezado fijo del inspector: el mismo componente que el del tablero (eyebrow, título con su marca, subtítulo). */
+function inspHead(eye, title, sub, c) { $('insp-h').innerHTML = `<div class="phd-t"><div class="eyebrow">${eye}</div><h3${c ? ` style="--c:${c}"` : ''}>${title}</h3>${sub ? `<p>${sub}</p>` : ''}</div>`; }
+const dots = (...cs) => `<span class="dots" aria-hidden="true">${cs.map(c => `<i style="background:${c}"></i>`).join('')}</span>`;
 function renderInspector() { const box = $('insp');
- if (!S.res) { box.innerHTML = `<div><div class="eyebrow">Inspector</div><h2 style="margin-top:4px">Sin modelo</h2><div class="feel" style="margin-top:3px">El análisis se arma con lo que trae el modelo de Revit.</div></div>
-  <div class="card"><div class="eyebrow" style="margin-bottom:6px">Qué lee de Revit</div><table>
-  <tr><td>Pisos del nivel</td><td class="v">retícula</td></tr><tr><td>Muros</td><td class="v">separan</td></tr><tr><td>Muro cortina y ventanas</td><td class="v">vista afuera</td></tr><tr><td>Puertas</td><td class="v">conectan</td></tr><tr><td>Columnas y muebles</td><td class="v">obstáculos</td></tr><tr><td>Parámetros SA_</td><td class="v">roles y materiales</td></tr></table></div>
-  <div class="card insight">Se analiza un modelo a la vez. Abrir otro reemplaza al actual.</div>`; return; }
+ if (!S.res) { inspHead('Inspector', 'Sin modelo', 'El análisis se arma con lo que trae el modelo de Revit.');
+  box.innerHTML = `<section class="sec"><div class="sec-h"><span class="eyebrow">Qué lee de Revit</span></div><div class="list div">${[['Pisos del nivel', 'retícula'], ['Muros', 'separan'], ['Muro cortina y ventanas', 'vista afuera'], ['Puertas', 'conectan'], ['Columnas y muebles', 'obstáculos'], ['Parámetros SA_', 'roles y materiales']].map(([a, b]) => `<div class="row kv"><span class="lab"><span>${a}</span></span><span class="meta">${b}</span></div>`).join('')}</div></section>
+  <section class="sec"><p>Se analiza un modelo a la vez. Abrir otro reemplaza al actual.</p></section>`; return; }
  let h = '';
  if (S.focus.type === 'pillar') { const p = BY[S.focus.k], sc = score(p.k), rt = ratePillar(sc, p.target), gap = sc == null ? null : p.target - sc, rooms = roomsBy(p.k), ms = S.res.metrics[p.k];
-  h += `<div><div class="eyebrow" style="color:${p.c1}">Pilar · ${p.s}</div><h2 style="margin-top:4px">${p.name}</h2><div class="feel" style="margin-top:3px">“${p.feel}”</div></div>
-  <div class="card ikpi"><div class="kpi"><div class="n">${sc == null ? '—' : sc}</div><div class="u">/ 100</div><span class="sp"></span>${pill(rt)}</div>
-   <div class="bar"><div class="f" style="width:${sc || 0}%;background:linear-gradient(90deg,${p.c2},${p.c1})"></div><div class="tg" style="left:${p.target}%"></div></div>
-   <div class="ik-m"><span>meta <b>${p.target}</b></span><span>${gap == null ? '' : gap > 0 ? `faltan <b>${gap}</b> puntos` : gap < 0 ? `<b>${-gap}</b> sobre la meta` : 'justo en la meta'}</span></div>
-   <p class="ik-d"><b>Mide</b> ${p.unit}</p>${sc == null ? `<div class="feel" style="margin-top:8px;font-size:12px">Sin datos: ${p.k === 'sust' ? 'ningún tipo trae parámetros SA_. Agrégalos en Revit o carga la tabla de Excel en Familias.' : 'falta información en el modelo (ver avisos).'}</div>` : ''}</div>
-  <div class="card" style="animation-delay:.05s"><div class="eyebrow">Métricas</div><div class="ims">${ms.map(metricRow).join('')}</div></div>
+  inspHead('Pilar', `${pIcon(p.k, 17)}<span>${p.name}</span>`, `“${p.feel}”`, p.c1);
+  h += `<section class="sec"><div class="hero hk" style="--c:${p.c1}">
+   <div class="hk-top"><span class="val xl">${sc == null ? '—' : sc}<small>/ 100</small></span>${pill(rt)}</div>
+   <span class="b4 l"><i style="width:${sc || 0}%"></i><em style="left:${p.target}%"></em></span>
+   <div class="hk-m meta"><span>meta <b>${p.target}</b></span><span>${gap == null ? '' : gap > 0 ? `faltan <b>${gap}</b> puntos` : gap < 0 ? `<b>${-gap}</b> sobre la meta` : 'justo en la meta'}</span></div>
+   <p class="meta hk-d"><b>Mide</b> ${p.unit}</p>${sc == null ? `<p class="meta hk-d">Sin datos: ${p.k === 'sust' ? 'ningún tipo trae parámetros SA_. Agrégalos en Revit o carga la tabla de Excel en Familias.' : 'falta información en el modelo (ver avisos).'}</p>` : ''}</div></section>
+  <section class="sec"><div class="sec-h"><span class="eyebrow">Métricas</span><span class="sec-m">contra su referencia</span></div><div class="list div">${ms.map(metricRow).join('')}</div></section>
   ${p.k === 'flujo' && multiLevel() ? levelsCard() : ''}
-  ${rooms.length ? `<div class="card" style="animation-delay:.1s"><div style="display:flex;justify-content:space-between"><div class="eyebrow">Rooms · peor a mejor</div><span class="mono muted" style="font-size:9.5px">raya = meta</span></div><div class="rooms" style="margin-top:6px">${rooms.slice(0, 8).map(r => `<div class="room-r" data-r="${r.k}"><span>${esc(r.n)}</span><span class="mini"><i style="width:${r.v}%;background:${p.c1}"></i><em style="left:${p.target}%"></em></span><span class="v">${r.v}</span></div>`).join('')}</div></div>` : ''}
-  <div class="card" style="animation-delay:.15s"><div class="eyebrow" style="margin-bottom:6px">Relacionar con</div><div class="relto">${P.filter(q => q.k !== p.k).map(q => { const rk = key(p.k, q.k), has = S.rels.has(rk); return `<button class="${has ? 'has' : ''}" data-o="${q.k}" title="${R[rk].n}"><i style="background:${q.c1}"></i>${q.s}${has ? ' ✓' : ''}</button>`; }).join('')}</div></div>`; }
- else { const r = R[S.focus.k], [a, b] = S.focus.k.split('|'), area = crossArea(), free = S.res.G.freeCount * cellArea(), top = relRooms().slice(0, 3);
-  const text = `${fmtA(area)} m² (${fmt(free ? area / free * 100 : 0)} % del área libre) son ${r.d}.` + (top.length ? ` Se concentran en ${top.map(x => `${esc(x.n)} (${fmtA(x.a)} m²)`).join(', ')}.` : '');
-  h += `<div><div class="eyebrow" style="color:#D42A3C">Relación · ${BY[a].s} × ${BY[b].s}</div><h2 style="margin-top:4px">${r.n}</h2><div class="feel" style="margin-top:3px">${r.q}</div></div>
-  <div class="card"><div class="kpi"><div class="n">${fmtA(area)}<span style="font-size:15px"> m²</span></div><div class="u">${fmt(free ? area / free * 100 : 0)} % DEL ÁREA LIBRE<br>SOBRE UMBRAL ${S.thr.toFixed(2)}</div></div></div>
-  <div class="card insight" style="animation-delay:.05s;border-left-color:#D42A3C">${text}</div>
-  ${top.length ? `<div class="card" style="animation-delay:.08s"><div class="eyebrow" style="margin-bottom:6px">Dónde</div><div class="rooms">${top.map(x => `<div class="room-r" data-r="${x.k}"><span>${esc(x.n)}</span><span class="mini"><i style="width:${Math.min(100, x.a / top[0].a * 100)}%;background:#D42A3C"></i></span><span class="v">${fmtA(x.a)}</span></div>`).join('')}</div></div>` : ''}
-  <div class="card" style="animation-delay:.1s"><div class="eyebrow" style="margin-bottom:4px">Acciones sugeridas</div><ul class="acts">${r.a.map(x => `<li>${x}</li>`).join('')}</ul></div>
-  <div class="card" style="animation-delay:.15s"><div class="eyebrow" style="margin-bottom:3px">Respaldo</div><div class="feel">${r.src}</div></div>
-  <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn" id="i-pres">Presentar <kbd>P</kbd></button><button class="btn" id="i-rm">Quitar relación</button></div>`; }
+  ${rooms.length ? `<section class="sec"><div class="sec-h"><span class="eyebrow">Rooms</span><span class="sec-m">peor a mejor · raya = meta</span></div><div class="list">${rooms.slice(0, 8).map(r => `<button class="row s" data-r="${r.k}" style="--c:${p.c1}" title="Seleccionar ${esc(r.n)}"><span class="lab"><span>${esc(r.n)}</span></span><span class="b4"><i style="width:${r.v}%"></i><em style="left:${p.target}%"></em></span><span class="val s">${r.v}</span></button>`).join('')}</div></section>` : ''}
+  <section class="sec"><div class="sec-h"><span class="eyebrow">Relacionar con</span><span class="sec-m">dónde se cumplen los dos</span></div><div class="rcs">${P.filter(q => q.k !== p.k).map(q => { const rk = key(p.k, q.k), has = S.rels.has(rk); return `<button class="rc${has ? '' : ' new'}" data-o="${q.k}" title="${R[rk].n}${has ? '' : ' · crear'}">${dots(p.c1, q.c1)}${q.s}${has ? ' ✓' : ''}</button>`; }).join('')}</div></section>`; }
+ else { const r = R[S.focus.k], [a, b] = S.focus.k.split('|'), area = crossArea(), free = S.res.G.freeCount * cellArea(), pct = free ? area / free * 100 : 0, top = relRooms().slice(0, 3);
+  inspHead(`Relación · ${BY[a].s} × ${BY[b].s}`, `${dots(BY[a].c1, BY[b].c1)}<span>${r.n}</span>`, r.q);
+  h += `<section class="sec"><div class="hero hk" style="--c:#D42A3C">
+   <div class="hk-top"><span class="val xl">${fmtA(area)}<small>m²</small></span><span class="meta" style="text-align:right"><b>${fmt(pct)} %</b> del área libre<br>sobre umbral ${S.thr.toFixed(2)}</span></div>
+   <span class="b4 l"><i style="width:${Math.min(100, pct)}%"></i></span>
+   <p class="meta hk-d">Celdas ${r.d}.${top.length ? ` Se concentran en ${top.map(x => esc(x.n)).join(', ')}.` : ''}</p></div></section>
+  ${top.length ? `<section class="sec"><div class="sec-h"><span class="eyebrow">Dónde</span><span class="sec-m">m² sobre el umbral</span></div><div class="list">${top.map(x => `<button class="row s" data-r="${x.k}" style="--c:#D42A3C" title="Seleccionar ${esc(x.n)}"><span class="lab"><span>${esc(x.n)}</span></span><span class="b4"><i style="width:${Math.min(100, x.a / top[0].a * 100)}%"></i></span><span class="val s">${fmtA(x.a)}</span></button>`).join('')}</div></section>` : ''}
+  <section class="sec"><div class="sec-h"><span class="eyebrow">Acciones sugeridas</span></div><ul class="acts">${r.a.map(x => `<li>${x}</li>`).join('')}</ul></section>
+  <section class="sec"><div class="sec-h"><span class="eyebrow">Respaldo</span></div><p>${r.src}</p></section>
+  <section class="sec"><div class="rcs"><button class="rc" id="i-pres">Presentar</button><button class="rc" id="i-rm">Quitar relación</button></div></section>`; }
  box.innerHTML = h; syncLayers();
- box.querySelectorAll('.relto [data-o]').forEach(b => b.onclick = () => { const rk = key(S.focus.k, b.dataset.o); if (S.rels.has(rk)) focus('rel', rk); else createRel(S.focus.k, b.dataset.o); });
+ box.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { const rk = key(S.focus.k, b.dataset.o); if (S.rels.has(rk)) focus('rel', rk); else createRel(S.focus.k, b.dataset.o); });
  box.querySelectorAll('[data-r]').forEach(r => r.onclick = e => roomClick(+r.dataset.r, e.shiftKey));
  box.querySelectorAll('[data-broute]').forEach(b => b.onclick = () => showBuildingRoute('far'));
  box.querySelectorAll('[data-stack]').forEach(b => b.onclick = () => setStack(true));
- box.querySelectorAll('.im-eye').forEach(b => b.onclick = () => { const [t, v] = b.dataset.ly.split(':');
+ box.querySelectorAll('[data-ly]').forEach(b => b.onclick = () => { const [t, v] = b.dataset.ly.split(':');
   if (t === 'path') { if (S.path === v) { S.path = null; renderViewport(); } else showPath(v); } else if (S.mark === v) { S.mark = null; renderViewport(); } else showMark(v); });
  $('i-pres') && ($('i-pres').onclick = () => present(true)); $('i-rm') && ($('i-rm').onclick = () => removeRel(S.focus.k)); }
 /** Clic en un room: lo selecciona y abre su ficha junto a él. Con Shift lo suma a la zona (o lo quita si ya estaba).
@@ -838,10 +857,10 @@ const benchTxt = row => { const b = BENCH[row[0]]; if (!b) return ''; const s = 
  return `meta ${s} ${fmt(b.good)}${unitOf(row)}` + (b.good === b.ok ? '' : ` · límite ${fmt(b.ok)}${unitOf(row)}`); };
 /** Métricas que se pueden ver en el plano: el ojo prende su ruta o su marca (lo mismo que Ruta y Marcar en Capas). */
 const MLAYER = {'Ruta más lejana': 'path:farthest', 'Ruta de efectivo (bóveda → caja)': 'path:cash', 'Área libre inaccesible': 'mark:unreach', 'Puntos ciegos': 'mark:blind'};
-/** Una métrica en el inspector: valor grande, estado contra su referencia (ícono + texto) y de dónde sale. */
+/** Una métrica en el inspector, con la misma fila del tablero: valor, estado contra su referencia (ícono + texto) y de dónde sale. */
 function metricRow(row) { const rt = rateMetric(row), ly = MLAYER[row[0]];
- return `<div class="im"><div class="im-h"><span>${row[0]}</span>${ly ? `<button class="im-eye" data-ly="${ly}" aria-pressed="false" aria-label="Ver ${row[0].toLowerCase()} en el plano">${EYE}</button>` : ''}<b>${fmt(row[1], row[3])}<small>${unitOf(row)}</small></b></div>
-  <div class="im-f">${rt ? `<span class="pst">${sIcon(rt)}${RATE[rt]}</span><span>${benchTxt(row)}</span>` : ''}${row[5] ? `<span>${esc(row[5])}</span>` : ''}</div></div>`; }
+ return `<div class="row m"><span class="lab"><span>${row[0]}</span></span><span class="end"><span class="val">${fmt(row[1], row[3])}<small>${unitOf(row).trim()}</small></span>${ly ? `<button class="ib sm" data-ly="${ly}" aria-pressed="false" aria-label="Ver ${row[0].toLowerCase()} en el plano">${EYE}</button>` : '<span class="ib-ph"></span>'}</span>
+  <div class="full mt">${rt ? `<span class="pst">${sIcon(rt)}${RATE_S[rt]}</span><span class="meta">${benchTxt(row)}</span>` : ''}${row[5] ? `<span class="meta src">${esc(row[5])}</span>` : ''}</div></div>`; }
 /** Índice ponderado con los pesos del cliente, y la meta ponderada con los mismos pesos. */
 function idxNow() { let n = 0, t = 0, d = 0; P.forEach(p => { if (!live(p.k)) return; n += score(p.k) * S.w[p.k]; t += p.target * S.w[p.k]; d += S.w[p.k]; }); return d ? {v: n / d, target: t / d} : null; }
 /** Todos los indicadores con referencia y valor, calificados. */
