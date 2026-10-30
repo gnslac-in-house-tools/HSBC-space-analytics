@@ -1,0 +1,5 @@
+title: Exportar
+tooltip: >-
+  Exporta el modelo (y los vínculos que elijas) a space-model.json más un HTML portátil con la app y los datos dentro,
+  en Documentos\HSBC Space Analytics, y abre el HTML. Pide la etapa. Solo lee el modelo.
+author: Gensler · HSBC Space Analytics
