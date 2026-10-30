@@ -7,10 +7,11 @@ HTML portátil: la app de análisis espacial con los datos dentro, que se abre c
 ```
 SpaceAnalytics.extension/
   SpaceAnalytics.tab/Analisis.panel/   Exportar · Abrir
+    Exportar.pushbutton/   export.xaml + lib/export_window.py: la ventana con el estilo de la app; mark.png
   lib/sa_model/   Python puro, sin Revit: geometría, el documento del contrato, nombres de archivo, el HTML portátil
   lib/sa_revit/   el único paquete que importa Autodesk.Revit.DB: los colectores
 tests/            pytest en CPython 3, fuera de Revit
-tools/make_icons.py   dibuja los iconos de los botones
+tools/make_icons.py   dibuja los iconos: la marca de la app (el anillo de color) con el glifo de cada botón
 ```
 
 ## Instalar
@@ -28,19 +29,21 @@ carpeta `app\` dentro de `SpaceAnalytics.extension\` y se usa esa.
 
 ## Usar
 
-**Exportar**
+**Exportar** abre una ventana con el estilo de la app (tema Aura: fondo con halos, tarjetas, botones píldora):
 
-1. Elige la etapa: *Concepto*, *Esquemático*, *Desarrollo* o *Documentación*. Cancelar no hace nada.
+1. Elige la etapa: *Concepto*, *Esquemático*, *Desarrollo* o *Documentación* (viene marcada la de la última
+   exportación de este modelo). Cancelar o Esc no hacen nada.
 2. Si el modelo tiene vínculos de Revit cargados, marca cuáles incluir (todos por omisión). Sus elementos se llevan a
    las coordenadas del modelo y sus ids van como `"<idDelVínculo>:<idDelElemento>"`.
-3. Lee el modelo con una barra de progreso (se puede cancelar). No modifica nada: no abre transacciones.
+3. Lee el modelo con su barra de avance (Cancelar o Esc la detienen sin escribir nada). No modifica nada: no abre
+   transacciones.
 4. Escribe en `Documentos\HSBC Space Analytics\` dos archivos con el mismo nombre,
    `<modelo> · <etapa> · <aaaa-mm-dd hhmm>`:
    - el `.json`, según el contrato;
    - el `.html`, la app con los datos dentro: la exportación nueva y, si hay, la última `.json` de cada **otra** etapa
      del mismo modelo en esa carpeta, para comparar.
-5. Muestra un resumen (cuántos elementos de cada cosa, avisos: sin rooms, sin puertas de acceso, sin pisos,
-   elementos que fallaron) y abre el HTML.
+5. Muestra el resumen en la misma ventana (cuántos elementos de cada cosa, accesos, avisos: sin rooms, sin puertas
+   de acceso, sin pisos, elementos que fallaron) con *Abrir en la app* (Enter), *Abrir carpeta* y *Cerrar*.
 
 **Abrir**: abre el `.html` más reciente de este modelo en esa carpeta. Si no hay ninguno, ofrece abrir la app vacía
 para arrastrar uno o varios `.json`.
@@ -66,6 +69,10 @@ para arrastrar uno o varios `.json`.
   *Reload* solo relee los scripts de los botones y la cinta.
 - Un botón nuevo: su carpeta `<Nombre>.pushbutton/` (`script.py`, `bundle.yaml`), una línea en el `layout` del
   `bundle.yaml` de su panel y su glifo en `tools/make_icons.py`; luego `python revit/tools/make_icons.py`.
+- La interfaz vive en los botones, nunca en `lib/sa_revit` (un test lo vigila): la ventana de Exportar es
+  `export.xaml` más `lib/export_window.py` del botón (pyRevit pone esa `lib/` en el path del script). Para verla sin
+  Revit, cárgala en PowerShell con `[Windows.Markup.XamlReader]::Parse` quitando los `Click=`; los tests revisan que
+  el XAML sea XML válido y que sus nombres y eventos coincidan con el código.
 - Python 2.7 y 3 a la vez: sin f-strings, anotaciones, `nonlocal` ni `super()` sin argumentos; un archivo que no es
   ASCII empieza con `# -*- coding: utf-8 -*-`. `ElementId.Value`, nunca `IntegerValue` (no existe en 2026+;
   `sa_revit.common.id_value` lo usa solo como respaldo).

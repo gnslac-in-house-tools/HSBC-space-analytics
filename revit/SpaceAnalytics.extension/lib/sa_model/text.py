@@ -7,14 +7,19 @@ from sa_model import roles
 MAX_FAILURES = 8
 
 
-def counts(document):
-    """'2 niveles · 14 rooms · …' (solo lo que no está vacío; los rooms siempre)."""
-    parts = []
+def count_list(document):
+    """['2 niveles', '14 rooms', …] (solo lo que no está vacío; los rooms siempre)."""
+    out = []
     for key, label in roles.LABELS:
         n = len(document.get(key) or {})
         if n or key == "rooms":
-            parts.append("{0} {1}".format(n, label))
-    return " · ".join(parts)
+            out.append("{0} {1}".format(n, label))
+    return out
+
+
+def counts(document):
+    """'2 niveles · 14 rooms · …'."""
+    return " · ".join(count_list(document))
 
 
 def warnings(document, dropped=None, failures=None):
@@ -53,29 +58,36 @@ def skipped_line(skipped):
     return "Omitidos a propósito: {0}.".format(", ".join(parts)) if parts else None
 
 
-def summary(document, dropped=None, failures=None, files=None, compared=None, note=None, skipped=None):
-    """(mensaje, detalle) para forms.alert. `files` son las rutas escritas; `compared`, las etapas que van en el HTML
-    además de la nueva; `note`, algo más que decir (p. ej. que no se encontró la app); `skipped`, {motivo: cuántos}
-    de lo que se dejó fuera a propósito (demolidos, rooms sin colocar…)."""
+def report(document, dropped=None, failures=None, files=None, compared=None, note=None, skipped=None):
+    """El resumen por partes, para la ventana de Exportar: {title, counts, lines, warnings, files}. `files` son las
+    rutas escritas; `compared`, las etapas que van en el HTML además de la nueva; `note`, algo más que decir (p. ej. que
+    no se encontró la app); `skipped`, {motivo: cuántos} de lo que se dejó fuera a propósito (demolidos, rooms sin
+    colocar…)."""
     src = document.get("source") or {}
-    msg = "{0} · {1}".format(src.get("file", ""), src.get("stage", ""))
-    parts = [counts(document)]
-    doors = document.get("doors") or []
-    if doors:
-        parts.append("Accesos: {0} ({1} con SA_Rol = Entrada).".format(
+    lines = []
+    if document.get("doors"):
+        lines.append("Accesos: {0} ({1} con SA_Rol = Entrada).".format(
             len(roles.accesses(document)), len(roles.entrances(document))))
     if src.get("links"):
-        parts.append("Vínculos incluidos: {0}.".format(", ".join(src["links"])))
+        lines.append("Vínculos incluidos: {0}.".format(", ".join(src["links"])))
     if compared:
-        parts.append("El HTML compara con: {0}.".format(", ".join(compared)))
-    found = warnings(document, dropped, failures)
-    if found:
-        parts.append("Avisos:\n- " + "\n- ".join(found))
+        lines.append("El HTML compara con: {0}.".format(", ".join(compared)))
     line = skipped_line(skipped)
     if line:
-        parts.append(line)
+        lines.append(line)
     if note:
-        parts.append(note)
-    if files:
-        parts.append("Archivos:\n" + "\n".join(files))
-    return msg, "\n\n".join(parts)
+        lines.append(note)
+    return {"title": "{0} · {1}".format(src.get("file", ""), src.get("stage", "")), "counts": count_list(document),
+            "lines": lines, "warnings": warnings(document, dropped, failures), "files": list(files or [])}
+
+
+def summary(document, dropped=None, failures=None, files=None, compared=None, note=None, skipped=None):
+    """(mensaje, detalle) en texto, con lo mismo que report()."""
+    r = report(document, dropped, failures, files, compared, note, skipped)
+    parts = [" · ".join(r["counts"])] + [l for l in r["lines"] if not l.startswith("Omitidos") and l != note]
+    if r["warnings"]:
+        parts.append("Avisos:\n- " + "\n- ".join(r["warnings"]))
+    parts += [l for l in r["lines"] if l.startswith("Omitidos") or l == note]
+    if r["files"]:
+        parts.append("Archivos:\n" + "\n".join(r["files"]))
+    return r["title"], "\n\n".join(parts)

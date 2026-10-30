@@ -1,66 +1,31 @@
 # -*- coding: utf-8 -*-
-"""Exportar: el modelo (y los vínculos que se elijan) a space-model.json más el HTML portátil, y abre el HTML.
+"""Exportar: el modelo (y los vínculos que se elijan) a space-model.json más el HTML portátil.
 
-Solo lee el modelo: no abre transacciones. Los archivos van a Documentos\\HSBC Space Analytics\\ con el nombre
-`<modelo> · <etapa> · <aaaa-mm-dd hhmm>` (docs/space-model.md).
+Todo pasa en una ventana con el estilo de la app (export.xaml y lib/export_window.py): se elige la etapa y los vínculos,
+se ve el avance y al final el resumen, con el botón para abrir el HTML. Solo lee el modelo: no abre transacciones.
+Los archivos van a Documentos\\HSBC Space Analytics\\ con el nombre `<modelo> · <etapa> · <aaaa-mm-dd hhmm>`
+(docs/space-model.md).
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import os
 from datetime import datetime
 
-from pyrevit import forms, revit
+from pyrevit import forms, revit, script
 
 from sa_model import STAGES
 from sa_model import bundle, document, exports, text
 from sa_revit import collect, shell
+
+import export_window  # lib/ del botón: la interfaz vive en los botones
 from sa_revit.common import final_phase, model_name, name_of
 
 TITLE = "Space Analytics · Exportar"
 
 
-def pick_links(doc):
-    """Los vínculos cargados que el usuario quiere incluir (todos marcados por omisión); None si cancela."""
-    links = collect.loaded_links(doc)
-    if not links:
-        return []
-    items = [forms.TemplateListItem(label, checked=True) for label, _ in links]
-    picked = forms.SelectFromList.show(items, title="{0} · Vínculos a incluir".format(TITLE), button_name="Incluir",
-                                       multiselect=True)
-    if picked is None:
-        return None
-    picked = set(picked)
-    return [inst for label, inst in links if label in picked]
-
-
-def run_collect(doc, links):
-    with forms.ProgressBar(title="Leyendo el modelo… {value} de {max_value}", cancellable=True, step=10) as pb:
-        def tick(done, total):
-            if pb.cancelled:
-                raise collect.Cancelled()
-            pb.update_progress(done, max(total, 1))
-        return collect.collect(doc, links, tick)
-
-
-def main():
-    doc = revit.doc
-    if doc is None or doc.IsFamilyDocument:
-        forms.alert("Abre un modelo de proyecto (no una familia) para exportar.", title=TITLE)
-        return
-
-    stage = forms.CommandSwitchWindow.show(STAGES, message="¿En qué etapa está este modelo?")
-    if not stage:
-        return
-    links = pick_links(doc)
-    if links is None:
-        return
-
-    try:
-        result = run_collect(doc, links)
-    except collect.Cancelled:
-        forms.alert("Exportación cancelada. No se escribió nada.", title=TITLE)
-        return
-
+def export(doc, stage, links, tick):
+    """Lee el modelo, escribe el .json y el HTML y devuelve el informe para la ventana (text.report más 'html')."""
+    result = collect.collect(doc, links, tick)
     when = datetime.now()
     file_name = model_name(doc)
     phase = final_phase(doc)
@@ -78,8 +43,7 @@ def main():
         exports.ensure_folder(folder)
         exports.write_text(json_path, exports.dumps(model))
     except (IOError, OSError) as ex:
-        forms.alert("No se pudo escribir la exportación.", sub_msg="{0}\n\n{1}".format(json_path, ex), title=TITLE)
-        return
+        raise IOError("No se pudo escribir {0}: {1}".format(json_path, ex))
     files = [json_path]
 
     html_path, note, compared = None, None, []
@@ -101,10 +65,35 @@ def main():
             html_path = None
             note = "No se pudo armar el HTML: {0}. Solo se escribió el .json.".format(ex)
 
-    msg, detail = text.summary(model, dropped, result.failures, files, compared, note, result.skipped)
-    forms.alert(msg, sub_msg=detail, title=TITLE, warn_icon=bool(text.warnings(model, dropped, result.failures)))
-    if html_path:
-        shell.open_path(html_path)
+    report = text.report(model, dropped, result.failures, files, compared, note, result.skipped)
+    report["html"] = html_path
+    return report
+
+
+def main():
+    doc = revit.doc
+    if doc is None or doc.IsFamilyDocument:
+        forms.alert("Abre un modelo de proyecto (no una familia) para exportar.", title=TITLE)
+        return
+
+    file_name = model_name(doc)
+    folder = exports.output_folder(shell.documents_folder())
+    found = exports.exports_in(folder, exports.model_stem(file_name), ".json")
+    if found:
+        stage = found[0][1]
+        hint = ("Última exportación de este modelo: {0} · {1}. El HTML se compara con la última de cada otra "
+                "etapa.".format(found[0][1], found[0][0]))
+    else:
+        stage = STAGES[0]
+        hint = "Primera exportación de este modelo. Si luego exportas otras etapas, el HTML las compara."
+
+    win = export_window.ExportWindow(script.get_bundle_file("export.xaml"), script.get_bundle_file("mark.png"),
+                                     "{0} · Revit {1}".format(file_name, doc.Application.VersionNumber),
+                                     STAGES, stage, hint, collect.loaded_links(doc), folder,
+                                     lambda st, links, tick: export(doc, st, links, tick), collect.Cancelled)
+    win.show_dialog()
+    if win.open_path:
+        shell.open_path(win.open_path)
 
 
 main()

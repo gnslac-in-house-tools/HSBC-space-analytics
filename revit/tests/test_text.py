@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """El resumen al exportar y lo que dicen los roles (SA_Rol, accesos)."""
 from sa_model import roles
-from sa_model.text import counts, skipped_line, summary, warnings
+from sa_model.text import count_list, counts, report, skipped_line, summary, warnings
 
 
 def doc(**kw):
@@ -79,3 +79,13 @@ def test_summary():
     assert detail.endswith("Archivos:\nC:/a.json\nC:/a.html")
     assert "Avisos" not in detail
     assert skipped_line({}) is None
+
+
+def test_report_has_the_summary_in_parts():
+    r = report(doc(), files=["C:/a.json"], compared=["Desarrollo"], note="Nota.", skipped={"demolidos": 3})
+    assert r["title"] == "Sucursal.rvt · Concepto"
+    assert r["counts"] == count_list(doc()) and "1 rooms" in r["counts"]
+    assert r["lines"] == ["Accesos: 1 (2 con SA_Rol = Entrada).", "El HTML compara con: Desarrollo.",
+                          "Omitidos a propósito: 3 demolidos.", "Nota."]
+    assert r["warnings"] == [] and r["files"] == ["C:/a.json"]
+    assert report(doc(rooms=[]))["warnings"][0].startswith("Sin rooms")
