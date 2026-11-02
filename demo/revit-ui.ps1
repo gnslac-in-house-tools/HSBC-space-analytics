@@ -1,4 +1,4 @@
-# Control de Revit para el material del demo: ventana a tamaño fijo, clics por UI Automation y capturas.
+﻿# Control de Revit para el material del demo: ventana a tamaño fijo, clics por UI Automation y capturas.
 # Uso:  . .\demo\revit-ui.ps1   (dot-source) y luego las funciones Get-RevitWindow, Set-WindowRect, Find-Ui,
 #       Invoke-Ui, Save-Snap, Wait-Ui. Las capturas van a demo\material\capturas\.
 # Solo usa Windows: System.Windows.Automation (UIA) y System.Drawing; no instala nada.
@@ -14,10 +14,18 @@ public static class SaWin {
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
   [DllImport("user32.dll")] public static extern void mouse_event(uint f, uint dx, uint dy, uint d, UIntPtr e);
   [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
+  [DllImport("user32.dll")] public static extern bool SetProcessDpiAwarenessContext(IntPtr v);
+  [DllImport("user32.dll")] public static extern IntPtr MonitorFromWindow(IntPtr h, uint f);
+  [DllImport("user32.dll")] public static extern bool GetMonitorInfo(IntPtr m, ref MONITORINFO i);
+  [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
+  [StructLayout(LayoutKind.Sequential)] public struct MONITORINFO { public int cbSize; public RECT rcMonitor; public RECT rcWork; public uint dwFlags; }
+  public static int[] Monitor(IntPtr h) { var i = new MONITORINFO(); i.cbSize = Marshal.SizeOf(i); GetMonitorInfo(MonitorFromWindow(h, 2), ref i); return new[] { i.rcMonitor.L, i.rcMonitor.T, i.rcMonitor.R - i.rcMonitor.L, i.rcMonitor.B - i.rcMonitor.T }; }
   public static void Click(int x, int y) { SetCursorPos(x, y); mouse_event(2,0,0,0,UIntPtr.Zero); mouse_event(4,0,0,0,UIntPtr.Zero); }
 }
 "@ -ErrorAction SilentlyContinue
-[void][SaWin]::SetProcessDPIAware()
+# Per-monitor v2: clics, ventanas, UIA y ffmpeg (gdigrab) en las mismas coordenadas físicas aunque un monitor tenga escala.
+# Con "system aware", una pantalla al 200 % se ve con coordenadas virtuales y la grabación sale recortada.
+if (-not [SaWin]::SetProcessDpiAwarenessContext([IntPtr]-4)) { [void][SaWin]::SetProcessDPIAware() }
 
 $script:SaOut = Join-Path $PSScriptRoot "material\capturas"
 New-Item -ItemType Directory -Force -Path $script:SaOut | Out-Null
