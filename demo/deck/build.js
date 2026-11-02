@@ -11,7 +11,8 @@ const M = path.resolve(__dirname, '../material');
 const CAP = (f) => path.join(M, 'capturas', f);
 const ART = (f) => path.join(M, 'deck', f);
 const CLIP = (f) => path.join(M, 'clips', f);
-const OUT = path.join(M, 'space-analytics-demo.pptx');
+const REV = (f) => path.join(M, 'revit', f);
+const OUT = path.join(M, process.env.SA_DECK_NAME ?? 'space-analytics-demo.pptx'); // otro nombre si el anterior está abierto en PowerPoint
 
 const THEME = {
   name: 'Halo Perla',
@@ -25,7 +26,7 @@ const THEME = {
 };
 const MONO = 'Consolas';
 const W = 13.333, H = 7.5, MX = 0.6;
-const TOTAL = 13;
+const TOTAL = 14;
 // Colores de los pilares (app/app.js) y de la paleta Halo: solo en puntos, nunca en franjas
 const PILLAR = { flujo: 'F2734B', visib: '3F86F5', seg: '7B68F0', conf: 'E25FA3', sust: '3FA673' };
 
@@ -213,6 +214,28 @@ pres.addSection({ title: 'En Revit' });
   body(s, 'Si algo no se puede leer, la ventana lo dice: aquí, una puerta sin geometría.', sx, 5.3, W - MX - sx, 0.8, { fontSize: 12 });
   label(s, 'RACADVANCEDSAMPLEPROJECT · EJEMPLO', sx, 6.45, W - MX - sx);
   s.addNotes('Cifras de la exportación real del modelo de muestra de Autodesk (racadvancedsampleproject), no de un proyecto del cliente.');
+}
+
+// 7 · El recorrido en Revit (video grabado con demo/grabar-revit.ps1)
+{
+  const s = content('En Revit');
+  s.addText('01 · EN REVIT · EN VIVO', { placeholder: 'eyebrow' });
+  s.addText('De la vista 3D a la junta sin salir de Revit', { placeholder: 'title' });
+  nav(s, 0);
+  const vh = 4.8, vw = vh * 1920 / 1136, x = MX, y = 1.8; // 1920×1136: la pantalla sin la barra de tareas
+  card(s, x, y, vw + 0.24, vh + 0.24, 'Marco del video de Revit');
+  s.addMedia({ type: 'video', path: REV('revit-demo-editado.mp4'), x: x + 0.12, y: y + 0.12, w: vw, h: vh, cover: b64(REV('revit-demo-editado-poster.jpg'), 'image/jpeg'), objectName: 'Recorrido del plugin en Revit' });
+  const tx = x + vw + 0.64, tw = W - MX - tx;
+  [['0:00', 'Vista 3D', 'El modelo como lo deja el equipo.', 'frio'], ['0:06', 'Exportar', 'Un clic y la ventana confirma lo leído.', 'calido'], ['0:22', 'Resumen', 'Índice y pilares junto al modelo.', 'lila'], ['0:36', 'Presentar', 'Las diapositivas, maximizadas.', 'aurora']]
+    .forEach(([t, n, d, o], i) => {
+      const yy = 1.95 + i * 1.1;
+      orb(s, o, tx, yy + 0.02, 0.38);
+      label(s, t, tx + 0.52, yy, 0.7);
+      s.addText(n, { x: tx + 1.1, y: yy, w: tw - 1.1, h: 0.3, fontSize: 14, bold: true, color: C.text1, margin: 0, valign: 'middle', isTextBox: true });
+      body(s, d, tx + 0.52, yy + 0.38, tw - 0.52, 0.6, { fontSize: 11.5 });
+    });
+  label(s, 'VIDEO · 61 S · CLIC PARA REPRODUCIR', tx, 6.45, tw);
+  s.addNotes('Toma real en Revit 2027 con el modelo de muestra: Exportar, Resumen junto al modelo y Presentar. Se recortaron dos esperas de carga (unos 9 s).');
 }
 
 // =====================================================================
