@@ -14,6 +14,14 @@ function Find-Media([string]$Name) {
     throw "No encuentro $Name en material\clips ni material\revit"
 }
 
+function Set-AutoPlay($Slide, [string]$ShapeName) {
+    $seq = $Slide.TimeLine.MainSequence
+    for ($k = 1; $k -le $seq.Count; $k++) {
+        $e = $seq.Item($k)
+        if ($e.Shape.Name -eq $ShapeName) { $e.Timing.TriggerType = 3; $e.Timing.TriggerDelayTime = 0 }   # msoAnimTriggerAfterPrevious
+    }
+}
+
 $ppt = New-Object -ComObject PowerPoint.Application
 $pr = $ppt.Presentations.Open($In, 0, 0, 0)   # lectura y escritura, sin ventana
 try {
@@ -31,6 +39,8 @@ try {
             if (Test-Path $poster) { $nv.MediaFormat.SetDisplayPictureFromFile($poster) }
             $ps = $nv.AnimationSettings.PlaySettings
             $ps.PlayOnEntry = -1; $ps.LoopUntilStopped = -1; $ps.HideWhileNotPlaying = 0; $ps.RewindMovie = -1
+            # PlayOnEntry deja el efecto "al hacer clic": se pasa a "después del anterior" (= automáticamente al entrar)
+            Set-AutoPlay $s $name
             "  diapositiva $($s.SlideIndex): $([IO.Path]::GetFileName($file))"
             $n++
         }
