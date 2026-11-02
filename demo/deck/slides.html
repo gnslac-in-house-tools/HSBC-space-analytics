@@ -7,6 +7,8 @@
 <meta charset="utf-8">
 <title>Space Analytics · demo</title>
 <link rel="stylesheet" href="halo/halo.css">
+<!-- solo para la diapositiva «Pruébala» (look de la app); no se cruzan con las familias de halo.css -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Outfit:wght@300;400&display=swap" rel="stylesheet">
 <style>
   body{margin:0; background:#888}
   .s{position:relative; width:1920px; height:1080px; overflow:hidden; background:var(--h-perla); color:var(--h-grafito); font:400 22px/1.5 var(--h-f-texto); -webkit-font-smoothing:antialiased}
@@ -70,6 +72,18 @@
   .cinta .b{display:flex; flex-direction:column; align-items:center; gap:12px; font:400 21px/1 "Segoe UI",sans-serif; color:#eef0f4}
   .cinta .b img{width:86px; height:86px}
   .cinta .panel{text-align:center; padding:14px 0 18px; font:400 17px/1 "Segoe UI",sans-serif; color:#aab0bd; border-top:1px solid rgba(255,255,255,.08); margin:12px 26px 0}
+  /* diapositiva «Pruébala»: tokens del tema Aura de app/index.html, a escala ×2 */
+  .app{--bg:#F4F2EE; --surface:rgba(255,255,255,.64); --ink:#1D1B24; --muted:#67636F; --line:rgba(29,27,36,.10); --o1:#FFC3A0; --o2:#E7C2FF; --o3:#A9CFFF;
+    background:var(--bg); color:var(--ink); font-family:Manrope,"Segoe UI",sans-serif}
+  .app .halo{position:absolute; border-radius:50%; filter:blur(120px); opacity:.9}
+  .app .mark{width:44px; height:44px; border-radius:50%; flex:none; background:conic-gradient(from 200deg,#FF8A65,#F178B6,#8C7BF5,#5B9BFF,#5DBB8A,#FF8A65); box-shadow:inset 0 0 0 9px var(--bg)}
+  .app .panel-app{position:absolute; background:var(--surface); border:1px solid rgba(255,255,255,.7); border-radius:28px; box-shadow:0 40px 88px -60px rgba(60,40,80,.55); backdrop-filter:blur(18px)}
+  .app .eb{font:500 15px/1 "JetBrains Mono","Cascadia Mono",Consolas,monospace; letter-spacing:.16em; text-transform:uppercase; color:var(--muted)}
+  .app .btn-app{display:inline-flex; align-items:center; gap:12px; height:64px; padding:0 30px; border-radius:999px; font:600 22px/1 Manrope,sans-serif; border:1px solid var(--line); background:#fff; color:var(--ink)}
+  .app .btn-app--dark{background:var(--ink); color:#fff; border-color:var(--ink)}
+  .app .pill-app{display:inline-flex; align-items:center; gap:10px; padding:11px 18px; border-radius:999px; background:rgba(255,255,255,.8); border:1px solid var(--line); font:500 18px/1 Manrope,sans-serif}
+  .app .dot2{width:22px; height:14px; border-radius:7px; flex:none}
+  .app .nav{color:#8f8b98} .app .nav b{color:var(--ink)}
 </style>
 </head>
 <body>
@@ -283,7 +297,52 @@
   <span class="h-grano"></span>
 </section>
 
-<!-- 14 · Gracias -->
+<!-- 14 · Pruébala: el link de GitHub Pages, con el look de la app (tema Aura) -->
+<section class="s app" data-seccion="Siguiente" data-nav="2" data-notas="El link abre la app publicada en GitHub Pages con el mismo edificio cargado (modelo de muestra de Autodesk). No hay que instalar nada: funciona en Edge o Chrome, también en el celular.">
+  <span class="halo" style="width:900px; height:700px; left:-260px; top:-300px; background:var(--o1)"></span>
+  <span class="halo" style="width:900px; height:800px; right:-200px; top:-260px; background:var(--o2)"></span>
+  <span class="halo" style="width:800px; height:640px; right:300px; bottom:-420px; background:var(--o3)"></span>
+  <div class="eyebrow" style="z-index:2">03 · Siguiente · Compártela</div>
+  <div class="abs" style="left:96px; top:150px; display:flex; align-items:center; gap:16px; z-index:2">
+    <span class="mark"></span><span style="font:600 30px/1 Manrope,sans-serif">Space Analytics</span>
+    <span style="font:400 21px/1 Manrope,sans-serif; color:var(--muted)">racadvancedsampleproject.rvt · Revit 2027</span>
+  </div>
+  <h2 class="abs" style="left:96px; top:236px; width:760px; margin:0; font:300 82px/1.0 Outfit,'Segoe UI',sans-serif; letter-spacing:-.035em; z-index:2">Ábrela tú, con <em style="font-family:var(--h-f-serif)">el mismo</em> edificio</h2>
+  <p class="abs" style="left:96px; top:448px; width:700px; margin:0; font:400 23px/1.5 Manrope,sans-serif; color:var(--muted); z-index:2">La app publicada abre el modelo de muestra ya cargado: los cinco pilares, el plano y el 3D. Sin instalar nada, en Edge o Chrome.</p>
+  <div class="panel-app" data-link="https://gnslac-in-house-tools.github.io/HSBC-space-analytics/" style="left:96px; top:600px; width:760px; height:96px; display:flex; align-items:center; gap:18px; padding:0 16px 0 28px; z-index:3; background:rgba(255,255,255,.85)">
+    <svg viewBox="0 0 24 24" style="width:26px; height:26px; flex:none" fill="none" stroke="#67636F" stroke-width="2" stroke-linecap="round"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>
+    <div style="flex:1; font:500 22px/1.25 Manrope,sans-serif"><span style="color:var(--muted)">gnslac-in-house-tools.github.io/</span><br><b>HSBC-space-analytics</b></div>
+    <span class="btn-app btn-app--dark">Abrir <svg viewBox="0 0 24 24" style="width:20px; height:20px" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
+  </div>
+  <div class="panel-app" data-link="https://gnslac-in-house-tools.github.io/HSBC-space-analytics/" style="left:96px; top:730px; width:760px; height:250px; display:flex; align-items:center; gap:34px; padding:26px; z-index:3">
+    <div style="background:#fff; border-radius:20px; padding:16px; flex:none; box-shadow:0 10px 30px -18px rgba(60,40,80,.5)"><img src="../material/deck/qr-app.svg" style="width:166px; height:166px; display:block"></div>
+    <div>
+      <div class="eb">Escanéalo</div>
+      <div style="font:500 26px/1.25 Manrope,sans-serif; margin:12px 0 18px">Ábrela en el celular o mándala por Teams.</div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap">
+        <span class="pill-app"><span class="dot2" style="background:linear-gradient(90deg,#FF8A65,#F178B6)"></span>Flujo 33</span>
+        <span class="pill-app"><span class="dot2" style="background:linear-gradient(90deg,#5B9BFF,#8C7BF5)"></span>Visibilidad 75</span>
+        <span class="pill-app"><span class="dot2" style="background:linear-gradient(90deg,#F178B6,#8C7BF5)"></span>Confort 70</span>
+      </div>
+    </div>
+  </div>
+  <!-- ventana del navegador con la app publicada -->
+  <div class="panel-app" style="left:920px; top:220px; width:904px; height:573px; padding:0; overflow:hidden; background:rgba(255,255,255,.9); z-index:2">
+    <div style="height:62px; display:flex; align-items:center; gap:22px; padding:0 22px; border-bottom:1px solid var(--line)">
+      <div style="display:flex; gap:9px"><i style="width:14px; height:14px; border-radius:50%; background:#FF8A65"></i><i style="width:14px; height:14px; border-radius:50%; background:#F5C451"></i><i style="width:14px; height:14px; border-radius:50%; background:#5DBB8A"></i></div>
+      <div style="flex:1; height:38px; border-radius:999px; background:var(--bg); display:flex; align-items:center; gap:10px; padding:0 18px; font:500 16px/1 Manrope,sans-serif; color:var(--muted)">
+        <svg viewBox="0 0 24 24" style="width:16px; height:16px" fill="none" stroke="#67636F" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>
+        gnslac-in-house-tools.github.io/HSBC-space-analytics</div>
+    </div>
+    <img src="../material/deck/app-link.jpg" style="display:block; width:904px; height:508.5px">
+  </div>
+  <div class="abs" style="left:920px; top:830px; width:904px; display:flex; gap:12px; flex-wrap:wrap; z-index:2">
+    <span class="pill-app">Planta · 3D · Dividida</span><span class="pill-app">Ficha de cada room</span><span class="pill-app">Prioridades del cliente</span><span class="pill-app">Modo presentación</span>
+  </div>
+  <div class="pie" style="z-index:2"><span>Space Analytics · Computational Design LATAM</span><span data-num></span></div>
+</section>
+
+<!-- 15 · Gracias -->
 <section class="s" data-seccion="Siguiente" data-notas="Gracias. El repo es público: plugin, app y este material.">
   <span class="h-orbe" style="width:900px; right:-140px; top:-240px; --bl:64px"><i></i></span>
   <span class="h-orbe" style="width:520px; right:180px; top:560px; --bl:48px; --o1:var(--h-cielo); --o2:var(--h-cobalto); --o3:var(--h-lila); --o4:var(--h-durazno)"><i></i></span>
