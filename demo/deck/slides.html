@@ -1,0 +1,436 @@
+<!doctype html>
+<!-- Diapositivas del demo de Space Analytics con la identidad Halo (deck-halo de CD Week).
+     Cada <section class="s"> es una diapositiva de 1920×1080. render.mjs las captura y build.js arma el .pptx:
+     la imagen de fondo más los videos ([data-video]) y enlaces ([data-link]) nativos encima, en la misma posición. -->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Space Analytics · demo</title>
+<link rel="stylesheet" href="halo/halo.css">
+<style>
+  body{margin:0; background:#888}
+  .s{position:relative; width:1920px; height:1080px; overflow:hidden; background:var(--h-perla); color:var(--h-grafito); font:400 22px/1.5 var(--h-f-texto); -webkit-font-smoothing:antialiased}
+  .s > .h-grano{opacity:.10; z-index:0}
+  .s *{box-sizing:border-box}
+  .abs{position:absolute}
+  .eyebrow{position:absolute; left:96px; top:58px; font:500 15px/1 var(--h-f-mono); letter-spacing:.18em; text-transform:uppercase; color:var(--h-gris)}
+  .nav{position:absolute; right:96px; top:58px; display:flex; gap:44px; font:500 14px/1 var(--h-f-mono); letter-spacing:.18em; text-transform:uppercase; color:#8A8C90}
+  .nav b{color:var(--h-grafito); display:flex; align-items:center; gap:10px}
+  .nav b::before{content:""; width:9px; height:9px; border-radius:50%; background:linear-gradient(135deg,var(--h-coral),var(--h-lila))}
+  .titulo{position:absolute; left:96px; top:112px; width:1400px; margin:0; font:300 68px/1.02 var(--h-f-display); letter-spacing:-.04em}
+  em{font-family:var(--h-f-serif); font-style:italic; font-weight:400; letter-spacing:-.01em}
+  .pie{position:absolute; left:96px; right:96px; bottom:40px; display:flex; justify-content:space-between; font:500 13px/1 var(--h-f-mono); letter-spacing:.18em; text-transform:uppercase; color:var(--h-gris)}
+  .lado{position:absolute; font:400 19px/1.5 var(--h-f-texto); color:var(--h-gris)}
+  .mono{font:500 13.5px/1.3 var(--h-f-mono); letter-spacing:.16em; text-transform:uppercase; color:var(--h-gris)}
+  .marco{position:absolute; background:#fff; border-radius:30px; padding:14px; box-shadow:0 50px 90px -46px rgba(40,32,90,.42), 0 2px 8px rgba(40,32,90,.06)}
+  .marco > .ventana, .marco > img, .marco > .video{display:block; border-radius:18px; overflow:hidden; position:relative}
+  .ventana img{position:absolute; left:0; top:0}
+  .video{background-size:cover; background-position:center}
+  .tarjeta{position:absolute; background:#fff; border-radius:30px; box-shadow:0 40px 80px -50px rgba(40,32,90,.35), 0 1px 4px rgba(40,32,90,.05)}
+  .pastilla{position:absolute; padding:10px 15px; border-radius:16px; background:rgba(255,255,255,.94); font:600 17px/1.2 var(--h-f-texto); box-shadow:0 10px 26px -12px rgba(40,32,90,.4)}
+  .pastilla em{font-size:1.15em}
+  .chip{display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border-radius:999px; background:var(--h-niebla); font:500 15px/1 var(--h-f-texto)}
+  .chip--meta{font:500 13px/1 var(--h-f-mono); letter-spacing:.14em; background:#fff; border:1px solid var(--h-linea)}
+  .punto{display:inline-block; width:12px; height:12px; border-radius:50%}
+  .cifra{font:300 120px/.9 var(--h-f-display); letter-spacing:-.06em}
+  .cifra small{font-size:.38em; color:var(--h-gris); letter-spacing:-.02em; margin-left:6px}
+  .cifra-m{font:300 76px/.9 var(--h-f-display); letter-spacing:-.05em}
+  .cifra-m small{font-size:.4em; color:var(--h-gris); margin-left:4px}
+  .h-icono{width:64px; height:64px}
+  .h-icono .h-ico{width:30px; height:30px}
+  .num-badge{position:absolute; width:52px; height:52px; border-radius:50%; display:grid; place-items:center; color:#fff; font:400 24px/1 var(--h-f-display);
+    background:radial-gradient(circle at 30% 25%, #ffb79c, transparent 60%), linear-gradient(140deg,var(--h-coral),var(--h-lila)); box-shadow:0 0 0 6px rgba(255,255,255,.9), 0 16px 30px -10px rgba(91,83,155,.65)}
+  /* indicador: solo el contorno en degradado (máscara), con un halo cálido por fuera */
+  .anillo{position:absolute; border-radius:14px; z-index:5; box-shadow:0 0 0 2px rgba(255,255,255,.55), 0 0 34px 6px rgba(242,119,81,.5)}
+  .anillo::before{content:""; position:absolute; inset:0; border-radius:inherit; padding:4px;
+    background:linear-gradient(120deg,var(--h-mantequilla),var(--h-coral),var(--h-rosa),var(--h-lila),var(--h-cielo));
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite:xor; mask-composite:exclude}
+  .capa-svg{position:absolute; inset:0; pointer-events:none; z-index:6; overflow:visible}
+  .ruta{fill:none; stroke:#fff; stroke-width:3; stroke-dasharray:.5 11; stroke-linecap:round; filter:drop-shadow(0 1px 2px rgba(40,32,90,.45)) drop-shadow(0 0 8px rgba(40,32,90,.2))}
+  .nodo{fill:#fff; stroke:#fff; filter:drop-shadow(0 1px 3px rgba(40,32,90,.5))}
+  .tile{position:absolute; border-radius:30px; overflow:hidden; --t1:var(--h-coral); --t2:var(--h-durazno); --t3:var(--h-mantequilla);
+    background:radial-gradient(85% 75% at 10% 8%, var(--t1), transparent 72%), linear-gradient(150deg, var(--t1), var(--t2) 55%, var(--t3))}
+  .tile > .h-orbe{width:96%; right:-30%; bottom:-26%; --bl:34px; --gr:.4; --brillo:.55; --o1:var(--t3); --o2:var(--t2); --o3:var(--t1); --o4:var(--t2)}
+  .tile > .dib{position:absolute; left:12%; right:12%; top:10%; bottom:26%; color:#fff; z-index:2; filter:drop-shadow(0 1px 2px rgba(40,32,90,.22))}
+  .tile > .dib svg{width:100%; height:100%}
+  .tile > .h-grano{opacity:.3}
+  .tile > .pastilla{left:16px; right:16px; bottom:16px; z-index:3; box-shadow:none}
+  .flecha{position:absolute; width:58px; height:58px; border-radius:50%; background:#fff; display:grid; place-items:center; box-shadow:0 14px 30px -14px rgba(40,32,90,.45); z-index:4}
+  .flecha svg{width:26px; height:26px; stroke:var(--h-grafito); stroke-width:2; fill:none; stroke-linecap:round; stroke-linejoin:round}
+  .firma{height:6px; border-radius:6px; background:var(--h-firma)}
+  .medidor{position:relative; height:12px; border-radius:10px; background:var(--h-niebla)}
+  .medidor i{position:absolute; left:0; top:0; bottom:0; border-radius:10px}
+  .medidor b{position:absolute; top:-8px; width:3px; height:28px; border-radius:3px; background:var(--h-grafito)}
+  /* cinta de Revit reconstruida (lupa) */
+  .cinta{position:absolute; border-radius:24px; overflow:hidden; background:#3a4252; box-shadow:0 50px 90px -40px rgba(19,22,33,.75), 0 0 0 1px rgba(255,255,255,.06) inset}
+  .cinta .tabs{height:58px; background:#131621; display:flex; align-items:flex-end; gap:30px; padding:0 26px; font:400 19px/1 "Segoe UI",sans-serif; color:#c9cdd6}
+  .cinta .tabs span{padding:0 0 18px}
+  .cinta .tabs .on{background:#3a4252; color:#fff; padding:17px 18px 18px; border-radius:8px 8px 0 0}
+  .cinta .botones{display:flex; justify-content:space-around; padding:28px 18px 10px}
+  .cinta .b{display:flex; flex-direction:column; align-items:center; gap:12px; font:400 21px/1 "Segoe UI",sans-serif; color:#eef0f4}
+  .cinta .b img{width:86px; height:86px}
+  .cinta .panel{text-align:center; padding:14px 0 18px; font:400 17px/1 "Segoe UI",sans-serif; color:#aab0bd; border-top:1px solid rgba(255,255,255,.08); margin:12px 26px 0}
+</style>
+</head>
+<body>
+
+<!-- 1 · Portada -->
+<section class="s" data-seccion="Portada" data-notas="Space Analytics: un plugin de Revit que exporta el modelo y una app que lo analiza en el navegador. Hoy lo vemos con el modelo de muestra de Autodesk.">
+  <span class="h-orbe" style="width:1040px; right:-170px; top:-300px; --bl:70px; --t:0s"><i></i></span>
+  <span class="h-orbe" style="width:600px; right:560px; top:560px; --bl:52px; --o1:var(--h-lila); --o2:var(--h-cielo); --o3:var(--h-durazno); --o4:var(--h-mantequilla)"><i></i></span>
+  <span class="h-orbe" style="width:460px; right:40px; bottom:-150px; --bl:40px; --o1:var(--h-cielo); --o2:var(--h-cobalto); --o3:var(--h-lila); --o4:var(--h-durazno)"><i></i></span>
+  <svg class="capa-svg" viewBox="0 0 1920 1080">
+    <path class="ruta" d="M1180 250 C 1300 330, 1330 470, 1440 560 S 1590 760, 1650 860"/>
+    <circle class="nodo" cx="1180" cy="250" r="9"/><circle class="nodo" cx="1440" cy="560" r="9"/><circle class="nodo" cx="1650" cy="860" r="9"/>
+  </svg>
+  <div class="abs" style="left:1206px; top:226px; color:#fff; z-index:7; text-shadow:0 1px 10px rgba(50,36,100,.35)"><div style="font:400 26px/1 var(--h-f-display)">Exportar</div><div class="mono" style="color:#fff; margin-top:8px">Paso 01 · Revit</div></div>
+  <div class="abs" style="left:1466px; top:536px; color:#fff; z-index:7; text-shadow:0 1px 10px rgba(50,36,100,.35)"><div style="font:400 26px/1 var(--h-f-display)">Analizar</div><div class="mono" style="color:#fff; margin-top:8px">Paso 02 · App</div></div>
+  <div class="abs" style="left:1676px; top:836px; color:#fff; z-index:7; text-shadow:0 1px 10px rgba(50,36,100,.35)"><div style="font:400 26px/1 var(--h-f-display)">Presentar</div><div class="mono" style="color:#fff; margin-top:8px">Paso 03 · Junta</div></div>
+  <div class="abs" style="left:96px; top:66px; display:flex; align-items:center; gap:18px">
+    <span class="h-orbe h-orbe--en-linea" style="width:58px; --bl:5px; --gr:.4"><i></i></span>
+    <div style="font:300 32px/.95 var(--h-f-display); letter-spacing:-.04em">space analytics<div class="mono" style="font-size:11px; margin-top:8px">Computational Design · LATAM</div></div>
+  </div>
+  <div class="mono abs" style="left:96px; top:318px; font-size:15px">Demo · plugin de Revit + app</div>
+  <h1 class="abs" style="left:96px; top:356px; width:960px; margin:0; font:300 104px/.98 var(--h-f-display); letter-spacing:-.045em">Leer cómo se vive una sucursal <em>antes</em> de construirla.</h1>
+  <p class="abs" style="left:96px; top:742px; width:640px; margin:0; font-size:24px; color:var(--h-gris)">Flujo, visibilidad, seguridad, confort y sustentabilidad, medidos sobre el mismo modelo de Revit cada vez que cambia.</p>
+  <div class="pie"><span>Ramón García · Noviembre 2026</span><span>HSBC · Space Analytics</span></div>
+  <span class="h-grano"></span>
+</section>
+
+<!-- 2 · La pregunta -->
+<section class="s" data-seccion="Portada" data-notas="La pregunta del cliente es cualitativa. La respuesta que damos es medible y se recalcula con cada versión del modelo.">
+  <span class="h-orbe" style="width:980px; right:-430px; top:110px; --bl:70px; --o1:var(--h-durazno); --o2:var(--h-coral); --o3:var(--h-rosa); --o4:var(--h-lila)"><i></i></span>
+  <div class="eyebrow">Para empezar</div>
+  <h2 class="abs" style="left:96px; top:300px; width:1260px; margin:0; font:300 92px/1.02 var(--h-f-display); letter-spacing:-.045em">“¿Cómo se va a sentir esta sucursal <em>antes</em> de construirla?”</h2>
+  <div class="firma abs" style="left:96px; top:690px; width:150px"></div>
+  <p class="abs" style="left:96px; top:730px; width:980px; margin:0; font-size:26px; color:var(--h-gris)">Hoy lo respondemos con criterio y experiencia. Space Analytics lo mide en una retícula sobre el modelo, con metas por pilar, para decidir con datos y no solo con renders.</p>
+  <div class="pie"><span>Space Analytics · Computational Design LATAM</span><span data-num></span></div>
+  <span class="h-grano"></span>
+</section>
+
+<!-- 3 · Cinco pilares -->
+<section class="s" data-seccion="Portada" data-notas="Las frases son las de la app. Las metas son las que usa el motor (Flujo 65, Visibilidad 65, Seguridad 70, Confort 60, Sustentabilidad 70).">
+  <div class="eyebrow">Qué mide</div>
+  <h2 class="titulo">Cinco pilares, cada uno con su meta</h2>
+  <p class="lado" style="left:1300px; top:122px; width:524px; margin:0">Cada pilar se calcula por celda de 0.5 m y se compara contra su meta. Con los pesos del cliente forman un <b style="color:var(--h-grafito); font-weight:600">índice ponderado</b>.</p>
+  <div data-pilares></div>
+  <div class="pie"><span>Space Analytics · Computational Design LATAM</span><span data-num></span></div>
+  <span class="h-grano"></span>
+</section>
+
+<!-- 4 · Cómo funciona -->
+<section class="s" data-seccion="Portada" data-notas="Todo el análisis corre en el navegador. Revit solo exporta; el HTML portátil se puede mandar por correo o Teams.">
+  <div class="eyebrow">Cómo funciona</div>
+  <h2 class="titulo">Del modelo a la junta en <em>tres</em> pasos</h2>
+  <div data-pasos></div>
+  <div class="pie"><span>Space Analytics · Computational Design LATAM</span><span data-num></span></div>
+  <span class="h-grano"></span>
+</section>
+
+<!-- 5 · La pestaña en Revit -->
+<section class="s" data-seccion="En Revit" data-nav="0" data-notas="Extensión de pyRevit. Funciona en Revit 2025 y 2027; este modelo de muestra está guardado en 2027. La lupa reconstruye el panel Análisis con los íconos reales del plugin.">
+  <div class="eyebrow">01 · En Revit</div>
+  <h2 class="titulo">Una pestaña en Revit, <em>cuatro</em> botones</h2>
+  <div class="marco" style="left:96px; top:262px">
+    <div class="ventana" style="width:1180px; height:699px"><img src="../material/deck/revit-cinta.png" style="width:1490.5px; height:881.9px"></div>
+  </div>
+  <div class="anillo" style="left:104px; top:318px; width:226px; height:118px"></div>
+  <div class="anillo" style="left:1148px; top:296px; width:108px; height:36px; border-radius:10px"></div>
+  <div class="pastilla" style="left:134px; top:452px; z-index:7">Panel <em>Análisis</em></div>
+  <div class="pastilla" style="left:1060px; top:208px; z-index:7">Pestaña <em>Space Analytics</em></div>
+  <svg class="capa-svg" viewBox="0 0 1920 1080">
+    <!-- por la franja vacía de la cinta, sin cruzar los nombres de las pestañas -->
+    <path class="ruta" d="M330 377 L 1190 377 C 1270 377, 1290 370, 1338 370"/>
+    <circle class="nodo" cx="330" cy="377" r="7"/><circle class="nodo" cx="1338" cy="370" r="7"/>
+  </svg>
+  <div class="cinta" style="left:1338px; top:240px; width:486px; z-index:5">
+    <div class="tabs"><span>GFit</span><span class="on">Space Analytics</span><span>Modify</span></div>
+    <div class="botones" data-cinta></div>
+    <div class="panel">Análisis</div>
+  </div>
+  <div class="mono abs" style="left:1338px; top:206px">Zoom · cinta de Revit</div>
+  <div data-botones style="position:absolute; left:1338px; top:560px; width:486px"></div>
+  <div class="pie"><span>Space Analytics · Computational Design LATAM</span><span data-num></span></div>
+  <span class="h-grano"></span>
+</section>
+
+<!-- 6 · Exportar -->
+<section class="s" data-seccion="En Revit" data-nav="0" data-notas="Cifras de la exportación real del modelo de muestra de Autodesk (racadvancedsampleproject), no de un proyecto del cliente.">
+  <div class="eyebrow">01 · En Revit · Exportar</div>
+  <h2 class="titulo">Exportar tarda un segundo y <em>no toca</em> el modelo</h2>
+  <span class="h-orbe" style="width:520px; left:420px; top:420px; --bl:60px; --o1:var(--h-lila); --o2:var(--h-cielo); --o3:var(--h-rosa); --o4:var(--h-durazno); opacity:.75"><i></i></span>
+  <div class="marco" style="left:110px; top:318px; transform:rotate(-3.5deg); padding:10px"><img src="../material/capturas/02-exportar-inicio.png" style="width:520px"></div>
+  <div class="marco" style="left:520px; top:278px; transform:rotate(2.5deg); padding:10px"><img src="../material/capturas/03-exportar-listo.png" style="width:560px"></div>
+  <div class="pastilla" style="left:132px; top:820px">1 · <em>Antes</em></div>
+  <div class="pastilla" style="left:900px; top:902px">2 · <em>Listo</em> en un segundo</div>
+  <div class="flecha" style="left:470px; top:600px"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+  <div class="abs" style="left:1240px; top:300px; width:584px; display:grid; grid-template-columns:1fr 1fr; row-gap:46px; column-gap:30px" data-kpis='[["91","rooms","leídos con su nivel y contorno"],["100","puertas","que conectan la retícula"],["180","muros","que la separan"],["10","circ.","verticales entre niveles"]]'></div>
+  <div class="tarjeta" style="left:1240px; top:800px; width:584px; padding:22px 26px; display:flex; gap:18px; align-items:center">
+    <span class="h-icono" style="--x:var(--h-mantequilla); --y:var(--h-coral); width:52px; height:52px" data-ico="aviso"></span>
+    <div style="font-size:18px; line-height:1.45; color:var(--h-gris)">Si algo no se puede leer, la ventana lo dice: aquí, <b style="color:var(--h-grafito)">una puerta sin geometría</b>.</div>
+  </div>
+  <div class="pie"><span>Space Analytics · Computational Design LATAM</span><span data-num></span></div>
+  <span class="h-grano"></span>
+</section>
+
+<!-- 7 · El recorrido en Revit (video) -->
+<section class="s" data-seccion="En Revit" data-nav="0" data-notas="Toma real en Revit 2027 con el modelo de muestra: Exportar, Resumen junto al modelo y Presentar. Se recortaron dos esperas de carga (unos 9 s).">
+  <div class="eyebrow">01 · En Revit · En vivo</div>
+  <h2 class="titulo">De la vista 3D a la junta <em>sin salir</em> de Revit</h2>
+  <div class="marco" style="left:96px; top:262px">
+    <div class="video" data-video="revit-demo-editado.mp4" style="width:1110px; height:657px; background-image:url(../material/revit/revit-demo-editado-poster.jpg)"></div>
+  </div>
+  <div data-linea style="position:absolute; left:1300px; top:282px; width:524px"></div>
+  <div class="mono abs" style="left:1300px; top:930px">Video · 61 s · en bucle</div>
+  <div class="pie"><span>Space Analytics · Computational Design LATAM</span><span data-num></span></div>
+  <span class="h-grano"></span>
+</section>
+
+<!-- 8 · La app -->
+<section class="s" data-seccion="La app" data-nav="1" data-notas="Abre directo en el nivel de acceso con el pilar más bajo seleccionado: aquí Seguridad, porque el modelo no tiene puestos de personal marcados.">
+  <div class="eyebrow">02 · La app</div>
+  <h2 class="titulo">Tablero, plano e inspector <em>en una</em> pantalla</h2>
+  <div class="marco" style="left:96px; top:262px"><img src="../material/deck/app-inicio.jpg" style="width:1180px; height:664px"></div>
+  <div class="num-badge" style="left:300px; top:380px">1</div>
+  <div class="num-badge" style="left:700px; top:560px">2</div>
+  <div class="num-badge" style="left:1080px; top:380px">3</div>
+  <div data-tres style="position:absolute; left:1344px; top:290px; width:480px"></div>
+  <div class="pie"><span>Space Analytics · Computational Design LATAM</span><span data-num></span></div>
+  <span class="h-grano"></span>
+</section>
+
+<!-- 9 · Clip pilar -->
+<section class="s" data-seccion="La app" data-nav="1" data-notas="Clic en Flujo: el plano se pinta con la accesibilidad desde el acceso y el inspector explica el 33. Al final, la misma lectura en la vista dividida 3D. Cifras del modelo de muestra.">
+  <div class="eyebrow">02 · La app · Un clic, un pilar</div>
+  <h2 class="titulo">Un clic en un pilar <em>pinta</em> todo el plano</h2>
+  <div class="marco" style="left:96px; top:262px"><div class="video" data-video="hsbc-pilar.mp4" style="width:1180px; height:664px; background-image:url(../material/clips/hsbc-pilar-poster.jpg)"></div></div>
+  <div class="abs" style="left:1344px; top:290px; width:480px">
+    <div class="mono" style="display:flex; align-items:center; gap:10px"><span class="punto" style="background:#F2734B"></span>Flujo y Proximidad</div>
+    <div class="cifra" style="margin-top:22px">33<small>/ 100</small></div>
+    <div class="medidor" style="margin:34px 0 12px"><i style="width:33%; background:linear-gradient(90deg,var(--h-durazno),var(--h-coral))"></i><b style="left:65%"></b></div>
+    <div class="mono" style="display:flex; justify-content:space-between; font-size:12px"><span>Requiere atención</span><span>Meta 65</span></div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:64px">
+      <div><div class="cifra-m">36<small>m</small></div><div style="font-size:17px; color:var(--h-gris); margin-top:12px">distancia media desde el acceso (meta ≤ 15 m)</div></div>
+      <div><div class="cifra-m">71<small>m</small></div><div style="font-size:17px; color:var(--h-gris); margin-top:12px">la ruta más lejana del nivel</div></div>
+    </div>
+  </div>
+  <div class="mono abs" style="left:1344px; top:930px">Clip · en bucle</div>
+  <div class="pie"><span>Space Analytics · Computational Design LATAM</span><span data-num></span></div>
+  <span class="h-grano"></span>
+</section>
+
+<!-- 10 · Clip prioridades -->
+<section class="s" data-seccion="La app" data-nav="1" data-notas="El peso dice cuánto le importa cada pilar al cliente. Cambia el índice ponderado; el diagnóstico de cada celda sigue igual. Cifras del modelo de muestra.">
+  <div class="eyebrow">02 · La app · Prioridades del cliente</div>
+  <h2 class="titulo">Las prioridades mueven el índice, <em>no</em> el diagnóstico</h2>
+  <div class="marco" style="left:96px; top:262px"><div class="video" data-video="hsbc-prioridades.mp4" style="width:1180px; height:664px; background-image:url(../material/clips/hsbc-prioridades-poster.jpg)"></div></div>
+  <div class="abs" style="left:1344px; top:290px; width:480px">
+    <div class="mono">Índice ponderado</div>
+    <div style="display:flex; align-items:baseline; gap:20px; margin-top:22px"><span class="cifra" style="color:#9a9ca1">44.2</span><svg viewBox="0 0 24 24" style="width:38px; height:38px; stroke:var(--h-grafito); stroke-width:1.8; fill:none; stroke-linecap:round; stroke-linejoin:round"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span class="cifra">49.1</span></div>
+    <div style="display:flex; gap:10px; margin-top:34px; flex-wrap:wrap">
+      <span class="chip"><span class="punto" style="background:#3F86F5"></span>Visibilidad <b>+4</b></span>
+      <span class="chip"><span class="punto" style="background:#7B68F0"></span>Seguridad <b>−4</b></span>
+    </div>
+    <div class="tarjeta" style="position:relative; margin-top:56px; padding:26px 28px; display:flex; gap:20px; align-items:center">
+      <div style="font:300 80px/.8 var(--h-f-display)">=</div>
+      <div style="font-size:18px; line-height:1.45; color:var(--h-gris)">Los puntajes de cada pilar y el plano <b style="color:var(--h-grafito)">no cambian</b>: el peso solo dice cuánto le importa cada pilar al cliente.</div>
+    </div>
+  </div>
+  <div class="mono abs" style="left:1344px; top:930px">Clip · en bucle</div>
+  <div class="pie"><span>Space Analytics · Computational Design LATAM</span><span data-num></span></div>
+  <span class="h-grano"></span>
+</section>
+
+<!-- 11 · Resumen junto al modelo -->
+<section class="s" data-seccion="La app" data-nav="1" data-notas="Pensado para revisar mientras se modela, sin salir de Revit. Lo calcula la misma app con la última exportación.">
+  <div class="eyebrow">02 · La app · Resumen</div>
+  <h2 class="titulo">El resumen se queda <em>junto</em> al modelo</h2>
+  <div class="marco" style="left:96px; top:262px"><img src="../material/deck/revit-resumen.png" style="width:1150px; height:680px"></div>
+  <div class="anillo" style="left:883px; top:326px; width:364px; height:636px; border-radius:18px"></div>
+  <svg class="capa-svg" viewBox="0 0 1920 1080">
+    <path class="ruta" d="M1247 560 C 1300 560, 1320 520, 1372 520"/>
+    <circle class="nodo" cx="1247" cy="560" r="7"/><circle class="nodo" cx="1372" cy="520" r="7"/>
+  </svg>
+  <div class="marco" style="left:1372px; top:236px; padding:10px; z-index:5"><img src="../material/deck/resumen.png" style="width:330px; height:669px; border-radius:16px"></div>
+  <div class="pastilla" style="left:1400px; top:946px; z-index:7">Ventana de <em>440 px</em></div>
+  <p class="lado" style="left:1300px; top:112px; width:524px; margin:0">El botón Resumen abre la app en una ventana angosta, como un panel más de Revit: índice, pilares, indicadores fuera de meta y los rooms más bajos.</p>
+  <div class="pie"><span>Space Analytics · Computational Design LATAM</span><span data-num></span></div>
+  <span class="h-grano"></span>
+</section>
+
+<!-- 12 · Presentar -->
+<section class="s" data-seccion="La app" data-nav="1" data-notas="Se abre desde Revit o con la tecla P en la app. Abre maximizada aunque el resumen esté abierto.">
+  <div class="eyebrow">02 · La app · Presentar</div>
+  <h2 class="titulo">La misma lectura, <em>lista</em> para la junta</h2>
+  <span class="h-orbe" style="width:700px; left:600px; top:330px; --bl:70px; --o1:var(--h-durazno); --o2:var(--h-rosa); --o3:var(--h-lila); --o4:var(--h-cielo); opacity:.7"><i></i></span>
+  <div class="marco" style="left:96px; top:270px; padding:10px; transform:rotate(-4deg)"><img src="../material/deck/presentar-1.jpg" style="width:760px; height:427px; border-radius:16px"></div>
+  <div class="marco" style="left:390px; top:420px; padding:10px; transform:rotate(1.5deg)"><img src="../material/deck/presentar-2.jpg" style="width:760px; height:427px; border-radius:16px"></div>
+  <div class="marco" style="left:690px; top:560px; padding:10px; transform:rotate(-1deg)"><img src="../material/deck/presentar-5.jpg" style="width:700px; height:394px; border-radius:16px"></div>
+  <div class="num-badge" style="left:96px; top:258px">1</div>
+  <div class="num-badge" style="left:396px; top:404px">2</div>
+  <div class="num-badge" style="left:686px; top:546px">3</div>
+  <div data-presentar style="position:absolute; left:1500px; top:300px; width:324px"></div>
+  <div class="pie"><span>Space Analytics · Computational Design LATAM</span><span data-num></span></div>
+  <span class="h-grano"></span>
+</section>
+
+<!-- 13 · Siguiente -->
+<section class="s" data-seccion="Siguiente" data-nav="2" data-notas="En el modelo de muestra Seguridad sale en 2 y Sustentabilidad sin datos: no son fallas del análisis, son datos que el modelo no trae.">
+  <div class="eyebrow">03 · Siguiente</div>
+  <h2 class="titulo">Lo que falta para leer una sucursal <em>real</em></h2>
+  <div data-siguiente></div>
+  <div class="pie"><span>Space Analytics · Computational Design LATAM</span><span data-num></span></div>
+  <span class="h-grano"></span>
+</section>
+
+<!-- 14 · Gracias -->
+<section class="s" data-seccion="Siguiente" data-notas="Gracias. El repo es público: plugin, app y este material.">
+  <span class="h-orbe" style="width:900px; right:-140px; top:-240px; --bl:64px"><i></i></span>
+  <span class="h-orbe" style="width:520px; right:180px; top:560px; --bl:48px; --o1:var(--h-cielo); --o2:var(--h-cobalto); --o3:var(--h-lila); --o4:var(--h-durazno)"><i></i></span>
+  <span class="h-orbe" style="width:260px; right:720px; top:700px; --bl:30px; --o1:var(--h-menta); --o2:var(--h-cielo); --o3:var(--h-mantequilla); --o4:var(--h-durazno)"><i></i></span>
+  <div class="abs" style="left:96px; top:66px; display:flex; align-items:center; gap:18px">
+    <span class="h-orbe h-orbe--en-linea" style="width:58px; --bl:5px; --gr:.4"><i></i></span>
+    <div style="font:300 32px/.95 var(--h-f-display); letter-spacing:-.04em">space analytics<div class="mono" style="font-size:11px; margin-top:8px">Computational Design · LATAM</div></div>
+  </div>
+  <h2 class="abs" style="left:90px; top:300px; margin:0; font:300 220px/.9 var(--h-f-display); letter-spacing:-.06em">Gracias</h2>
+  <div class="mono abs" style="left:96px; top:600px">El repo es público</div>
+  <div class="tarjeta abs" data-link="https://github.com/gnslac-in-house-tools/HSBC-space-analytics" style="left:96px; top:636px; padding:20px 26px; display:flex; align-items:center; gap:16px; font-size:22px">
+    <svg viewBox="0 0 24 24" style="width:30px; height:30px" fill="#1D1E21"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.69 1.25 3.35.96.1-.75.4-1.25.73-1.54-2.56-.29-5.25-1.28-5.25-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.7 5.39-5.27 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></svg>
+    <span>github.com/gnslac-in-house-tools/<b>HSBC-space-analytics</b></span>
+    <svg viewBox="0 0 24 24" style="width:22px; height:22px; stroke:#1D1E21; stroke-width:2; fill:none; stroke-linecap:round"><path d="M7 17 17 7M9 7h8v8"/></svg>
+  </div>
+  <div class="abs" style="left:96px; top:790px; display:flex; align-items:center; gap:20px">
+    <div class="h-avatar" style="margin:0; width:84px; height:84px"><span class="h-orbe"><i></i></span><span>RG</span></div>
+    <div><div style="font:400 26px/1.15 var(--h-f-display)">Ramón García</div><div style="font-size:18px; color:var(--h-gris)">Computational Designer y AI Builder · Costa Rica</div></div>
+  </div>
+  <div class="pie"><span>Space Analytics · Computational Design LATAM</span><span>HSBC</span></div>
+  <span class="h-grano"></span>
+</section>
+
+<script src="halo/halo.js"></script>
+<script>
+(() => {
+  const ICO = {
+    cubo: '<path d="M12 2.8 20 7.3v9.4L12 21.2 4 16.7V7.3z"/><path d="M4 7.3l8 4.5 8-4.5M12 11.8v9.4"/>',
+    archivo: '<path d="M6 2.8h8l4.5 4.5v13.9H6z"/><path d="M14 2.8v4.5h4.5M9 13h6M9 16.5h6"/>',
+    grafica: '<path d="M3.5 20.5h17M6.5 20.5v-6M11 20.5V8M15.5 20.5v-9M20 20.5V4"/>',
+    aviso: '<path d="M12 3.5 21.5 20h-19z"/><path d="M12 10v4.5M12 17.4v.1"/>',
+    play: '<circle cx="12" cy="12" r="9"/><path d="M10 8.5l5 3.5-5 3.5z"/>',
+    persona: '<circle cx="12" cy="7.5" r="3.5"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/>',
+    tabla: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 4.5v15"/>',
+  };
+  const ico = (k) => `<svg class="h-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICO[k]}</svg>`;
+  const PLUG = (b, dark) => `../../revit/SpaceAnalytics.extension/SpaceAnalytics.tab/Analisis.panel/${b}.pushbutton/icon${dark ? '.dark' : ''}.png`;
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+  // dibujos blancos de cada pilar (200 × 160)
+  const svg = (inner) => `<svg viewBox="0 0 200 160" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+  const ondas = () => [0, 1, 2].map((i) => { let d = ''; for (let x = 10; x <= 190; x += 4) { const y = 58 + i * 26 + Math.sin(x / (16 - i * 2)) * (16 - i * 5); d += (x === 10 ? 'M' : 'L') + x + ' ' + y.toFixed(1); } return `<path stroke-width="${i === 1 ? 2 : 1.2}" stroke-opacity="${i === 1 ? 1 : .75}" d="${d}"/>`; }).join('');
+  const DIB = {
+    flujo: svg('<rect x="14" y="118" width="22" height="26" rx="2" stroke-width="1.4"/><path stroke-width="2.6" stroke-dasharray=".5 9" d="M36 132 C 80 132, 70 78, 112 74 S 160 44, 176 28"/><circle cx="112" cy="74" r="5" fill="currentColor"/><circle cx="176" cy="28" r="6" fill="currentColor"/><circle cx="176" cy="28" r="15" stroke-width="1"/><path stroke-width="1" stroke-opacity=".7" d="M60 40h40M140 120h40M24 70h30"/>'),
+    visib: svg('<circle cx="28" cy="124" r="5" fill="currentColor"/>' + [20, 50, 80, 110, 140].map((y) => `<path stroke-width="1" stroke-opacity=".75" d="M28 124 L184 ${y - 4}"/>`).join('') + '<path stroke-width="1.8" d="M150 18 A 136 136 0 0 1 158 150"/><ellipse cx="112" cy="78" rx="40" ry="22" stroke-width="1.6"/><circle cx="112" cy="78" r="9" stroke-width="1.6"/>'),
+    seg: svg('<circle cx="100" cy="82" r="18" stroke-width="1.8"/><circle cx="100" cy="82" r="40" stroke-width="1.1" stroke-opacity=".8"/><circle cx="100" cy="82" r="62" stroke-width=".9" stroke-opacity=".6"/><circle cx="100" cy="82" r="5" fill="currentColor"/><circle cx="140" cy="82" r="4" fill="currentColor"/><circle cx="72" cy="54" r="4" fill="currentColor"/><circle cx="62" cy="128" r="4" fill="currentColor"/>'),
+    conf: svg(ondas() + '<circle cx="160" cy="34" r="8" stroke-width="1.6"/><path stroke-width="1" d="M160 18v-6M160 56v-6M176 34h6M138 34h6"/>'),
+    sust: svg('<path stroke-width="1.8" d="M36 136 C 36 70, 100 30, 172 26 C 172 92, 120 136, 36 136 Z"/><path stroke-width="1.3" d="M36 136 L 150 48"/><path stroke-width="1" stroke-opacity=".8" d="M70 110 l 4 -30 M92 92 l 6 -28 M114 76 l 6 -24 M80 104 l 30 4 M104 86 l 30 2"/>'),
+    modelo: Halo.dibujo('malla'),
+    personal: svg('<circle cx="100" cy="80" r="56" stroke-width="1" stroke-dasharray="2 6"/><circle cx="100" cy="66" r="14" stroke-width="1.8"/><path stroke-width="1.8" d="M72 112 a 28 28 0 0 1 56 0"/><circle cx="40" cy="40" r="5" fill="currentColor"/><circle cx="166" cy="128" r="5" fill="currentColor"/><circle cx="160" cy="36" r="5" fill="currentColor"/>'),
+    tabla: svg('<rect x="24" y="26" width="152" height="108" rx="8" stroke-width="1.6"/><path stroke-width="1" stroke-opacity=".8" d="M24 52h152M24 79h152M24 106h152M74 26v108M126 26v108"/><circle cx="150" cy="92" r="5" fill="currentColor"/><path stroke-width="2" d="M136 120 l 10 8 l 22 -24"/>'),
+  };
+
+  // 3 · cinco pilares
+  const P = [
+    ['flujo', 'Flujo y <em>Proximidad</em>', 'Llegar y saber a dónde ir sin pensarlo.', 'Accesibilidad desde el acceso', 'Meta 65', ['var(--h-coral)', 'var(--h-durazno)', 'var(--h-mantequilla)']],
+    ['visib', '<em>Visibilidad</em>', 'Ver y ser visto en la medida justa.', 'Vista al exterior y entre zonas', 'Meta 65', ['var(--h-cielo)', 'var(--h-cobalto)', 'var(--h-lila)']],
+    ['seg', '<em>Seguridad</em>', 'Sentirse protegido sin sentirse vigilado.', 'Vigilancia natural del personal', 'Meta 70', ['var(--h-lila)', 'var(--h-violeta)', 'var(--h-cielo)']],
+    ['conf', 'Confort <em>sensorial</em>', 'Un lugar donde bajar la voz y el pulso.', 'Luz natural y calma', 'Meta 60', ['var(--h-rosa)', 'var(--h-coral)', 'var(--h-durazno)']],
+    ['sust', '<em>Sustentabilidad</em>', 'Materiales que cuidan a quien habita y al planeta.', 'Datos de materiales por tipo', 'Meta 70', ['var(--h-menta)', 'var(--h-cielo)', 'var(--h-mantequilla)']],
+  ];
+  const tw = (1728 - 4 * 26) / 5;
+  $('[data-pilares]').outerHTML = P.map(([k, n, f, m, meta, [a, b, c]], i) => {
+    const x = 96 + i * (tw + 26);
+    return `<div class="tile" style="left:${x}px; top:290px; width:${tw}px; height:420px; --t1:${a}; --t2:${b}; --t3:${c}"><span class="h-orbe"><i></i></span><div class="dib">${DIB[k]}</div><span class="h-grano"></span><div class="pastilla">${n}</div></div>
+      <div class="abs" style="left:${x}px; top:740px; width:${tw}px">
+        <div style="font:italic 400 27px/1.15 var(--h-f-serif); min-height:96px">“${f}”</div>
+        <div style="font-size:16.5px; color:var(--h-gris); margin-top:16px; min-height:26px">${m}</div>
+        <span class="chip chip--meta" style="margin-top:18px">${meta}</span>
+      </div>`;
+  }).join('');
+
+  // 4 · tres pasos
+  const S = [
+    ['1', `<img src="${PLUG('Exportar')}" style="width:64px; height:64px">`, 'Exportar en Revit', 'Lee rooms, muros, puertas, ventanas, mobiliario y circulaciones verticales. Solo lee: no cambia el modelo.', 'Plugin pyRevit'],
+    ['2', `<span class="h-icono" style="--x:var(--h-lila); --y:var(--h-cielo)">${ico('archivo')}</span>`, 'Un solo archivo', 'Un HTML portátil con la app y los datos dentro, más el space-model.json. Se abre con doble clic, sin instalar nada.', 'Documentos · HSBC Space Analytics'],
+    ['3', `<span class="h-icono" style="--x:var(--h-cielo); --y:var(--h-menta)">${ico('grafica')}</span>`, 'Analizar y presentar', 'La app arma la retícula, calcula los cinco pilares y los muestra en tablero, plano, 3D, resumen y presentación.', 'Edge o Chrome'],
+  ];
+  const cw = (1728 - 2 * 40) / 3;
+  $('[data-pasos]').outerHTML = S.map(([n, icon, t, d, tag], i) => {
+    const x = 96 + i * (cw + 40);
+    return `<div class="tarjeta" style="left:${x}px; top:290px; width:${cw}px; height:640px; padding:40px 44px; overflow:hidden">
+        ${i === 2 ? '<span class="h-orbe" style="width:420px; right:-170px; top:-170px; --bl:40px; --o1:var(--h-cielo); --o2:var(--h-menta); --o3:var(--h-lila); --o4:var(--h-mantequilla); opacity:.8"><i></i></span>' : ''}
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; position:relative">
+          <div style="font:300 170px/.8 var(--h-f-display); letter-spacing:-.06em">${n}</div>${icon}
+        </div>
+        <div style="position:absolute; left:44px; right:44px; top:300px">
+          <div style="font:400 34px/1.1 var(--h-f-display); letter-spacing:-.025em">${t}</div>
+          <div style="font-size:20px; line-height:1.5; color:var(--h-gris); margin-top:18px">${d}</div>
+        </div>
+        <div class="mono" style="position:absolute; left:44px; bottom:38px">${tag}</div>
+      </div>${i < 2 ? `<div class="flecha" style="left:${x + cw - 9}px; top:581px"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>` : ''}`;
+  }).join('');
+
+  // 5 · cinta y botones
+  const B = [['Exportar', 'Lleva el modelo a la app.'], ['Abrir', 'La app con la última exportación.'], ['Resumen', 'Un panel angosto junto al modelo.'], ['Presentar', 'La presentación a pantalla completa.']];
+  $('[data-cinta]').innerHTML = B.map(([b]) => `<div class="b"><img src="${PLUG(b, true)}">${b}</div>`).join('');
+  $('[data-botones]').innerHTML = B.map(([b, d]) => `<div style="display:flex; gap:18px; align-items:center; padding:14px 0; border-bottom:1px solid var(--h-linea)">
+      <img src="${PLUG(b)}" style="width:46px; height:46px"><div><div style="font:600 21px/1.2 var(--h-f-texto)">${b}</div><div style="font-size:17.5px; color:var(--h-gris)">${d}</div></div></div>`).join('');
+
+  // 6 · cifras
+  $$('[data-kpis]').forEach((el) => { el.innerHTML = JSON.parse(el.dataset.kpis).map(([v, u, c]) => `<div><div class="cifra">${v}<small>${u}</small></div><div style="font-size:17.5px; color:var(--h-gris); margin-top:14px">${c}</div></div>`).join(''); });
+
+  // 7 · línea de tiempo del video
+  const T = [['0:00', 'Vista 3D', 'El modelo como lo deja el equipo.', `<span class="h-icono" style="--x:var(--h-cielo); --y:var(--h-cobalto); width:58px; height:58px">${ico('cubo')}</span>`],
+    ['0:06', 'Exportar', 'Un clic y la ventana confirma lo leído.', `<img src="${PLUG('Exportar')}" style="width:58px; height:58px">`],
+    ['0:22', 'Resumen', 'Índice y pilares junto al modelo.', `<img src="${PLUG('Resumen')}" style="width:58px; height:58px">`],
+    ['0:36', 'Presentar', 'Las diapositivas, maximizadas.', `<img src="${PLUG('Presentar')}" style="width:58px; height:58px">`]];
+  $('[data-linea]').innerHTML = `<div style="position:absolute; left:28px; top:30px; bottom:30px; width:3px; border-radius:3px; background:linear-gradient(var(--h-cielo),var(--h-coral),var(--h-rosa),var(--h-lila))"></div>` +
+    T.map(([t, n, d, i]) => `<div style="position:relative; display:flex; gap:24px; align-items:flex-start; height:152px"><div style="background:var(--h-perla); border-radius:50%; padding:0">${i}</div>
+      <div><div class="mono" style="font-size:13px">${t}</div><div style="font:400 30px/1.15 var(--h-f-display); letter-spacing:-.02em; margin-top:6px">${n}</div><div style="font-size:18px; color:var(--h-gris); margin-top:4px">${d}</div></div></div>`).join('');
+
+  // 8 · tres zonas de la app
+  const Z = [['Tablero', 'Los cinco pilares contra su meta, las capas y las prioridades del cliente.'], ['Plano', 'Planta, 3D o dividida, con el pilar pintado celda por celda.'], ['Inspector', 'Por qué sale ese puntaje: métricas, rooms y relaciones.']];
+  $('[data-tres]').innerHTML = Z.map(([t, d], i) => `<div style="display:flex; gap:22px; align-items:flex-start; padding:26px 0; border-bottom:1px solid var(--h-linea)">
+      <div class="num-badge" style="position:relative; flex:none; box-shadow:0 12px 24px -10px rgba(91,83,155,.6)">${i + 1}</div><div><div style="font:400 32px/1.1 var(--h-f-display); letter-spacing:-.02em">${t}</div><div style="font-size:18.5px; color:var(--h-gris); margin-top:10px">${d}</div></div></div>`).join('');
+
+  // 12 · presentar
+  const R = [['Portada', 'Índice y pilares del nivel.'], ['Resumen ejecutivo', 'Qué está bien, qué no y cuánto falta.'], ['Un pilar', 'Qué se siente, métricas y plano.']];
+  $('[data-presentar]').innerHTML = R.map(([t, d], i) => `<div style="display:flex; gap:18px; padding:22px 0; border-bottom:1px solid var(--h-linea)"><div class="num-badge" style="position:relative; flex:none; width:44px; height:44px; font-size:20px; box-shadow:0 10px 20px -10px rgba(91,83,155,.6)">${i + 1}</div><div><div style="font:600 20px/1.2 var(--h-f-texto)">${t}</div><div style="font-size:17px; color:var(--h-gris); margin-top:4px">${d}</div></div></div>`).join('') +
+    '<p style="font-size:17px; color:var(--h-gris); margin:28px 0 0">Presentar arma las diapositivas con los datos de la exportación, una por pilar.</p>';
+
+  // 13 · siguiente
+  const N = [['modelo', 'Un modelo <em>de sucursal</em>', 'Correr el flujo completo con un modelo del proyecto y revisar sus metas con el equipo.', ['var(--h-coral)', 'var(--h-durazno)', 'var(--h-mantequilla)']],
+    ['personal', 'Puestos <em>de personal</em>', 'Marcar los puestos con SA_Rol = Personal para medir Seguridad y vigilancia natural.', ['var(--h-lila)', 'var(--h-rosa)', 'var(--h-durazno)']],
+    ['tabla', 'Tabla <em>de materiales</em>', 'Unir la tabla de Excel por Type Mark (GWP, reciclado, costo) para medir Sustentabilidad.', ['var(--h-cielo)', 'var(--h-menta)', 'var(--h-cobalto)']]];
+  const nw = (1728 - 2 * 40) / 3;
+  $('[data-siguiente]').outerHTML = N.map(([k, t, d, [a, b, c]], i) => {
+    const x = 96 + i * (nw + 40);
+    return `<div class="tile" style="left:${x}px; top:290px; width:${nw}px; height:430px; --t1:${a}; --t2:${b}; --t3:${c}"><span class="h-orbe"><i></i></span><div class="dib">${DIB[k]}</div><span class="h-grano"></span><div class="pastilla" style="font-size:19px">${t}</div></div>
+      <div class="abs" style="left:${x}px; top:752px; width:${nw - 20}px; font-size:21px; line-height:1.5; color:var(--h-gris)">${d}</div>`;
+  }).join('');
+
+  // íconos sueltos, numeración y navegación
+  $$('[data-ico]').forEach((el) => { el.innerHTML = ico(el.dataset.ico); });
+  const total = $$('section.s').length;
+  $$('section.s').forEach((s, i) => {
+    const n = $('[data-num]', s); if (n) n.textContent = `${String(i + 1).padStart(2, '0')} / ${total}`;
+    if (s.dataset.nav != null) {
+      const nav = document.createElement('div'); nav.className = 'nav';
+      nav.innerHTML = ['01 En Revit', '02 La app', '03 Siguiente'].map((t, k) => k === +s.dataset.nav ? `<b>${t}</b>` : `<span>${t}</span>`).join('');
+      s.appendChild(nav);
+    }
+  });
+  document.documentElement.dataset.listo = '1';
+})();
+</script>
+</body>
+</html>
