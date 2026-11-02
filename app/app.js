@@ -1100,7 +1100,10 @@ function loadSample() { if (window.SA_SAMPLE) { addModels(window.SA_SAMPLE, 'suc
  const s = document.createElement('script'); s.src = 'samples/sucursal.js'; s.onload = () => addModels(window.SA_SAMPLE, 'sucursal de prueba'); s.onerror = () => toast('No encontré la sucursal de prueba', 'app/samples/sucursal.js'); document.head.appendChild(s); }
 // Modelo de muestra de Autodesk: lo que se ve al abrir la app sin datos incrustados (GitHub Pages). Si falta, queda el estado vacío.
 function loadDemo() { if (window.SA_DEMO) { addModels(window.SA_DEMO, 'modelo de muestra de Autodesk'); return; }
- const s = document.createElement('script'); s.src = 'samples/racadvancedsampleproject.js'; s.onload = () => window.SA_DEMO && addModels(window.SA_DEMO, 'modelo de muestra de Autodesk'); document.head.appendChild(s); }
+ const drop = $('drop'); if (drop) drop.style.visibility = 'hidden';   // sin «Trae un modelo» detrás de la carga
+ const s = document.createElement('script'); s.src = 'samples/racadvancedsampleproject.js';
+ s.onload = () => window.SA_DEMO && addModels(window.SA_DEMO, 'modelo de muestra de Autodesk');
+ s.onerror = () => { if (drop) drop.style.visibility = ''; }; document.head.appendChild(s); }
 document.querySelectorAll('#themes button').forEach(b => b.onclick = () => { setTheme(b.dataset.t); Snd.click(); });
 document.querySelectorAll('#bgs button').forEach(b => b.onclick = () => { setBg(b.dataset.b); Snd.click(); });
 document.querySelectorAll('#views button').forEach(b => b.onclick = () => setView(b.dataset.v));
