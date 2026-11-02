@@ -170,6 +170,7 @@ button.row{cursor:pointer;transition:background .15s,box-shadow .15s}button.row:
 /* resumen compacto: el mismo panel, solo y a todo lo alto (#resumen=1) */
 .dgw{position:fixed;inset:0;z-index:29;display:none;justify-content:center;padding:7px}
 body.dg .dgw{display:flex}body.dg .app{visibility:hidden}
+body.dg{overflow:hidden}/* la app oculta sigue midiendo su ancho mínimo: sin esto la ventana angosta tiene scroll horizontal */
 .dgw .side{width:100%;max-width:440px;height:100%}
 .dgw .phd .mark{margin-top:2px}
 body.dg .toasts{display:none}.dgw .row.s{--c:#8C7BF5}

@@ -1,0 +1,185 @@
+/* Halo · kit de identidad de Computational Design LATAM (variación D1 · Perla)
+   Tokens y componentes listos para usar en HTML. Las clases empiezan con «h-».
+   Sin fuentes externas: si Inter, Instrument Serif o JetBrains Mono no están instaladas, se usan Segoe UI, Sitka y Cascadia. */
+
+:root{
+  /* neutros */
+  --h-perla:#F2F2F0;      /* fondo de página */
+  --h-blanco:#FFFFFF;     /* tarjetas y pastillas */
+  --h-niebla:#ECECEE;     /* superficie secundaria, chips */
+  --h-hero:#ECECEA;       /* fondo del Hero */
+  --h-linea:#DEDEDA;      /* divisores */
+  --h-grafito:#1D1E21;    /* texto, botón primario */
+  --h-gris:#5E6166;       /* texto secundario */
+  /* halo (de cálido a frío) */
+  --h-mantequilla:#F1E17C;
+  --h-durazno:#F8A082;
+  --h-coral:#F27751;
+  --h-rosa:#EE8FB4;
+  --h-lila:#B7A6EE;
+  --h-cielo:#85BBEF;
+  --h-cobalto:#3F6FE0;
+  --h-menta:#7FD6C2;
+  --h-violeta:#5B539B;    /* solo en lentes y como color de enlace */
+  --h-lente:#E3DFDD;      /* fondo del mapa de lentes */
+  --h-firma:linear-gradient(90deg,var(--h-mantequilla),var(--h-durazno),var(--h-coral),var(--h-rosa),var(--h-lila),var(--h-cielo),var(--h-cobalto),var(--h-menta));
+
+  /* tipografía */
+  --h-f-display:"Inter Display","Neue Haas Grotesk Display Pro","Segoe UI Variable Display","Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --h-f-texto:"Inter","Segoe UI Variable Text","Segoe UI","Helvetica Neue",Arial,sans-serif;
+  --h-f-mono:"JetBrains Mono","Cascadia Mono",Consolas,"Courier New",monospace;
+  --h-f-serif:"Instrument Serif","Sitka Display","Sitka Heading",Georgia,serif;
+
+  /* forma y espacio */
+  --h-r-xl:28px;  /* tarjetas, miniaturas, Hero, banner */
+  --h-r-lg:17px;  /* lienzos de datos dentro de tarjetas */
+  --h-r-md:16px;  /* pastilla */
+  --h-r-sm:14px;  /* controles cuadrados */
+  --h-r-full:999px;
+  --h-e1:4px; --h-e2:8px; --h-e3:12px; --h-e4:16px; --h-e5:20px; --h-e6:28px; --h-e7:40px; --h-e8:56px; --h-e9:80px; --h-e10:104px;
+
+  /* textura y sombras */
+  --h-grano:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --h-sombra-trazo:drop-shadow(0 1px 2px rgba(40,32,90,.18));
+  --h-sombra-ruta:drop-shadow(0 1px 2px rgba(40,32,90,.35)) drop-shadow(0 0 10px rgba(40,32,90,.18));
+}
+
+/* ---------- base ---------- */
+.h-pagina{margin:0; background:var(--h-perla); color:var(--h-grafito); font:400 16px/1.55 var(--h-f-texto); -webkit-font-smoothing:antialiased}
+.h-etiqueta{font:500 11.5px/1.3 var(--h-f-mono); letter-spacing:.16em; text-transform:uppercase; color:var(--h-gris); margin:0}
+.h-display{font:300 64px/1 var(--h-f-display); letter-spacing:-.045em; margin:0}
+.h-titulo{font:300 40px/1.05 var(--h-f-display); letter-spacing:-.04em; margin:0}
+.h-subtitulo{font:400 22px/1.15 var(--h-f-display); letter-spacing:-.025em; margin:0}
+.h-cuerpo{font:400 16px/1.55 var(--h-f-texto)}
+.h-secundario{color:var(--h-gris)}
+.h-ejemplo{position:absolute; right:14px; top:14px; z-index:5; font:600 10.5px/1 var(--h-f-mono); letter-spacing:.14em; text-transform:uppercase; padding:6px 9px; border-radius:var(--h-r-full); background:rgba(255,255,255,.82); color:var(--h-grafito); border:1px solid rgba(0,0,0,.12)}
+.h-quieto *, .h-quieto *::before, .h-quieto *::after{animation-play-state:paused !important}
+@media (prefers-reduced-motion: reduce){ .h-orbe, .h-orbe::before{animation:none !important} }
+
+/* ---------- orbe (halo) ---------- */
+/* 1 gradiente cónico de 4 colores · 2 desenfoque · 3 brillo blanco arriba a la izquierda · 4 grano en el centro */
+.h-orbe{position:absolute; display:block; aspect-ratio:1; border-radius:50%; --bl:16px; --gr:.5;
+  --o1:var(--h-coral); --o2:var(--h-durazno); --o3:var(--h-lila); --o4:var(--h-cielo)}
+.h-orbe--en-linea{position:relative; flex:none}
+.h-orbe::before{content:""; position:absolute; inset:0; border-radius:50%; background:conic-gradient(from var(--from,200deg), var(--o1), var(--o2), var(--o3), var(--o4), var(--o1)); filter:blur(var(--bl)); animation:h-gira var(--t,48s) linear infinite}
+.h-orbe::after{content:""; position:absolute; inset:6%; border-radius:50%; background:radial-gradient(circle at 34% 30%, rgba(255,255,255,.78), rgba(255,255,255,0) 46%); filter:blur(8px); opacity:var(--brillo,1)}
+.h-orbe > i{position:absolute; inset:-8%; border-radius:50%; background-image:var(--h-grano); background-size:180px; opacity:var(--gr); mix-blend-mode:overlay; -webkit-mask-image:radial-gradient(circle, #000 42%, transparent 70%); mask-image:radial-gradient(circle, #000 42%, transparent 70%); pointer-events:none; z-index:1}
+@keyframes h-gira{to{transform:rotate(360deg)}}
+@keyframes h-flota{50%{transform:translate(var(--dx,10px),var(--dy,-8px))}}
+.h-grano{position:absolute; inset:0; background-image:var(--h-grano); background-size:200px; opacity:.22; mix-blend-mode:overlay; pointer-events:none; z-index:2}
+
+/* ---------- trazo blanco (dibujos SVG de halo.js) ---------- */
+.h-svg{width:100%; height:100%; display:block}  /* toma el color del contenedor (currentColor) */
+.h-trazo{color:#fff}
+.h-trazo .h-svg{filter:var(--h-sombra-trazo)}
+
+/* ---------- tarjeta ---------- */
+.h-tarjeta{position:relative; background:var(--h-blanco); border-radius:var(--h-r-xl); padding:24px; overflow:hidden}
+.h-tarjeta-t{display:flex; justify-content:space-between; gap:12px; margin:0 0 18px; font:500 11px/1.3 var(--h-f-mono); letter-spacing:.16em; text-transform:uppercase; color:var(--h-gris)}
+
+/* ---------- botones y chips ---------- */
+.h-boton{display:inline-flex; align-items:center; gap:8px; font:500 14px/1 var(--h-f-texto); padding:12px 18px; border-radius:var(--h-r-full); background:var(--h-grafito); color:#fff; text-decoration:none; border:1px solid var(--h-grafito); cursor:pointer}
+.h-boton--contorno{background:transparent; color:var(--h-grafito)}
+.h-boton:focus-visible, .h-chip:focus-visible{outline:2px solid var(--h-cobalto); outline-offset:3px}
+.h-chips{display:flex; flex-wrap:wrap; gap:6px}
+.h-chip{font:500 12px/1 var(--h-f-texto); padding:7px 11px; border-radius:var(--h-r-full); background:var(--h-niebla); color:var(--h-grafito); border:0}
+.h-chip--activo{background:linear-gradient(90deg, color-mix(in srgb, var(--h-durazno) 42%, #fff), color-mix(in srgb, var(--h-lila) 42%, #fff))}
+
+/* ---------- pastilla (nombre sobre imagen) ---------- */
+.h-pastilla{padding:11px 13px; border-radius:var(--h-r-md); background:rgba(255,255,255,.92); color:var(--h-grafito); font:600 13.5px/1.2 var(--h-f-texto)}
+.h-pastilla em{font:italic 400 1.12em/1 var(--h-f-serif)}
+
+/* ---------- miniatura de servicio 1:1 ---------- */
+/* campo de 3 colores (--t1 → --t3) + orbe abajo a la derecha + dibujo blanco + pastilla. Sin ícono. */
+.h-miniatura{position:relative; aspect-ratio:1; border-radius:var(--h-r-xl); overflow:hidden; display:flex; flex-direction:column;
+  --t1:var(--h-coral); --t2:var(--h-durazno); --t3:var(--h-mantequilla);
+  background:radial-gradient(85% 75% at 10% 8%, var(--t1), transparent 72%), linear-gradient(150deg, var(--t1), var(--t2) 55%, var(--t3))}
+.h-miniatura > .h-orbe{width:96%; right:-26%; bottom:-22%; --bl:24px; --gr:.4; --brillo:.55; --o1:var(--t3); --o2:var(--t2); --o3:var(--t1); --o4:var(--t2)}
+.h-miniatura > .h-dibujo{position:relative; flex:1; min-height:0; margin:11% 12% 10px; z-index:2; color:#fff}
+.h-miniatura > .h-dibujo .h-svg{filter:var(--h-sombra-trazo)}
+.h-miniatura > .h-grano{opacity:.3}
+.h-miniatura > .h-pastilla{position:relative; z-index:3; margin:0 12px 12px}
+/* pares de color por servicio */
+.h-campo-territorio{--t1:var(--h-coral); --t2:var(--h-durazno); --t3:var(--h-mantequilla)}
+.h-campo-simulacion{--t1:var(--h-rosa); --t2:var(--h-coral); --t3:var(--h-durazno)}
+.h-campo-generativo{--t1:var(--h-lila); --t2:var(--h-rosa); --t3:var(--h-durazno)}
+.h-campo-automatizacion{--t1:var(--h-cielo); --t2:var(--h-lila); --t3:var(--h-cobalto)}
+.h-campo-educacion{--t1:var(--h-cielo); --t2:var(--h-menta); --t3:var(--h-cobalto)}
+
+/* ---------- ícono en círculo ---------- */
+.h-ico{width:28px; height:28px; fill:none; stroke:currentColor; stroke-width:var(--ico-w,1.5); stroke-linecap:round; stroke-linejoin:round}
+.h-icono{position:relative; width:54px; height:54px; border-radius:50%; display:grid; place-items:center; color:#fff; overflow:hidden; flex:none;
+  --x:var(--h-durazno); --y:var(--h-coral);
+  background:radial-gradient(circle at 28% 22%, color-mix(in srgb, var(--x) 70%, #fff), transparent 58%), linear-gradient(140deg, var(--x), var(--y));
+  box-shadow:0 12px 26px -12px color-mix(in srgb, var(--y) 85%, transparent)}
+.h-icono::after{content:""; position:absolute; inset:0; background-image:var(--h-grano); background-size:140px; opacity:.3; mix-blend-mode:overlay; pointer-events:none}
+.h-icono .h-ico{position:relative; z-index:1; --ico-w:1.9; filter:drop-shadow(0 1px 1.5px rgba(40,32,90,.2))}
+
+/* ---------- Hero ---------- */
+.h-hero{position:relative; aspect-ratio:16/6.4; border-radius:var(--h-r-xl); overflow:hidden; background:var(--h-hero)}
+.h-hero > .h-orbe.o1{width:46%; right:-4%; top:-22%; --t:70s; --bl:28px; animation:h-flota 18s ease-in-out infinite}
+.h-hero > .h-orbe.o2{width:30%; right:24%; top:34%; --o1:var(--h-lila); --o2:var(--h-cielo); --o3:var(--h-durazno); --o4:var(--h-mantequilla); --t:55s; --bl:24px; --dx:-14px; animation:h-flota 22s ease-in-out infinite}
+.h-hero > .h-orbe.o3{width:20%; right:4%; bottom:-10%; --o1:var(--h-cielo); --o2:var(--h-cobalto); --o3:var(--h-lila); --o4:var(--h-durazno); --t:40s; --bl:18px; --dy:10px; animation:h-flota 16s ease-in-out infinite}
+.h-hero > .h-ruta{position:absolute; inset:0; z-index:2; color:#fff; filter:var(--h-sombra-ruta)}
+.h-hero-txt{position:absolute; left:6%; top:50%; transform:translateY(-50%); width:44%; z-index:3}
+.h-hero-txt h1, .h-hero-txt h2, .h-hero-txt h3{font:300 clamp(34px,4.1vw,56px)/1.04 var(--h-f-display); letter-spacing:-.04em; margin:16px 0}
+.h-hero-txt p{margin:0 0 24px; font-size:16px; color:var(--h-gris); max-width:44ch}
+.h-hero-esquina{position:absolute; left:6%; bottom:7%; z-index:3}
+
+/* ---------- dato (KPI) ---------- */
+.h-dato .h-cifra{font:300 84px/.9 var(--h-f-display); letter-spacing:-.06em; margin:8px 0 10px}
+.h-cifra span{color:var(--h-gris); font-size:.55em; letter-spacing:-.02em}
+.h-dato p{margin:0; font-size:14.5px}
+.h-barra-firma{height:10px; border-radius:9px; background:linear-gradient(90deg,var(--h-mantequilla),var(--h-durazno),var(--h-coral),var(--h-lila),var(--h-cielo)); position:relative; margin:22px 0 8px}
+.h-barra-firma b{position:absolute; left:var(--v,62%); top:-6px; width:3px; height:22px; border-radius:3px; background:var(--h-grafito)}
+.h-escala{display:flex; justify-content:space-between}
+
+/* ---------- persona ---------- */
+.h-avatar{position:relative; width:88px; height:88px; margin-bottom:16px}
+.h-avatar > .h-orbe{inset:0; width:100%; --bl:8px; --gr:.4; --brillo:.15; --o1:var(--h-coral); --o2:var(--h-lila); --o3:var(--h-cobalto); --o4:var(--h-durazno)}
+.h-avatar > span:not(.h-orbe){position:absolute; inset:0; display:grid; place-items:center; z-index:3; font:300 26px/1 var(--h-f-display); letter-spacing:-.04em; color:#fff; text-shadow:0 1px 12px rgba(50,36,100,.35)}
+.h-persona h3, .h-evento h3{margin:0 0 4px; font:400 22px/1.15 var(--h-f-display); letter-spacing:-.025em}
+.h-persona p, .h-evento p{margin:0 0 14px; font-size:14px; color:var(--h-gris)}
+
+/* ---------- evento ---------- */
+.h-evento > .h-orbe{width:104px; margin:0 0 14px -4px; --bl:11px; --o1:var(--h-lila); --o2:var(--h-coral); --o3:var(--h-cielo); --o4:var(--h-mantequilla)}
+
+/* ---------- banner de sección (16:3) ---------- */
+.h-banner{position:relative; aspect-ratio:16/3; border-radius:var(--h-r-xl); overflow:hidden; background:var(--h-blanco); display:flex; align-items:center}
+.h-banner-orbes{position:absolute; inset:0; display:flex; align-items:center; justify-content:flex-end; gap:2.2%; padding-right:3%}
+.h-banner-orbes .h-orbe{position:relative; width:9.5%; --bl:6px; --gr:.4}
+.h-banner-txt{position:relative; z-index:3; padding-left:5%}
+.h-banner-txt h2, .h-banner-txt h3{margin:8px 0 0; font:300 38px/1 var(--h-f-display); letter-spacing:-.04em}
+
+/* ---------- logotipo y monograma ---------- */
+.h-logo{display:flex; align-items:center; gap:22px; color:var(--h-grafito)}
+.h-logo > .h-orbe{width:84px; --bl:7px; --gr:.45}
+.h-logo-txt{font:300 46px/.95 var(--h-f-display); letter-spacing:-.045em}
+.h-logo-txt small{display:flex; align-items:center; gap:10px; margin-top:12px; font:500 13px/1 var(--h-f-mono); letter-spacing:.32em}
+.h-logo-txt small::before{content:""; width:28px; height:1px; background:currentColor}
+.h-sublogo{display:flex; align-items:center; gap:10px; font:300 22px/1 var(--h-f-display); letter-spacing:-.03em}
+.h-sublogo > .h-orbe{width:30px; --bl:3px; --gr:0}
+.h-sublogo--dt > .h-orbe{--o1:var(--h-lila); --o2:var(--h-cielo); --o3:var(--h-durazno); --o4:var(--h-mantequilla)}
+.h-sublogo--bim > .h-orbe{--o1:var(--h-cielo); --o2:var(--h-cobalto); --o3:var(--h-lila); --o4:var(--h-cielo)}
+.h-sublogo--rc > .h-orbe{--o1:var(--h-menta); --o2:var(--h-cielo); --o3:var(--h-menta); --o4:var(--h-lila)}
+.h-monograma{--s:128px; position:relative; width:var(--s); height:var(--s); border-radius:calc(var(--s) * .26); overflow:hidden; display:grid; place-items:center; flex:none;
+  background:radial-gradient(circle at 22% 18%, var(--h-durazno), transparent 62%), linear-gradient(150deg, var(--h-durazno), var(--h-lila) 58%, var(--h-cielo))}
+.h-monograma > .h-orbe{width:100%; right:-30%; bottom:-30%; --o1:var(--h-coral); --o2:var(--h-lila); --o3:var(--h-cobalto); --o4:var(--h-durazno); --bl:calc(var(--s) * .12)}
+.h-monograma > span:not(.h-orbe){position:relative; z-index:2; font:300 calc(var(--s) * .36)/1 var(--h-f-display); letter-spacing:-.05em; color:#fff; text-shadow:0 1px calc(var(--s) * .08) rgba(40,32,90,.3)}
+
+/* ---------- datos y procesos ---------- */
+.h-lienzo{position:relative; aspect-ratio:4/3; border-radius:var(--h-r-lg); overflow:hidden; background:var(--h-perla)}
+.h-lienzo > .h-svg, .h-lienzo > .h-capa-svg{position:absolute; inset:0}
+/* barras de encuesta */
+.h-barras{position:absolute; inset:0; display:grid; grid-template-columns:repeat(3,1fr); gap:5%; align-content:center; padding:0 6%}
+.h-barra .h-esc{display:flex; justify-content:space-between; font:500 11.5px/1 var(--h-f-mono); color:#6A6C70; margin-bottom:10px}
+.h-barra .h-bar{position:relative; display:flex; gap:4px; height:36px}
+.h-barra .h-bar i{border-radius:var(--h-r-full); height:100%}
+.h-barra .h-bar b{position:absolute; top:-10px; width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:7px solid #45474B; transform:translateX(-50%)}
+.h-barra .h-num{font:300 64px/1 var(--h-f-display); letter-spacing:-.04em; margin-top:28px}
+.h-barra .h-num span{color:#8E9095}
+.h-barra p{margin:8px 0 0; color:var(--h-gris); font-size:13px; line-height:1.35}
+/* capas de vidrio */
+.h-vidrio{position:absolute; inset:0; perspective:1100px; background:linear-gradient(180deg,var(--h-perla),var(--h-niebla))}
+.h-vidrio .h-capa{position:absolute; top:20%; width:34%; height:58%; border-radius:12px; background:rgba(255,255,255,.55); border:1px solid rgba(255,255,255,.85); box-shadow:0 18px 40px -22px rgba(0,0,0,.35); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); transform:rotateY(-38deg); transform-origin:left center; overflow:hidden; font:500 10px/1.3 var(--h-f-mono); letter-spacing:.08em; color:#55575C; padding:10px}
+.h-vidrio .h-capa div{font:300 40px/1 var(--h-f-display); letter-spacing:-.04em; color:var(--h-grafito); margin-top:14px}

@@ -41,7 +41,7 @@ def open_view(html, view, size=None):
     url = launch.file_url(html, view)
     browser = launch.find_browser(os.environ)
     if browser:
-        info = ProcessStartInfo(browser, launch.app_args(url, size, launch.profile_dir(os.environ)))
+        info = ProcessStartInfo(browser, launch.app_args(url, size, launch.profile_dir(os.environ, view)))
         info.UseShellExecute = False
         Process.Start(info)
         return

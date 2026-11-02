@@ -1098,6 +1098,9 @@ function setView(v) { S.view = v; document.querySelectorAll('#views button').for
 function setLevel(name) { S.level = name; S.path = null; S.mark = null; runAnalysis(); }
 function loadSample() { if (window.SA_SAMPLE) { addModels(window.SA_SAMPLE, 'sucursal de prueba'); return; }
  const s = document.createElement('script'); s.src = 'samples/sucursal.js'; s.onload = () => addModels(window.SA_SAMPLE, 'sucursal de prueba'); s.onerror = () => toast('No encontré la sucursal de prueba', 'app/samples/sucursal.js'); document.head.appendChild(s); }
+// Modelo de muestra de Autodesk: lo que se ve al abrir la app sin datos incrustados (GitHub Pages). Si falta, queda el estado vacío.
+function loadDemo() { if (window.SA_DEMO) { addModels(window.SA_DEMO, 'modelo de muestra de Autodesk'); return; }
+ const s = document.createElement('script'); s.src = 'samples/racadvancedsampleproject.js'; s.onload = () => window.SA_DEMO && addModels(window.SA_DEMO, 'modelo de muestra de Autodesk'); document.head.appendChild(s); }
 document.querySelectorAll('#themes button').forEach(b => b.onclick = () => { setTheme(b.dataset.t); Snd.click(); });
 document.querySelectorAll('#bgs button').forEach(b => b.onclick = () => { setBg(b.dataset.b); Snd.click(); });
 document.querySelectorAll('#views button').forEach(b => b.onclick = () => setView(b.dataset.v));
@@ -1150,6 +1153,7 @@ let embedded = null;
 try { embedded = JSON.parse($('space-model-data').textContent); } catch (e) { toast('Los datos incrustados no se pudieron leer'); }
 if (embedded) { window.SA_HAS_SAMPLE = false; addModels(embedded, 'exportación de Revit'); }
 else if (hp.get('sample')) loadSample();
+else if (!hp.get('vacio')) loadDemo();   // #vacio=1 abre el estado vacío (Abrir space-model.json)
 if (hp.get('view')) setView(hp.get('view'));
 if (hp.get('left')) setLeft(hp.get('left'));
 window.SA = {S, openDigest, focus, setLeft, setView, showPath, showMark, openFam, present, createRel, runAnalysis}; // para pruebas y capturas
