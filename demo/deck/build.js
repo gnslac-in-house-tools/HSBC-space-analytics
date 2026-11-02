@@ -224,7 +224,7 @@ pres.addSection({ title: 'En Revit' });
   nav(s, 0);
   const vh = 4.8, vw = vh * 1920 / 1136, x = MX, y = 1.8; // 1920×1136: la pantalla sin la barra de tareas
   card(s, x, y, vw + 0.24, vh + 0.24, 'Marco del video de Revit');
-  s.addMedia({ type: 'video', path: REV('revit-demo-editado.mp4'), x: x + 0.12, y: y + 0.12, w: vw, h: vh, cover: b64(REV('revit-demo-editado-poster.jpg'), 'image/jpeg'), objectName: 'Recorrido del plugin en Revit' });
+  s.addMedia({ type: 'video', path: REV('revit-demo-editado.mp4'), x: x + 0.12, y: y + 0.12, w: vw, h: vh, cover: b64(REV('revit-demo-editado-poster.jpg'), 'image/jpeg'), objectName: 'Video revit-demo-editado.mp4' });
   const tx = x + vw + 0.64, tw = W - MX - tx;
   [['0:00', 'Vista 3D', 'El modelo como lo deja el equipo.', 'frio'], ['0:06', 'Exportar', 'Un clic y la ventana confirma lo leído.', 'calido'], ['0:22', 'Resumen', 'Índice y pilares junto al modelo.', 'lila'], ['0:36', 'Presentar', 'Las diapositivas, maximizadas.', 'aurora']]
     .forEach(([t, n, d, o], i) => {
@@ -234,7 +234,7 @@ pres.addSection({ title: 'En Revit' });
       s.addText(n, { x: tx + 1.1, y: yy, w: tw - 1.1, h: 0.3, fontSize: 14, bold: true, color: C.text1, margin: 0, valign: 'middle', isTextBox: true });
       body(s, d, tx + 0.52, yy + 0.38, tw - 0.52, 0.6, { fontSize: 11.5 });
     });
-  label(s, 'VIDEO · 61 S · CLIC PARA REPRODUCIR', tx, 6.45, tw);
+  label(s, 'VIDEO · 61 S', tx, 6.45, tw);
   s.addNotes('Toma real en Revit 2027 con el modelo de muestra: Exportar, Resumen junto al modelo y Presentar. Se recortaron dos esperas de carga (unos 9 s).');
 }
 
@@ -265,10 +265,10 @@ function clipSlide(eyebrow, title, clip, poster, points, notes) {
   nav(s, 1);
   const vw = 8.7, vh = vw * 9 / 16, x = MX, y = 1.8; // termina arriba del pie (7.0")
   card(s, x, y, vw + 0.24, vh + 0.24, 'Marco del clip');
-  s.addMedia({ type: 'video', path: CLIP(clip), x: x + 0.12, y: y + 0.12, w: vw, h: vh, cover: b64(CLIP(poster), 'image/jpeg'), objectName: title });
+  s.addMedia({ type: 'video', path: CLIP(clip), x: x + 0.12, y: y + 0.12, w: vw, h: vh, cover: b64(CLIP(poster), 'image/jpeg'), objectName: `Video ${clip}` }); // fix-media.ps1 la reinserta desde PowerPoint
   const tx = x + vw + 0.64, tw = W - MX - tx;
   points.forEach(([big, unit, cap], i) => stat(s, big, unit, cap, tx, 1.95 + i * 1.6, tw));
-  label(s, 'CLIP · CLIC PARA REPRODUCIR', tx, 6.45, tw);
+  label(s, 'CLIP · EN BUCLE', tx, 6.45, tw);
   s.addNotes(notes);
 }
 clipSlide('02 · LA APP · UN CLIC, UN PILAR', 'Un clic en un pilar pinta todo el plano', 'hsbc-pilar.mp4', 'hsbc-pilar-poster.jpg',
