@@ -37,6 +37,14 @@ def test_its_own_profile_so_the_size_holds():
     assert args.endswith('--user-data-dir="{0}" --no-first-run --no-default-browser-check'.format(profile))
 
 
+def test_the_presentation_has_its_own_profile_so_it_opens_maximized_with_the_summary_open():
+    env = {"LOCALAPPDATA": "C:/LA"}
+    assert profile_dir(env, SUMMARY) == profile_dir(env)
+    assert profile_dir(env, PRESENT) == os.path.join("C:/LA", "HSBC Space Analytics", "navegador-presentar")
+    assert profile_dir(env, PRESENT) != profile_dir(env, SUMMARY)
+    assert profile_dir({}, PRESENT) is None
+
+
 def test_bridge_jumps_to_the_url_with_its_hash():
     page = bridge_html("file:///C:/a%20b.html#resumen=1")
     assert 'location.replace("file:///C:/a%20b.html#resumen=1")' in page

@@ -49,10 +49,14 @@ def find_browser(env, isfile=os.path.isfile):
     return None
 
 
-def profile_dir(env):
-    """La carpeta del perfil propio del navegador; None si Windows no da %LOCALAPPDATA%."""
+def profile_dir(env, view=None):
+    """La carpeta del perfil propio del navegador; None si Windows no da %LOCALAPPDATA%. La presentación lleva el
+    suyo: con el resumen abierto en el mismo perfil, Edge le pasa la ventana nueva a ese proceso, ignora
+    --start-maximized y la abre del tamaño del resumen."""
     base = env.get("LOCALAPPDATA")
-    return os.path.join(base, "HSBC Space Analytics", "navegador") if base else None
+    if not base:
+        return None
+    return os.path.join(base, "HSBC Space Analytics", "navegador-presentar" if view == PRESENT else "navegador")
 
 
 def app_args(url, size=None, profile=None):
