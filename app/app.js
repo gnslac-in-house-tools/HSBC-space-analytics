@@ -629,7 +629,7 @@ function renderEmpty(vb) {
  const d = document.createElement('div'); d.className = 'drop'; d.id = 'drop';
  d.innerHTML = `<div><svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="opacity:.6"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18M15 3v18M3 15h18"/></svg>
   <h3>Trae un modelo de Revit</h3><p>En Revit: pestaña <b>Space Analytics → Exportar</b>. Abre el <b>.html</b> que genera o arrastra aquí su <b>.json</b>. Se analiza un modelo a la vez.</p>
-  <div class="row"><button class="btn" id="e-open">Abrir space-model.json</button>${window.SA_HAS_SAMPLE === false ? '' : '<button class="btn" id="e-sample">Ver sucursal de prueba</button>'}</div></div>`;
+  <div class="row"><button class="btn" id="e-open">Abrir space-model.json</button>${window.SA_HAS_SAMPLE === false ? '' : '<button class="btn" id="e-sample">Ver sucursal de ejemplo</button>'}</div></div>`;
  vb.appendChild(d);
  $('e-open').onclick = () => $('file-model').click();
  $('e-sample') && ($('e-sample').onclick = loadSample);
@@ -1106,18 +1106,13 @@ function setTheme(t) { document.documentElement.dataset.theme = t; document.quer
 function setBg(b) { document.documentElement.dataset.bg = b; document.querySelectorAll('#bgs button').forEach(x => x.setAttribute('aria-pressed', x.dataset.b === b)); }
 function setView(v) { S.view = v; document.querySelectorAll('#views button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === v)); renderViewport(); Snd.click(); }
 function setLevel(name) { S.level = name; S.path = null; S.mark = null; runAnalysis(); }
-function loadSample() { if (window.SA_SAMPLE) { addModels(window.SA_SAMPLE, 'sucursal de prueba'); return; }
- const s = document.createElement('script'); s.src = 'samples/sucursal.js'; s.onload = () => addModels(window.SA_SAMPLE, 'sucursal de prueba'); s.onerror = () => toast('No encontré la sucursal de prueba', 'app/samples/sucursal.js'); document.head.appendChild(s); }
-// Modelo de muestra de Autodesk: lo que se ve al abrir la app sin datos incrustados (GitHub Pages). Si falta, queda el estado vacío.
-function loadDemo() { if (window.SA_DEMO) { addModels(window.SA_DEMO, 'modelo de muestra de Autodesk'); return; }
+// La sucursal de ejemplo (app/samples/sucursal.js): lo que se ve al abrir la app sin datos incrustados (GitHub Pages) y lo que
+// abre el botón «Ver sucursal de ejemplo». No es un modelo real. Si falta, queda el estado vacío.
+function loadSample() { if (window.SA_SAMPLE) { addModels(window.SA_SAMPLE, 'sucursal de ejemplo'); return; }
  const drop = $('drop'); if (drop) drop.style.visibility = 'hidden';   // sin «Trae un modelo» detrás de la carga
- const s = document.createElement('script'); s.src = 'samples/racadvancedsampleproject.js';
- s.onload = () => window.SA_DEMO && addModels(window.SA_DEMO, 'modelo de muestra de Autodesk');
- s.onerror = () => { if (drop) drop.style.visibility = ''; }; document.head.appendChild(s); }
-// La casa de muestra de Autodesk (#muestra=casa): el segundo modelo con el estándar SA_, para probar la app con otro edificio.
-function loadBasic() { if (window.SA_BASIC) { addModels(window.SA_BASIC, 'casa de muestra de Autodesk'); return; }
- const s = document.createElement('script'); s.src = 'samples/racbasicsampleproject.js'; s.onload = () => window.SA_BASIC && addModels(window.SA_BASIC, 'casa de muestra de Autodesk');
- s.onerror = () => toast('No encontré la casa de muestra', 'app/samples/racbasicsampleproject.js'); document.head.appendChild(s); }
+ const s = document.createElement('script'); s.src = 'samples/sucursal.js';
+ s.onload = () => window.SA_SAMPLE && addModels(window.SA_SAMPLE, 'sucursal de ejemplo');
+ s.onerror = () => { if (drop) drop.style.visibility = ''; toast('No encontré la sucursal de ejemplo', 'app/samples/sucursal.js'); }; document.head.appendChild(s); }
 document.querySelectorAll('#themes button').forEach(b => b.onclick = () => { setTheme(b.dataset.t); Snd.click(); });
 document.querySelectorAll('#bgs button').forEach(b => b.onclick = () => { setBg(b.dataset.b); Snd.click(); });
 document.querySelectorAll('#views button').forEach(b => b.onclick = () => setView(b.dataset.v));
@@ -1515,9 +1510,7 @@ if (hp.get('bg')) setBg(hp.get('bg')); if (hp.get('theme')) setTheme(hp.get('the
 let embedded = null;
 try { embedded = JSON.parse($('space-model-data').textContent); } catch (e) { toast('Los datos incrustados no se pudieron leer'); }
 if (embedded) { window.SA_HAS_SAMPLE = false; addModels(embedded, 'exportación de Revit'); }
-else if (hp.get('sample')) loadSample();
-else if (hp.get('muestra') === 'casa') loadBasic();
-else if (!hp.get('vacio')) loadDemo();   // #vacio=1 abre el estado vacío (Abrir space-model.json)
+else if (!hp.get('vacio')) loadSample();   // #vacio=1 abre el estado vacío (Abrir space-model.json)
 if (hp.get('view')) setView(hp.get('view'));
 if (hp.get('left')) setLeft(hp.get('left'));
 window.SA = {S, openDigest, focus, setLeft, setView, showPath, showMark, openFam, present, createRel, runAnalysis}; // para pruebas y capturas

@@ -106,22 +106,21 @@ parámetro:
     python revit/tools/etiquetar.py inventario <modelo.rvt> <salida>        # qué trae el modelo
     python revit/tools/etiquetar.py etiquetar  <modelo.rvt> <salida> reglas.json
 
-## Los dos modelos de muestra, ya en estándar
+## La sucursal de ejemplo y los modelos de Autodesk
 
-`racadvancedsampleproject.rvt` (una escuela de tres pisos) y `racbasicsampleproject.rvt` (una casa) se abrieron en
-Revit 2027 con `etiquetar.py`, que creó los 11 parámetros, los vinculó a sus categorías y los llenó con las reglas de
-`revit/standard/reglas/`. Cada uno dejó una copia `.rvt` con los parámetros (los originales de Descargas no se
-tocaron) y el `space-model.json` que ahora son las muestras de la app (`app/samples/`).
+**Lo que abre la app** es una sucursal bancaria de ejemplo, inventada (`app/samples/sucursal.js`, generada por
+`app/tests/fixtures/make-sucursal-completa.js`): de huella irregular (entrada en un nicho hacia la calle, esquina achaflanada,
+muro oblicuo al fondo) y en dos niveles. Planta baja con un autoservicio de 3 ATMs con su puerta a la calle, lobby con host y
+guardia, fila frente a 4 cajas tras un muro de cristal blindado, sala de espera con sillas, 4 salas de asesoría con sus sillas,
+bóveda, back office y baños; mezzanine de personal (gerencia y sala de capacitación) unido por una escalera. Cada tipo de familia
+trae su `SA_Servicio` y su carbono (`SA_GWP`, `SA_GWP_Base`), y cada room su `SA_Zona`: los 36 elementos de la planta baja se
+identifican por parámetro y ninguno por nombre, y una prueba lo vigila.
 
-| | Escuela (`rac-advanced.json`) | Casa (`rac-basic.json`) |
-|---|---|---|
-| Cómo se abre | La app la abre por omisión | `app/index.html#muestra=casa` |
-| Nivel que se mide | 01 - Entry Level | Level 1 |
-| Experiencia / Sustentabilidad | 67 / 35 | 47 / 35 |
-| Identificados por parámetro / por nombre | 46 / 0 | 10 / 0 |
-| Temas con datos (Experiencia, Sustentabilidad) | 5 de 5, 3 de 3 | 5 de 5, 3 de 3 |
-| Rooms con `SA_Zona` | 88 de 91 | 14 de 14 |
-| Tipos con parámetros `SA_` | 19 | 22 |
+**Para validar el camino de Revit** se usaron dos modelos de Autodesk, que ya no están en la app: `racadvancedsampleproject.rvt`
+(una escuela de tres pisos) y `racbasicsampleproject.rvt` (una casa). Se abrieron en Revit 2027 con `etiquetar.py`, que creó
+los 11 parámetros, los vinculó a sus categorías y los llenó con las reglas de `revit/standard/reglas/`. Cada uno dejó una copia
+`.rvt` con los parámetros (los originales no se tocaron) y su `space-model.json`; ambos calcularon los 8 temas con todos sus
+elementos identificados por parámetro. Las reglas quedan como ejemplo de cómo etiquetar un modelo que ya existe.
 
 Lo que declaran las reglas:
 
@@ -168,6 +167,7 @@ mismo exportador deja un solo camino.
 | `revit/standard/SA_Parametros.txt` | El archivo de parámetros compartidos que se carga en Revit |
 | `revit/standard/generar.py` | Genera el `.txt` desde el JSON, con GUID estables |
 | `revit/tools/sa_etiquetar.py` | Script que corre dentro de Revit: crea, vincula, asigna, guarda copia y exporta |
+| `app/tests/fixtures/make-sucursal-completa.js` | Genera la sucursal de ejemplo que abre la app (`app/samples/sucursal.js`), ya con el estándar |
 | `revit/tools/etiquetar.py` | Lanza Revit con un `.rvt` y espera el resultado |
 | `revit/tools/muestra.py` | Convierte una exportación en una muestra de la app (`app/samples/*.js`) |
 | `revit/standard/reglas/` | Las reglas de etiquetado de cada modelo de muestra |
