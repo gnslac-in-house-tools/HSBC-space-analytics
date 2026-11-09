@@ -1,0 +1,18 @@
+# This is a Revit shared parameter file.
+# Do not edit manually.
+*META	VERSION	MINVERSION
+META	2	1
+*GROUP	ID	NAME
+GROUP	1	SpaceAnalytics
+*PARAM	GUID	NAME	DATATYPE	DATACATEGORY	GROUP	VISIBLE	DESCRIPTION	USERMODIFIABLE	HIDEWHENNOVALUE
+PARAM	b4a069b2-775b-544b-bcf9-c2cbfaf513cc	SA_Servicio	TEXT		1	1	Qué servicio de la sucursal presta la pieza. ATM = cajero automático; Caja = ventanilla del cajero; Asesoria = asiento del cliente en la mesa de asesoría; Asesor = escritorio del asesor (orienta el asiento); Host = módulo de bienvenida o recepción; Ninguno = no es un servicio aunque su nombre lo parezca.	1	0
+PARAM	b4063f85-3ed9-56f2-96eb-8bc2e74a2c56	SA_Rol	TEXT		1	1	Papel de la pieza en la vista y el movimiento. Personal = puesto con vista (caja, mostrador, guardia); Entrada = puerta de acceso público; Bóveda = destino de la ruta de efectivo; Espera = mobiliario o room de espera.	1	0
+PARAM	fd904504-6a1e-50a9-b7b4-35b832a981d7	SA_Zona	TEXT		1	1	Qué parte de la sucursal es el room. Autoservicio = zona de ATMs; Espera = fila y espera; Asesoria = salas y lounge de asesoría; Boveda = bóveda; Personal = áreas solo de personal (back office, cajas); Cliente = área pública sin servicio específico.	1	0
+PARAM	1169b164-10b9-586a-ab0a-f257c2782a2f	SA_GWP	NUMBER		1	1	Carbono incorporado de la pieza, de su EPD o de la base de datos que use el proyecto.	1	0
+PARAM	69097875-0561-5d6a-936d-c2995668a4d9	SA_GWP_Base	NUMBER		1	1	Carbono de la alternativa genérica convencional. La reducción de carbono se mide contra esto. Sin él, la app usa una tabla propia por nombre de familia y, si no la conoce, no hay reducción que medir.	1	0
+PARAM	0a179d68-ad38-56e6-9a24-418f42446701	SA_Reciclado	NUMBER		1	1	Contenido reciclado de la pieza.	1	0
+PARAM	ae4655e1-3a2a-5be5-a3a0-39781231dd38	SA_Reutilizado	INTEGER		1	1	Si la pieza viene de otro proyecto: cuenta como cero carbono y como 100 % circular.	1	0
+PARAM	35e32bf2-1a43-5aed-8173-c69739bb6146	SA_EPD	INTEGER		1	1	Si el SA_GWP sale de una Declaración Ambiental de Producto.	1	0
+PARAM	3886f22f-6cdf-5352-aef6-91904fe49099	SA_VOC	NUMBER		1	1	Compuestos orgánicos volátiles del producto.	1	0
+PARAM	c91aa3cc-db46-5c38-b135-ce6946c6c03a	SA_NRC	NUMBER		1	1	Absorción acústica (coeficiente NRC).	1	0
+PARAM	e4f65607-7740-5fd5-a792-9fce319abc58	SA_Opaco	INTEGER		1	1	Un muro cortina que no es vidrio: tapa la vista y no deja pasar luz.	1	0

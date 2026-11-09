@@ -11,7 +11,7 @@ estilizarlo a mano.
 | Panel | `.panel.side` | Encabezado fijo y cuerpo con scroll. |
 | Encabezado | `.phd` | Eyebrow gris (qué es), título de 17 px (cuál es, con su ícono o sus puntos de color), subtítulo de una o dos líneas. Acciones a la derecha. |
 | Cuerpo | `.pbody` | Secciones planas (`.sec`) separadas por una línea. Sin tarjetas apiladas. |
-| Sección | `.sec` + `.sec-h` | Eyebrow a la izquierda y, a la derecha, una nota gris corta (`.sec-m`) que explica cómo leerla o qué hace el clic. |
+| Sección | `.sec` + `.sec-h` | Eyebrow a la izquierda y, en el inspector, a la derecha, una nota gris corta (`.sec-m`) que explica cómo leerla. El tablero de la izquierda va sin notas. |
 | Lo enfocado | `.hero`, `.row.on` | Una sola tarjeta blanca con sombra por panel: el pilar elegido a la izquierda, su puntaje a la derecha. |
 
 ## Piezas
@@ -25,6 +25,14 @@ estilizarlo a mano.
 | Texto secundario | `.meta`, `.sec p` | Manrope 11 px gris; lo importante en `b`. |
 | Chip | `.rc` | Relaciones y acciones de texto. `.on` = la que se ve en el plano; `.new` (punteado) = crearla. |
 | Botón de ícono | `.ib` | Capas (`.tg`, tachado si está apagada) y el ojo de las métricas (`.sm`). Activo = tinte violeta. |
+
+## Piezas de los modos Experiencia y Sustentabilidad
+
+Viven en el mismo bloque de `app/index.html` y se documentan en `docs/modos.md`: el interruptor de modo (`.ix2.pxtabs`,
+con palomita y color del modo), la métrica plegable (`details.pxmd`), el selector de usuario (`.pxus`, desplegable), el origen del
+dato (`.og`), la letra de tipo (`.tl`), la conclusión (`.pxc`), la leyenda de la animación (`.pxcap`) y la retícula
+personalizada (`.pxcp`). Los dos paneles llevan el color del modo (`--pxm`): tinte de fondo, encabezado más intenso y
+franja de 4 px en el borde. Sin scroll en laptop: por alto de ventana, con plegados (un solo abierto por panel).
 
 ## Reglas
 

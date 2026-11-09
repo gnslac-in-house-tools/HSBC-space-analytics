@@ -1,0 +1,30 @@
+{
+  "modelo": "racadvancedsampleproject.rvt",
+  "nota": "Demostración. Es una escuela de tres pisos: no tiene ATMs, cajas ni host. Se declaran como servicios piezas que cumplen un papel parecido (marcadas como sustitutos) para ejercitar el estándar de punta a punta. Los valores de carbono son de orden de magnitud, no de una EPD.",
+  "reglas": [
+    {"nota": "Vestíbulo, cafetería y lounge: espera", "en": "rooms", "nombre": "^(Lobby|Caf[a-z]*teria|Lounge)$", "param": {"SA_Zona": "Espera"}},
+    {"nota": "Conferencia, laboratorio, biblioteca, revisión: asesoría (sustituto)", "en": "rooms", "nombre": "^(Conference|Computer Lab|Media Review|Library)$", "param": {"SA_Zona": "Asesoria"}},
+    {"nota": "Oficinas, bodegas y cuartos técnicos: personal", "en": "rooms", "nombre": "^(Office|Admin|Administration|Copy/Print|Prep/Dish|Storage|Dry Storage|Electrical|Sprinkler)$", "param": {"SA_Zona": "Personal"}},
+    {"nota": "Aulas, pasillos, escaleras y baños: cliente", "en": "rooms", "nombre": "^(Instruction|Vest[.]|Corridor|Stair|Toilet|Men|Women)$", "param": {"SA_Zona": "Cliente"}},
+
+    {"nota": "Puertas de vidrio de la fachada: acceso público", "en": ["OST_Doors"], "familia": "^M_Curtain Wall (Dbl|Sgl) Glass$", "param": {"SA_Rol": "Entrada"}},
+
+    {"nota": "Mesa redonda con sillas = mesa de asesoría (sustituto)", "en": ["OST_Furniture"], "familia": "^M_Table-Dining Round",
+     "param": {"SA_Servicio": "Asesoria", "SA_GWP": 85, "SA_GWP_Base": 100, "SA_Reciclado": 10}},
+    {"nota": "Sillas: espera", "en": ["OST_Furniture"], "familia": "^(M_Chair-Breuer|Chair-Viper)$",
+     "param": {"SA_Rol": "Espera", "SA_GWP": 28, "SA_GWP_Base": 32, "SA_Reciclado": 15}},
+    {"nota": "Sofás: espera", "en": ["OST_Furniture"], "familia": "^Couch-Viper$",
+     "param": {"SA_Rol": "Espera", "SA_GWP": 120, "SA_GWP_Base": 150, "SA_Reciclado": 12}},
+    {"nota": "Columnas de concreto (kgCO₂e por pieza)", "en": ["OST_StructuralColumns"], "familia": "^M_Concrete-Round-Column$",
+     "param": {"SA_GWP": 180, "SA_GWP_Base": 230, "SA_Reciclado": 10}},
+    {"nota": "Columnas de acero (kgCO₂e por pieza)", "en": ["OST_StructuralColumns"], "familia": "^M_W-Wide Flange-Column$",
+     "param": {"SA_GWP": 320, "SA_GWP_Base": 400, "SA_Reciclado": 90}},
+
+    {"nota": "Pisos (kgCO₂e/m²)", "en": ["OST_Floors"], "familia": "^Floor$",
+     "param": {"SA_GWP": 55, "SA_GWP_Base": 70, "SA_Reciclado": 20}},
+    {"nota": "Muros (kgCO₂e/m²)", "en": ["OST_Walls"], "familia": "^Basic Wall$",
+     "param": {"SA_GWP": 40, "SA_GWP_Base": 52, "SA_Reciclado": 15}},
+    {"nota": "Muros cortina: transparentes", "en": ["OST_Walls"], "familia": "^Curtain Wall$",
+     "param": {"SA_Opaco": 0}}
+  ]
+}

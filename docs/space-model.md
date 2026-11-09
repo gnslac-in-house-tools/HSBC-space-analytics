@@ -76,7 +76,10 @@ Un objeto por tipo usado, con su id como clave:
 
 ## Parámetros `SA_` que la app entiende
 
-Son opcionales. Sin ellos la app sigue funcionando: usa heurísticas por nombre y avisa qué supuso.
+Son opcionales. Sin ellos la app sigue funcionando: usa heurísticas por nombre y avisa qué supuso. **El estándar completo
+(la librería, sus valores y qué indicador alimenta cada uno) vive en `docs/parametros-sa.md`**: aquí va el resumen de lo que
+lee el contrato. Además de los de esta tabla, la app lee `SA_Servicio` y `SA_Zona` (qué es cada pieza y cada room),
+`SA_GWP_Base` y `SA_Reutilizado`; cuando existen, mandan sobre el nombre de la familia o del room.
 
 | Parámetro | Dónde | Qué hace |
 |---|---|---|

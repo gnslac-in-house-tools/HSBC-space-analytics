@@ -254,12 +254,28 @@ class Collector(object):
 
     # ---- cada categoría: un registro crudo (o una lista), None (fuera a propósito) o False (sin geometría) ----
 
+    def _room_phase(self, src):
+        """El id de la fase de la que se leen los rooms: la final y, si en esa no hay ninguno colocado (hay modelos con
+        sus rooms en una fase anterior), la que más rooms colocados tiene. Antes se perdían todos y quedaba sin rooms."""
+        cache = self.__dict__.setdefault("_room_phases", {})
+        if id(src) not in cache:
+            counts = {}
+            for r in _elements(src.doc, "OST_Rooms"):
+                pid = element_id_param(r, "ROOM_PHASE")
+                if r.Area > 0 and is_valid(pid):
+                    counts[id_value(pid)] = counts.get(id_value(pid), 0) + 1
+            chosen = id_value(src.phase.Id) if src.phase is not None else None
+            if counts and chosen not in counts:
+                chosen = max(counts, key=counts.get)
+            cache[id(src)] = chosen
+        return cache[id(src)]
+
     def _room(self, src, e, _category):
         if e.Area <= 0:
             self._skip(UNPLACED)
             return None
         phase_id = element_id_param(e, "ROOM_PHASE")
-        if src.phase is not None and is_valid(phase_id) and id_value(phase_id) != id_value(src.phase.Id):
+        if src.phase is not None and is_valid(phase_id) and id_value(phase_id) != self._room_phase(src):
             self._skip(OTHER_PHASE)
             return None
         segments = e.GetBoundarySegments(self.boundary)
