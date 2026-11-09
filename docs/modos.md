@@ -19,8 +19,8 @@ y ya es la app: `app/index.html`, `app/app.js` y `app/indices.js`.
 - **Los pilares de antes** (flujo, visibilidad, seguridad, confort, sustentabilidad) siguen en el motor y en la presentación;
   las relaciones se calculan con ellos. El tablero ya no los lista: muestra los 8 temas.
 - **Modelo de muestra:** la app abre una sucursal de ejemplo (`app/samples/sucursal.js`), inventada: de huella irregular (entrada en un nicho hacia la calle, esquina
-  achaflanada, muro oblicuo al fondo) y en dos niveles, con 3 ATMs, 4 cajas tras un muro de cristal blindado, sala de espera con
-  sillas, 4 salas de asesoría, host, bóveda, back office y un mezzanine de personal con su escalera, y con el estándar
+  achaflanada, muro oblicuo al fondo) y en dos niveles, con 3 ATMs, el lobby pegado a la puerta, una sala de espera con cuatro filas de sillas y, entre las
+  sillas y las 4 cajas, un pasillo de 1 m frente a las cajas y un muro delgado, del largo de la fila de cajas, que tapa la vista de las sillas; además de una sala de espera lateral, 4 salas de asesoría, host, bóveda, back office y un mezzanine de personal con su escalera, y con el estándar
   `SA_` completo, así que calcula los 8 temas. En un modelo que no traiga servicios, lo que no tiene datos dice «Sin datos» y
   los índices dicen «Índice parcial · 2 de 5 temas con datos». El mezzanine es solo de personal: ahí Experiencia es parcial.
 
