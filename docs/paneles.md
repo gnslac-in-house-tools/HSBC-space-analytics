@@ -11,7 +11,7 @@ estilizarlo a mano.
 | Panel | `.panel.side` | Encabezado fijo y cuerpo con scroll. |
 | Encabezado | `.phd` | Eyebrow gris (qué es), título de 17 px (cuál es, con su ícono o sus puntos de color), subtítulo de una o dos líneas. Acciones a la derecha. |
 | Cuerpo | `.pbody` | Secciones planas (`.sec`) separadas por una línea. Sin tarjetas apiladas. |
-| Sección | `.sec` + `.sec-h` | Eyebrow a la izquierda y, a la derecha, una nota gris corta (`.sec-m`) que explica cómo leerla o qué hace el clic. |
+| Sección | `.sec` + `.sec-h` | Eyebrow a la izquierda y, en el inspector, a la derecha, una nota gris corta (`.sec-m`) que explica cómo leerla. El tablero de la izquierda va sin notas. |
 | Lo enfocado | `.hero`, `.row.on` | Una sola tarjeta blanca con sombra por panel: el pilar elegido a la izquierda, su puntaje a la derecha. |
 
 ## Piezas

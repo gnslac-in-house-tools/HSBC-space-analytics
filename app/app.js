@@ -1175,21 +1175,22 @@ function thRow(X, t, tag) { tag = tag || 'button'; const sc = rnd(thScore(X, t.k
   <span class="lab">${pIcon(t.k, 15)}<span>${t.name}</span></span><span class="end">${rt ? `<span class="pst">${sIcon(rt)}${RATE_S[rt]}</span>` : '<span class="pst none">Sin datos</span>'}<span class="val">${sc == null ? '—' : sc}</span></span>
   <span class="b4 ind full" aria-hidden="true"><i style="width:${sc || 0}%"></i><em style="left:70%"></em></span></${tag}>`; }
 function ixInner(fam, v, sub, ic) { const sc = rnd(v), rt = rate70(sc);
- return `<span class="eyebrow">${ic || famDots(fam)}<span>${PX.FAM[fam].idx}</span></span><span class="val xl">${sc == null ? '—' : sc}<small>/ 100</small></span>${rt ? `<span class="pst">${sIcon(rt)}${RATE_S[rt]}</span>` : '<span class="pst none">Sin datos</span>'}<span class="b4 l"><i style="width:${sc || 0}%"></i><em style="left:70%"></em></span><span class="meta">${sub}</span>`; }
+ return `<span class="eyebrow">${ic || famDots(fam)}<span>${PX.FAM[fam].idx}</span></span><span class="val xl">${sc == null ? '—' : sc}<small>/ 100</small></span>${rt ? `<span class="pst">${sIcon(rt)}${RATE_S[rt]}</span>` : '<span class="pst none">Sin datos</span>'}<span class="b4 l"><i style="width:${sc || 0}%"></i><em style="left:70%"></em></span>${sub ? `<span class="meta">${sub}</span>` : ''}`; }
 const ixSub = (X, fam) => { const tot = PXT.filter(t => t.fam === fam).length;
  return X.cov[fam] < tot ? `Índice parcial · ${X.cov[fam]} de ${tot} temas con datos` : fam === 'exp' ? 'Índice potencial · modelado con demanda supuesta' : `Índice potencial · ${fmt(X.m.cepd.v)} % del carbono con EPD`; };
 function ixBlock(X) { const one = (fam, v) => `<div class="ixc" style="--c:${PX.FAM[fam].c}">${ixInner(fam, v, ixSub(X, fam))}</div>`;
  return `<div class="ix2">${one('exp', X.exp)}${one('sus', X.sus)}</div>`; }
 // los dos índices son el interruptor de modo: el activo lleva la palomita, el borde y el fondo de su color; el otro, un círculo vacío y gris
 const PXCK = '<span class="pxck" aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M2.5 6.3 5 8.7l4.5-5"/></svg></span>';
-function modeTabs(X) { const one = (fam, v) => { const on = S.px.mode === fam;
-  return `<button class="ixc pxtab" data-mode="${fam}" aria-pressed="${on}" style="--c:${PX.FAM[fam].c}" title="${on ? 'Estás viendo' : 'Cambiar a'} ${PX.FAM[fam].n}">${ixInner(fam, v, ixSub(X, fam), PXCK)}</button>`; };
+function modeTabs(X) { const one = (fam, v) => { const on = S.px.mode === fam, part = X.cov[fam] < PXT.filter(t => t.fam === fam).length; // sin notas: solo avisa si el índice es parcial
+  return `<button class="ixc pxtab" data-mode="${fam}" aria-pressed="${on}" style="--c:${PX.FAM[fam].c}" title="${on ? 'Estás viendo' : 'Cambiar a'} ${PX.FAM[fam].n}">${ixInner(fam, v, part ? ixSub(X, fam) : '', PXCK)}</button>`; };
  return `<div class="ix2 pxtabs" role="group" aria-label="Modo">${one('exp', X.exp)}${one('sus', X.sus)}</div>`; }
 // el modo sale del tema enfocado; cada modo recuerda su último tema. Las relaciones hablan del cliente: solo en Experiencia
 function pxSync() { const f = S.focus; if (f.type === 'rel') S.px.mode = 'exp'; else if (f.type === 'pillar' && isTh(f.k)) { S.px.mode = PX.TH[f.k].fam; S.px.last[S.px.mode] = f.k; }
  const m = S.px.mode, isExp = m === 'exp'; document.documentElement.style.setProperty('--pxm', PX.FAM[m].c);
  $('prels').closest('.sec').hidden = !isExp;
- if ($('lsenses').hidden) { $('lp-h').textContent = PX.FAM[m].n; $('lp-p').textContent = isExp ? 'Cómo vive la sucursal cada tipo de cliente. Clic en un tema para pintarlo en el plano.' : 'Lo que aportan los elementos y el espacio. Clic en un tema para pintarlo en el plano.'; } }
+ if ($('lsenses').hidden) $('lp-h').textContent = PX.FAM[m].n;
+ $('lp-p').hidden = $('lsenses').hidden; } // el tablero va sin notas; solo Senses conserva su leyenda
 function pxSetMode(m) { if (S.px.mode === m) return; S.px.mode = m; const X = pxNow(), val = t => { const v = thScore(X, t.k); return v == null ? Infinity : v; };
  const k = S.px.last[m] || PXT.filter(t => t.fam === m).reduce((a, t) => val(t) < val(a) ? t : a).k;
  S.hlRooms = []; S.path = null; S.broute = null; S.mark = null; focus('pillar', k); Snd.tone(BY[k].f, 1.2, .04); }
@@ -1200,7 +1201,7 @@ function supBlock() { const mw = PX.mixW(S.px.mix);
   <div class="ly-row"><span>Combinar los tipos por</span><span class="seg" id="px-mix"><button data-mix="visitas" aria-pressed="${S.px.mix !== 'tiempo'}">Visitas</button><button data-mix="tiempo" aria-pressed="${S.px.mix === 'tiempo'}">Tiempo</button></span></div>
   <p class="meta pxn">${S.px.mix === 'tiempo' ? `Por <b>tiempo</b> pesa más quien se queda más (3.5, 17.5 y 45 min de visita): <b>${PX.TK.map(t => Math.round(mw[t] * 100)).join(' / ')}</b>.` : 'Por <b>visitas</b> cada cliente cuenta igual: la mitad son Express.'} Hora pico: <b>${PX.PEAK} clientes/h</b>. Asesoría: <b>${Math.round(PX.APPT * 100)} %</b> llega con cita.</p></details>`; }
 function hallBlock(X, eye, finds) { const F = finds || X.finds;
- return `<details class="sec prio" id="px-hall"${pxGroup('pxl')}${S.px.hallOpen ? ' open' : ''}><summary><span class="eyebrow">Hallazgos</span><span class="pxsum mono">${F.length} · por regla</span></summary>
+ return `<details class="sec prio" id="px-hall"${pxGroup('pxl')}${S.px.hallOpen ? ' open' : ''}><summary><span class="eyebrow">Hallazgos</span><span class="pxsum mono">${F.length}</span></summary>
   <p>Cada uno sale de una <b>regla fija</b> sobre una métrica: aparece cuando su puntaje baja de 70 (mejorar) o de 40 (atención). El texto es una plantilla con el valor medido; no lo redacta una IA.</p>
   <div class="list div">${F.map((f, i) => `<div class="row m" style="--c:${BY[f.x.th].c1}"><span class="lab">${pIcon(f.x.th, 14)}<span>${esc(f.msg)}</span></span><span class="end">${eye ? `<button class="ib sm" data-fd="${i}" aria-label="Ver en el plano" title="Ver en el plano">${EYE}</button>` : ''}</span>
    <div class="full mt">${f.sev === 'info' ? '<span class="pst none">Info</span>' : `<span class="pst">${sIcon(f.sev)}${RATE_S[f.sev]}</span>`}<span class="meta src">${f.rule}</span></div></div>`).join('')}</div></details>`; }
@@ -1228,9 +1229,9 @@ function renderBoard() { renderBoardBase(); const b = $('pxboard'), more = $('px
  if (!S.res) { b.innerHTML = '<section class="sec"><p class="meta">Carga un modelo para ver su diagnóstico.</p></section>'; more.innerHTML = ''; return; }
  const X = pxNow(), m = S.px.mode, finds = X.finds.filter(f => PX.TH[f.x.th].fam === m), themes = PXT.filter(t => t.fam === m).map(t => thRow(X, t)).join('');
  b.innerHTML = `<section class="sec">${modeTabs(X)}</section>` + (m === 'exp'
-  ? `<section class="sec pxpara"><div class="sec-h"><span class="eyebrow">Usuario</span><span class="sec-m">para quién se mide</span></div>${userPicker()}
+  ? `<section class="sec pxpara"><div class="sec-h"><span class="eyebrow">Usuario</span></div>${userPicker()}
    <div class="list">${themes}</div></section>`
-  : `<section class="sec"><div class="sec-h"><span class="eyebrow">Elementos del modelo</span><span class="sec-m">del schedule de Revit</span></div>
+  : `<section class="sec"><div class="sec-h"><span class="eyebrow">Elementos del modelo</span></div>
    <div class="list">${themes}</div></section>`);
  more.innerHTML = (m === 'exp' ? supBlock() : '') + hallBlock(X, true, finds);
  b.querySelectorAll('[data-mode]').forEach(x => x.onclick = () => pxSetMode(x.dataset.mode));

@@ -40,7 +40,7 @@ y ya es la app: `app/index.html`, `app/app.js` y `app/indices.js`.
 | Modo | `.ix2.pxtabs` > `.ixc.pxtab` | Los índices como botones (`aria-pressed`). Activo: palomita (`.pxck`), borde y fondo del color de la familia. El otro: círculo vacío y gris, con su puntaje. Solo en el tablero; en el Resumen van los índices planos. Es la excepción a «índices sin tarjeta». |
 | Métrica plegable | `details.pxmd` | La fila es el resumen (nombre, valor, estado, barra); rango, qué mide, origen y conclusión van dentro. |
 | Familia | `.eyebrow.pxf` + `.dots` | Los puntos de color de sus temas delante del eyebrow: la misma pieza de las relaciones. |
-| Usuario | `.pxus` | Encabezado «Usuario · para quién se mide» y un **selector desplegable**: el botón dice quién está elegido (letra o puntos de color, nombre y qué atiende con su duración) y abre una lista flotante de cuatro opciones (Todos · Express · Transaccional · Asesoría), cada una con su letra, qué atiende y cuánto dura, y una palomita en la elegida. La lista flota: abrirla no mueve nada ni agrega scroll. Se cierra al elegir, con Esc o con un clic fuera; funciona con flechas, Inicio, Fin y Tab. Sustituye al segmentado de cuatro botones, que no dejaba claro qué era cada uno. |
+| Usuario | `.pxus` | Encabezado «Usuario» y un **selector desplegable**: el botón dice quién está elegido (letra o puntos de color, nombre y qué atiende con su duración) y abre una lista flotante de cuatro opciones (Todos · Express · Transaccional · Asesoría), cada una con su letra, qué atiende y cuánto dura, y una palomita en la elegida. La lista flota: abrirla no mueve nada ni agrega scroll. Se cierra al elegir, con Esc o con un clic fuera; funciona con flechas, Inicio, Fin y Tab. Sustituye al segmentado de cuatro botones, que no dejaba claro qué era cada uno. |
 | Retícula personalizada | `#px-cb` + `.pxcp` | Tercer botón del tamaño de celda: deslizador de 0.1 a 1 m que solo se aplica con Aceptar, con celdas estimadas y aviso si es fina (menos de 0.3 m) o si el motor la limita. |
 | Letra de tipo | `.tl` | 15 px, letra blanca sobre el color del tipo. Marca a quién aplica una métrica. |
 | Origen del dato | `.og` | Mono de 10 px con borde: Modelado, Supuesto, Proxy, Genérico, EPD. |
@@ -51,6 +51,10 @@ y ya es la app: `app/index.html`, `app/app.js` y `app/indices.js`.
 
 - **Dos modos:** Experiencia habla del usuario; Sustentabilidad, de los elementos. Los dos índices son el interruptor. El
   modo sale del tema enfocado; cada modo recuerda su último tema y la primera vez abre el de puntaje más bajo.
+- **El tablero va sin notas.** Ni «clic: pintarla en el plano», ni «del schedule de Revit», ni «para quién se mide», ni la
+  frase bajo el título, ni «por regla» en Hallazgos, ni la línea «Índice potencial…» bajo cada índice. Lo único que avisa es
+  «Índice parcial · 2 de 5 temas con datos», cuando faltan datos, y el contador de capas «6 de 7 visibles», que además dice
+  el nombre de la capa al pasar el cursor. Las notas se quedan en el inspector, donde explican cómo sale cada número.
 - **Tablero (izquierda) en Experiencia:** índices · tipo de cliente + 5 temas · Relaciones · Capas · *Supuestos de demanda*
   (plegado) · *Hallazgos* de esta familia (plegado). Se va *Prioridades del cliente*: la mezcla de clientes ocupa su lugar.
 - **Tablero (izquierda) en Sustentabilidad:** índices · 3 temas · Capas · *Hallazgos* de esta familia (plegado).
