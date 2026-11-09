@@ -312,3 +312,12 @@ test('zona: sin rooms (null) es todo el nivel y empata con los puntajes del nive
   ['flujo', 'visib', 'seg', 'conf'].forEach(k => assert.strictEqual(lv.scores[k], r.scores[k], k));
   assert.strictEqual(lv.rooms.length, r.rooms.length);
 });
+
+test('una retícula fina no dispara el grafo: el redondeo a Float32 no cuenta como mejora', () => {
+  const win = {};
+  require('node:vm').runInNewContext(require('node:fs').readFileSync(require('node:path').join(__dirname, '../samples/sucursal.js'), 'utf8'), { window: win, globalThis: win, self: win });
+  const model = win[Object.keys(win)[0]], L = E.levelsOf(model)[0], t0 = Date.now();
+  const r = E.analyze(model, L.id, { cell: 0.2 });
+  assert.ok(r.G.freeCount > 10000);
+  assert.ok(Date.now() - t0 < 5000, `tardó ${(Date.now() - t0) / 1000} s`);
+});

@@ -346,7 +346,7 @@
       const cc = jj * nx + ii;
       if (!free[cc]) continue;
       if (di && dj && (!free[j * nx + ii] || !free[jj * nx + i])) continue;
-      const nd = d0 + (di && dj ? diag : step);
+      const nd = Math.fround(d0 + (di && dj ? diag : step)); // dist es Float32: si no, el redondeo cuenta como mejora y el mismo costo se repite
       if (nd < dist[at + cc]) { dist[at + cc] = nd; if (par) par[at + cc] = at + c; H.push(at + cc, nd); }
     }
   }
@@ -585,7 +585,7 @@
       const L = levels[lvOf[g]];
       relax8(L.res.G, g - L.off, d0, L.off, dist, par, H);
       const J = jumps.get(g);
-      if (J) J.forEach(([t, w]) => { const nd = d0 + w; if (nd < dist[t]) { dist[t] = nd; par[t] = g; H.push(t, nd); } });
+      if (J) J.forEach(([t, w]) => { const nd = Math.fround(d0 + w); if (nd < dist[t]) { dist[t] = nd; par[t] = g; H.push(t, nd); } });
     }
     const route = (k, c) => {
       const g0 = levels[k].off + c; if (!(g0 >= 0 && isFinite(dist[g0]))) return null;
