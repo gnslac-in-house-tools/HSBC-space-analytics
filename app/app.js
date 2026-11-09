@@ -1206,19 +1206,36 @@ function hallBlock(X, eye, finds) { const F = finds || X.finds;
    <div class="full mt">${f.sev === 'info' ? '<span class="pst none">Info</span>' : `<span class="pst">${sIcon(f.sev)}${RATE_S[f.sev]}</span>`}<span class="meta src">${f.rule}</span></div></div>`).join('')}</div></details>`; }
 function wireDetails(root) { [['px-sup', 'supOpen'], ['px-hall', 'hallOpen']].forEach(([id, k]) => { const d = root.querySelector('#' + id); if (d) d.ontoggle = () => { S.px[k] = d.open; }; }); }
 
+/* Selector de usuario: un botón que dice quién está elegido y se abre en una lista de cuatro opciones, cada una con su letra,
+ * su nombre, qué atiende y cuánto dura. Lista flotante: abrirla no mueve nada ni agrega scroll. */
+const PXCHEV = '<svg class="pxus-c" viewBox="0 0 12 12" aria-hidden="true"><path d="m2.5 4.5 3.5 3.5 3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const usChip = k => k === 'all' ? `<span class="pxus-a">${dots(...PX.TK.map(t => PX.TYPES[t].c))}</span>` : tl(k);
+const usName = k => k === 'all' ? 'Todos' : PX.TYPES[k].n, usSub = k => k === 'all' ? 'los tres tipos combinados' : `${PX.TYPES[k].d} · ${PX.TYPES[k].t}`;
+function userPicker() { const cur = S.px.type;
+ return `<div class="pxus" id="px-us"><button class="pxus-b" id="px-usb" aria-haspopup="listbox" aria-expanded="false" aria-controls="px-usl" title="Cambiar el tipo de usuario">${usChip(cur)}<span class="pxus-t"><b>${usName(cur)}</b><span>${usSub(cur)}</span></span>${PXCHEV}</button>
+  <div class="pxus-l" id="px-usl" role="listbox" aria-label="Tipo de usuario" hidden>${['all'].concat(PX.TK).map(k => `<button class="pxus-o" role="option" data-ty="${k}" aria-selected="${cur === k}">${usChip(k)}<span class="pxus-t"><b>${usName(k)}</b><span>${k === 'all' ? usSub(k) : PX.TYPES[k].d}</span></span>${k === 'all' ? '' : `<span class="tm">${PX.TYPES[k].t}</span>`}<svg class="pxus-ck" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.3 5 8.7l4.5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`).join('')}</div></div>`; }
+let pxUsBound = false;
+function wireUserPicker(root) { const bt = root.querySelector('#px-usb'), ls = root.querySelector('#px-usl'); if (!bt) return;
+ const opts = () => [...ls.querySelectorAll('.pxus-o')], set = open => { ls.hidden = !open; bt.setAttribute('aria-expanded', open); if (open) (ls.querySelector('[aria-selected=true]') || opts()[0]).focus(); };
+ bt.onclick = () => set(ls.hidden);
+ bt.onkeydown = e => { if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); set(true); } };
+ ls.onkeydown = e => { const o = opts(), i = o.indexOf(document.activeElement); let j = -1;
+  if (e.key === 'ArrowDown') j = (i + 1) % o.length; else if (e.key === 'ArrowUp') j = (i - 1 + o.length) % o.length; else if (e.key === 'Home') j = 0; else if (e.key === 'End') j = o.length - 1;
+  else if (e.key === 'Escape' || e.key === 'Tab') { set(false); if (e.key === 'Escape') bt.focus(); return; } else return;
+  e.preventDefault(); o[j].focus(); };
+ if (!pxUsBound) { pxUsBound = true; document.addEventListener('click', e => { const l = $('px-usl'); if (l && !l.hidden && !e.target.closest('#px-us')) { l.hidden = true; $('px-usb').setAttribute('aria-expanded', 'false'); } }); } }
 function renderBoard() { renderBoardBase(); const b = $('pxboard'), more = $('pxmore'); if (!b) return; pxSync();
  if (!S.res) { b.innerHTML = '<section class="sec"><p class="meta">Carga un modelo para ver su diagnóstico.</p></section>'; more.innerHTML = ''; return; }
  const X = pxNow(), m = S.px.mode, finds = X.finds.filter(f => PX.TH[f.x.th].fam === m), themes = PXT.filter(t => t.fam === m).map(t => thRow(X, t)).join('');
  b.innerHTML = `<section class="sec">${modeTabs(X)}</section>` + (m === 'exp'
-  ? `<section class="sec pxpara"><div class="sec-h"><span class="eyebrow">Usuario</span><span class="sec-m">${S.px.type === 'all' ? 'los tres tipos combinados' : `${PX.TYPES[S.px.type].d} · ${PX.TYPES[S.px.type].t}`}</span></div>
-   <span class="seg pxty" role="group" aria-label="Tipo de cliente">${[['all', 'Todos']].concat(PX.TK.map(t => [t, PX.TYPES[t].s])).map(([k, n]) => `<button data-ty="${k}" aria-pressed="${S.px.type === k}" title="${k === 'all' ? 'Los tres tipos combinados' : esc(PX.TYPES[k].n + ' · ' + PX.TYPES[k].d + ' · ' + PX.TYPES[k].t)}">${n}</button>`).join('')}</span>
+  ? `<section class="sec pxpara"><div class="sec-h"><span class="eyebrow">Usuario</span><span class="sec-m">para quién se mide</span></div>${userPicker()}
    <div class="list">${themes}</div></section>`
   : `<section class="sec"><div class="sec-h"><span class="eyebrow">Elementos del modelo</span><span class="sec-m">del schedule de Revit</span></div>
    <div class="list">${themes}</div></section>`);
  more.innerHTML = (m === 'exp' ? supBlock() : '') + hallBlock(X, true, finds);
  b.querySelectorAll('[data-mode]').forEach(x => x.onclick = () => pxSetMode(x.dataset.mode));
  b.querySelectorAll('[data-th]').forEach(x => x.onclick = () => { const k = x.dataset.th; S.hlRooms = []; focus('pillar', k); Snd.tone(BY[k].f, 1.2, .04); });
- b.querySelectorAll('[data-ty]').forEach(x => x.onclick = () => { S.px.type = x.dataset.ty; renderAll(); Snd.click(); });
+ b.querySelectorAll('[data-ty]').forEach(x => x.onclick = () => { S.px.type = x.dataset.ty; renderAll(); Snd.click(); }); wireUserPicker(b);
  more.querySelectorAll('[data-mix]').forEach(x => x.onclick = () => { S.px.mix = x.dataset.mix; renderAll(); Snd.click(); });
  more.querySelectorAll('[data-fd]').forEach(x => x.onclick = () => { const f = finds[+x.dataset.fd], G = S.res.G; let ks = f.zone || [];
   if (!ks.length && f.at) { const i = Math.floor((f.at[0] - G.ox) / G.cell), j = Math.floor((f.at[1] - G.oy) / G.cell), c = j * G.nx + i; if (G.room[c] >= 0) ks = [G.room[c]]; }

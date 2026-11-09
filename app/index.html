@@ -476,7 +476,21 @@ select.lvl{height:28px;border:1px solid var(--line);border-radius:999px;backgrou
 /* familia: los puntos de color de sus temas delante del eyebrow (la misma pieza de las relaciones) */
 .pxf{display:inline-flex;align-items:center;gap:7px}.pxf .dots i,.ixc .dots i{width:8px;height:8px}
 /* tipo de cliente: el segmentado de siempre, a todo lo ancho */
-.seg.pxty{display:flex;width:100%;margin:0 0 6px}.seg.pxty button{flex:1;min-width:0;padding:0 4px}
+/* usuario: un botón que dice quién está elegido y abre una lista flotante de cuatro opciones */
+.pxus{position:relative;margin:0 0 6px}
+.pxus-b{appearance:none;display:flex;align-items:center;gap:9px;width:100%;min-height:44px;padding:6px 10px;border:1.5px solid var(--line-2);border-radius:10px;background:var(--surface-2);color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.pxus-b:hover{border-color:var(--pxm,var(--acc-b))}
+.pxus-b[aria-expanded=true]{border-color:var(--pxm,var(--acc-b));box-shadow:0 0 0 3px color-mix(in srgb,var(--pxm,#8C7BF5) 18%,transparent)}
+.pxus-t{display:grid;gap:1px;min-width:0;flex:1}.pxus-t b{font:600 12.5px/1.2 Manrope}.pxus-t span{font:400 11px/1.3 Manrope;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pxus-c{width:14px;height:14px;flex:none;color:var(--muted);transition:transform .2s}.pxus-b[aria-expanded=true] .pxus-c{transform:rotate(180deg)}
+.pxus-a{display:grid;place-items:center;width:20px;flex:none}.pxus .tl{width:20px;height:20px;border-radius:6px;font-size:11px}
+.pxus-l{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:7;display:grid;gap:2px;padding:4px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:12px;box-shadow:var(--shadow)}
+.pxus-o{appearance:none;display:flex;align-items:center;gap:9px;width:100%;min-height:42px;padding:6px 8px;border:0;border-radius:8px;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.pxus-o:hover,.pxus-o:focus-visible{background:var(--line);outline:0}
+.pxus-o[aria-selected=true]{background:color-mix(in srgb,var(--pxm,#8C7BF5) 12%,var(--surface-2))}
+.pxus-o .tm{font:400 10px 'JetBrains Mono';color:var(--muted);white-space:nowrap}
+.pxus-ck{width:14px;height:14px;flex:none;stroke:var(--pxm,#8C7BF5);fill:none;stroke-width:2;opacity:0}.pxus-o[aria-selected=true] .pxus-ck{opacity:1}
+.pxus-b:focus-visible{outline:2px solid var(--pxm,#8C7BF5);outline-offset:2px}
 /* letra del tipo de cliente */
 .tl{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:4px;background:var(--c);color:#fff;font:700 9.5px/1 Manrope;flex:none}
 /* origen del dato */
@@ -544,7 +558,7 @@ select.lvl{height:28px;border:1px solid var(--line);border-radius:999px;backgrou
  .ixc.pxtab,.ixc.pxtab+.ixc.pxtab{padding:6px 8px;gap:3px 6px}
  #lboard .row{padding:4px 8px;gap:4px 10px}
  #lboard .row .val{font-size:17px}
- .seg.pxty{margin-bottom:3px}
+ .pxus{margin-bottom:3px}.pxus-b{min-height:38px;padding:4px 10px}
  #lboard .rc{height:24px}
  .lyg .ib{height:26px}
  .hk{padding:8px 10px 7px}.hk-top{margin-bottom:6px}.hk-top .val.xl{font-size:20px;font-weight:400}.hk-top .val.xl small{font-size:10px}.hk-top .pst{margin-bottom:0}

@@ -29,7 +29,7 @@ estilizarlo a mano.
 ## Piezas de los modos Experiencia y Sustentabilidad
 
 Viven en el mismo bloque de `app/index.html` y se documentan en `docs/modos.md`: el interruptor de modo (`.ix2.pxtabs`,
-con palomita y color del modo), la métrica plegable (`details.pxmd`), el selector de usuario (`.seg.pxty`), el origen del
+con palomita y color del modo), la métrica plegable (`details.pxmd`), el selector de usuario (`.pxus`, desplegable), el origen del
 dato (`.og`), la letra de tipo (`.tl`), la conclusión (`.pxc`), la leyenda de la animación (`.pxcap`) y la retícula
 personalizada (`.pxcp`). Los dos paneles llevan el color del modo (`--pxm`): tinte de fondo, encabezado más intenso y
 franja de 4 px en el borde. Sin scroll en laptop: por alto de ventana, con plegados (un solo abierto por panel).
