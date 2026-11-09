@@ -10,6 +10,8 @@ const PX = require('../indices.js');
 
 const sample = (file, key) => { const win = {}; vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../samples', file), 'utf8'), { window: win, globalThis: win, self: win }); return win[key]; };
 const run = (model, cell) => { const L = E.levelsOf(model)[0], r = E.analyze(model, L.id, { cell: cell || 0.5 }); return { r, sp: PX.spatial(r, E) }; };
+// el mismo modelo como llegaría sin el estándar: sin ningún parámetro SA_
+const stripSA = m => { const c = JSON.parse(JSON.stringify(m)); Object.values(c.types).forEach(t => { delete t.params; }); c.rooms.forEach(r => { delete r.params; }); ['doors', 'obstacles'].forEach(k => c[k].forEach(e => { delete e.params; })); return c; };
 const inRange = v => v == null || (v >= 0 && v <= 100);
 const THEMES = ['orient', 'espera', 'priv', 'seg', 'amb', 'carb', 'circ', 'efic'];
 
@@ -70,10 +72,62 @@ test('una retícula más fina cambia los puntajes pero los deja dentro de 0 a 10
 });
 
 test('un servicio que el modelo no trae queda en «Sin datos», no en 0; quitarlo a propósito sí cuenta', () => {
-  const demo = PX.score(run(sample('racadvancedsampleproject.js', 'SA_DEMO')).sp, {});
+  const demo = PX.score(run(stripSA(sample('racadvancedsampleproject.js', 'SA_DEMO'))).sp, {});
   assert.strictEqual(demo.m.p90E.s, null); assert.strictEqual(demo.m.aband.s, null); assert.strictEqual(demo.th.espera.all, null);
+  assert.strictEqual(demo.m.efic.s, null); assert.strictEqual(demo.th.efic.all, null); assert.strictEqual(demo.sus, null); // sin servicios no hay área necesaria que comparar
   assert.ok(demo.cov.exp < 5, `cubre ${demo.cov.exp} de 5`);
   const { sp } = run(sample('sucursal.js', 'SA_SAMPLE')), full = PX.score(sp, {}), none = PX.score(sp, { counts: Object.assign({}, sp.counts, { atm: 0 }) });
   assert.deepStrictEqual(full.cov, { exp: 5, sus: 3 });
   assert.strictEqual(none.m.p90E.s, 0);
+});
+
+// --- identificación por parámetros SA_ (docs/parametros-sa.md) ---
+const BYNAME = { 'ATM 24 h': 'ATM', 'Estación de cajero': 'Caja', 'Mesa de asesoría': 'Asesoria', 'Escritorio asesor': 'Asesor', 'Módulo de bienvenida': 'Host' };
+const ZBYNAME = [[/atm|autoservicio/i, 'Autoservicio'], [/fila|espera/i, 'Espera'], [/asesor|lounge/i, 'Asesoria'], [/b[oó]veda/i, 'Boveda'], [/back office|cajas$/i, 'Personal']];
+// el mismo modelo con los nombres de familia y de room cambiados y la identidad solo en los parámetros
+const renamed = () => {
+  const m = JSON.parse(JSON.stringify(sample('sucursal.js', 'SA_SAMPLE')));
+  Object.values(m.types).forEach((t, i) => { const sv = BYNAME[t.family]; if (!sv) return; t.params = Object.assign({}, t.params, { SA_Servicio: sv }); t.family = 'Familia ' + (i + 100); t.name = 'T' + i; });
+  m.rooms.forEach((rm, i) => { const z = ZBYNAME.find(([re]) => re.test(rm.name)); rm.params = Object.assign({}, rm.params, z ? { SA_Zona: z[1] } : { SA_Zona: 'Cliente' }); rm.name = 'Sala ' + (i + 1); });
+  return m;
+};
+
+test('con los nombres cambiados, SA_Servicio y SA_Zona dan los mismos puntajes que los nombres originales', () => {
+  const a = run(sample('sucursal.js', 'SA_SAMPLE')), b = run(renamed());
+  assert.deepStrictEqual(b.sp.counts, a.sp.counts);
+  assert.ok(b.sp.via.param > 0 && b.sp.via.nombre === 0, JSON.stringify(b.sp.via));
+  const X = PX.score(a.sp, {}), Y = PX.score(b.sp, {});
+  // el carbono queda fuera: su línea base genérica sale del nombre de familia salvo que traiga SA_GWP_Base (prueba siguiente)
+  ['orient', 'espera', 'priv', 'seg', 'amb', 'circ', 'efic'].forEach(k => assert.ok(Math.abs(X.th[k].all - Y.th[k].all) < 1e-9, `${k}: ${X.th[k].all} vs ${Y.th[k].all}`));
+});
+
+test('si el elemento trae SA_Servicio, el nombre de su familia ya no cuenta', () => {
+  const m = JSON.parse(JSON.stringify(sample('sucursal.js', 'SA_SAMPLE')));
+  Object.values(m.types).forEach(t => { if (t.family === 'ATM 24 h') t.params = Object.assign({}, t.params, { SA_Servicio: 'Ninguno' }); });
+  assert.strictEqual(run(m).sp.counts.atm, 0);
+});
+
+test('SA_GWP_Base reemplaza la tabla genérica por nombre de familia', () => {
+  const m = renamed(); Object.values(m.types).forEach(t => { if (t.params && t.params.SA_GWP != null) t.params.SA_GWP_Base = t.params.SA_GWP * 2; });
+  const X = PX.score(run(m).sp, {});
+  assert.ok(Math.abs(X.m.carb.v - 50) < 0.5, `reducción ${X.m.carb.v}`);
+});
+
+test('las muestras de Autodesk etiquetadas con el estándar: todo se identifica por parámetro y al menos un nivel cubre los 8 temas', () => {
+  [['racadvancedsampleproject.js', 'SA_DEMO'], ['racbasicsampleproject.js', 'SA_BASIC']].forEach(([f, k]) => {
+    const m = sample(f, k); let best = 0, bestSus = 0;
+    E.levelsOf(m).forEach(l => {
+      const r = E.analyze(m, l.id, { cell: 0.5 }); if (!r.sel.rooms.length) return;
+      const sp = PX.spatial(r, E), X = PX.score(sp, {});
+      assert.strictEqual(sp.via.nombre, 0, `${f} · ${l.name}: ${JSON.stringify(sp.via)}`);   // nada se identificó por nombre
+      assert.ok(inRange(X.exp) && inRange(X.sus));
+      best = Math.max(best, X.cov.exp); bestSus = Math.max(bestSus, X.cov.sus);
+    });
+    assert.strictEqual(best, 5, `${f}: el mejor nivel cubre ${best} de 5 temas de Experiencia`); assert.strictEqual(bestSus, 3);
+  });
+});
+
+test('la misma muestra sin el estándar cae al nombre de familia y de room, y sigue sin inventar servicios', () => {
+  const { sp } = run(stripSA(sample('racadvancedsampleproject.js', 'SA_DEMO')));
+  assert.ok(sp.via.param === 0 && sp.counts.atm === 0 && sp.counts.caja === 0 && sp.counts.ases === 0, JSON.stringify([sp.via, sp.counts]));
 });

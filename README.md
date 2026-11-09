@@ -17,6 +17,8 @@ app/tests/            pruebas del motor y de los índices, y la sucursal de prue
 ```
 
 - **Probar la app sin Revit:** abre `app/index.html`: carga el modelo de muestra (`app/samples/racadvancedsampleproject.js`).
+  La casa de muestra (`racbasicsampleproject.rvt`) se abre con `app/index.html#muestra=casa`. Las dos están etiquetadas con el estándar
+  de parámetros `SA_` (`docs/parametros-sa.md`): las familias y los rooms dicen qué son por un parámetro, no por su nombre.
   `#sample=1` abre la sucursal de prueba (la que trae ATMs, cajas y parámetros `SA_`: calcula los 8 temas) y `#vacio=1` el
   estado vacío para abrir un `space-model.json`. `?lento=8` hace 8 veces más lentas las animaciones de cómo nace cada mapa.
 - **Con un modelo:** instala la extensión (`revit/README.md`), abre el modelo (una copia si es 2025 y usas 2027) →

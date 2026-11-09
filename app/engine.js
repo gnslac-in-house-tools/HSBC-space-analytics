@@ -82,8 +82,39 @@
       model.floors.some(f => f.level === L.id || Math.abs((f.top || 0) - L.elevation) < 0.35));
   }
 
+  // Un parámetro SA_ de un elemento: el de la instancia y, si no tiene, el de su tipo ('' si ninguno).
+  function saParam(model, el, k) {
+    const v = el.params && el.params[k];
+    if (v != null && v !== '') return v;
+    const t = model.types && model.types[el.type], w = t && t.params && t.params[k];
+    return w != null ? w : '';
+  }
+  // Qué servicio es un elemento. Manda SA_Servicio (ATM, Caja, Asesoria, Asesor, Host); solo si el elemento no lo trae
+  // se usa el nombre de su familia. `via` dice cuál de los dos fue: 'param' o 'nombre' ('' si no es ningún servicio).
+  const SERVICE_PARAM = { atm: 'atm', caja: 'caja', ventanilla: 'caja', teller: 'caja', asesoria: 'ases', asesor: 'desk', host: 'host', recepcion: 'host', bienvenida: 'host' };
+  function serviceOf(model, el) {
+    const raw = saParam(model, el, 'SA_Servicio');
+    if (raw !== '') return { k: SERVICE_PARAM[norm(raw).trim()] || '', via: 'param' };
+    const f = norm((model.types[el.type] || {}).family || '');
+    const k = /\batm\b|cajero automatico/.test(f) ? 'atm' : /estacion de cajero|\bteller\b/.test(f) ? 'caja' : /escritorio asesor/.test(f) ? 'desk'
+      : /mesa de asesoria/.test(f) ? 'ases' : /bienvenida|recepcion|\bhost\b/.test(f) ? 'host' : '';
+    return { k, via: k ? 'nombre' : '' };
+  }
+  // Qué zona es un room. Manda SA_Zona (Autoservicio, Espera, Asesoria, Boveda, Personal, Cliente); sin él, el nombre.
+  const ZONE_PARAM = { autoservicio: 'auto', atm: 'auto', espera: 'espera', fila: 'espera', asesoria: 'ases', boveda: 'boveda', personal: 'personal' };
+  function zoneOf(room) {
+    const raw = room && room.params && room.params.SA_Zona;
+    if (raw != null && raw !== '') return { k: ZONE_PARAM[norm(raw).trim()] || 'cliente', via: 'param' };
+    const n = norm(room && room.name);
+    const k = /boveda|vault/.test(n) ? 'boveda' : /back office|cajas$/.test(n) ? 'personal' : /atm|autoservicio/.test(n) ? 'auto'
+      : /fila|espera/.test(n) ? 'espera' : /asesoria|lounge/.test(n) ? 'ases' : '';
+    return { k, via: k ? 'nombre' : '' };
+  }
+
   function roleOf(model, el) {
-    const p = (el.params && el.params.SA_Rol) || (model.types[el.type] && model.types[el.type].params && model.types[el.type].params.SA_Rol);
+    const sv = serviceOf(model, el);
+    if (sv.via === 'param' && (sv.k === 'caja' || sv.k === 'desk' || sv.k === 'host') && !saParam(model, el, 'SA_Rol')) return 'staff';
+    const p = saParam(model, el, 'SA_Rol');
     if (p) {
       const n = norm(p);
       if (n.indexOf('boveda') >= 0 || n.indexOf('vault') >= 0) return 'vault';
@@ -91,12 +122,13 @@
       if (n.indexOf('espera') >= 0) return 'wait';
       if (n.indexOf('personal') >= 0 || n.indexOf('staff') >= 0) return 'staff';
     }
+    if (sv.via === 'param') return '';
     const t = model.types[el.type] || {}, n = norm((t.family || '') + ' ' + (t.name || ''));
     if (/boveda|vault|caja fuerte|\bsafe\b|tesorer/.test(n)) return 'vault';
     if (/mostrador|counter|teller|cajer|\bcaja\b|recepci|reception|\basesor\b|guard|vigil|workstation|escritorio|\bdesk\b/.test(n)) return 'staff';
     return '';
   }
-  const isTeller = (model, el) => /mostrador|counter|teller|cajer|\bcaja\b/.test(norm(((model.types[el.type] || {}).family || '') + ' ' + ((model.types[el.type] || {}).name || '')));
+  const isTeller = (model, el) => serviceOf(model, el).k === 'caja' || /mostrador|counter|teller|cajer|\bcaja\b/.test(norm(((model.types[el.type] || {}).family || '') + ' ' + ((model.types[el.type] || {}).name || '')));
   const isGlassName = (model, el) => /vidrio|glass|cristal|glazed/.test(norm(((model.types[el.type] || {}).family || '') + ' ' + ((model.types[el.type] || {}).name || '')));
   const sp = (model, el, k) => {
     const v = el.params && el.params[k] != null ? el.params[k] : model.types[el.type] && model.types[el.type].params ? model.types[el.type].params[k] : null;
@@ -437,7 +469,7 @@
     // ruta de efectivo: bóveda → caja más cercana
     const staff = s.obstacles.filter(o => roleOf(model, o) === 'staff');
     const tellers = staff.filter(o => isTeller(model, o));
-    const vaultRoom = s.rooms.findIndex(r => /boveda|vault|caja fuerte|tesorer/.test(norm(r.name)) || norm(r.params && r.params.SA_Rol).indexOf('boveda') >= 0);
+    const vaultRoom = s.rooms.findIndex(r => zoneOf(r).k === 'boveda' || /caja fuerte|tesorer/.test(norm(r.name)) || norm(r.params && r.params.SA_Rol).indexOf('boveda') >= 0);
     const vaultObs = s.obstacles.find(o => roleOf(model, o) === 'vault');
     let vc = -1;
     if (vaultRoom >= 0) { const [x, y] = ringCentroid(s.rooms[vaultRoom].outline[0]); vc = nearestFree(G, x, y, 30, cc => G.room[cc] === vaultRoom); }
@@ -772,7 +804,7 @@
       ['Refugio medio', pct(mean(G.refuge)), '%', 0, true, 'visuales que topan a < 2 m'],
       ['Isovista en espera', null, 'm²', 1, true, 'rooms con SA_Rol = Espera']
     ];
-    const waitIdx = s.rooms.map((r, k) => /espera|wait|lounge|lobby/.test(norm(r.name)) || norm(r.params && r.params.SA_Rol).indexOf('espera') >= 0 ? k : -1).filter(k => k >= 0);
+    const waitIdx = s.rooms.map((r, k) => (zoneOf(r).via === 'param' ? zoneOf(r).k === 'espera' : /espera|wait|lounge|lobby/.test(norm(r.name))) || norm(r.params && r.params.SA_Rol).indexOf('espera') >= 0 ? k : -1).filter(k => k >= 0);
     if (waitIdx.length) { let n = 0, t = 0; for (let c = 0; c < G.n; c++) if (G.free[c] && waitIdx.indexOf(G.room[c]) >= 0) { t += G.iso[c]; n++; } metrics.conf[3][1] = n ? t / n : null; metrics.conf[3][5] = 'rooms de espera / lounge / lobby'; }
     const si = G.sustInfo;
     metrics.sust = [
@@ -831,7 +863,7 @@
     };
   }
 
-  const api = { SCHEMA, load, levelsOf, select, plan, analyze, plantOf, connectorsOf, building, typesTable, applyTable, typeScore, crossAt, zoneStats, castRay, dijkstra, roleOf, inOutline, ringArea, ringCentroid, norm, OPEN, OPAQUE, GLASS_IN, GLASS_OUT };
+  const api = { SCHEMA, load, levelsOf, select, plan, analyze, plantOf, connectorsOf, building, typesTable, applyTable, typeScore, crossAt, zoneStats, castRay, dijkstra, roleOf, serviceOf, zoneOf, saParam, inOutline, ringArea, ringCentroid, norm, OPEN, OPAQUE, GLASS_IN, GLASS_OUT };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.SAEngine = api;
 })(typeof window !== 'undefined' ? window : this);

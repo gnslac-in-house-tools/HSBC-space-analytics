@@ -60,7 +60,8 @@ function toast(msg, sub = '', action) { const t = document.createElement('div');
 
 /* ===================== modelos y análisis ===================== */
 const cur = () => S.model;
-function levelFor(model) { const ls = E.levelsOf(model); return ls.find(L => L.name === S.level) || ls[0] || model.levels[0]; }
+// El nivel que se abre: el elegido y, si no, el primero con rooms (un nivel con solo un piso, como una cimentación, no tiene qué medir)
+function levelFor(model) { const ls = E.levelsOf(model); return ls.find(L => L.name === S.level) || ls.find(L => model.rooms.some(r => r.level === L.id)) || ls[0] || model.levels[0]; }
 const cacheKey = (lv, cell) => `${lv}|${cell}`;
 /** El edificio del modelo: todos sus niveles analizados (de la caché) unidos por escaleras, rampas y elevadores. */
 function bld() { const m = cur(); if (!m) return null;
@@ -1104,6 +1105,10 @@ function loadDemo() { if (window.SA_DEMO) { addModels(window.SA_DEMO, 'modelo de
  const s = document.createElement('script'); s.src = 'samples/racadvancedsampleproject.js';
  s.onload = () => window.SA_DEMO && addModels(window.SA_DEMO, 'modelo de muestra de Autodesk');
  s.onerror = () => { if (drop) drop.style.visibility = ''; }; document.head.appendChild(s); }
+// La casa de muestra de Autodesk (#muestra=casa): el segundo modelo con el estándar SA_, para probar la app con otro edificio.
+function loadBasic() { if (window.SA_BASIC) { addModels(window.SA_BASIC, 'casa de muestra de Autodesk'); return; }
+ const s = document.createElement('script'); s.src = 'samples/racbasicsampleproject.js'; s.onload = () => window.SA_BASIC && addModels(window.SA_BASIC, 'casa de muestra de Autodesk');
+ s.onerror = () => toast('No encontré la casa de muestra', 'app/samples/racbasicsampleproject.js'); document.head.appendChild(s); }
 document.querySelectorAll('#themes button').forEach(b => b.onclick = () => { setTheme(b.dataset.t); Snd.click(); });
 document.querySelectorAll('#bgs button').forEach(b => b.onclick = () => { setBg(b.dataset.b); Snd.click(); });
 document.querySelectorAll('#views button').forEach(b => b.onclick = () => setView(b.dataset.v));
@@ -1502,6 +1507,7 @@ let embedded = null;
 try { embedded = JSON.parse($('space-model-data').textContent); } catch (e) { toast('Los datos incrustados no se pudieron leer'); }
 if (embedded) { window.SA_HAS_SAMPLE = false; addModels(embedded, 'exportación de Revit'); }
 else if (hp.get('sample')) loadSample();
+else if (hp.get('muestra') === 'casa') loadBasic();
 else if (!hp.get('vacio')) loadDemo();   // #vacio=1 abre el estado vacío (Abrir space-model.json)
 if (hp.get('view')) setView(hp.get('view'));
 if (hp.get('left')) setLeft(hp.get('left'));

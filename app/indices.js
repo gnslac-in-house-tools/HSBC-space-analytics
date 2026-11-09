@@ -47,9 +47,13 @@
   function spatial(r, E) {
     const G = r.G, s = r.sel, m = r.model, N = E.norm, A = G.cell * G.cell;
     const tp = o => m.types[o.type] || {};
-    const fam = o => N(tp(o).family || '');
-    const rname = k => k >= 0 && s.rooms[k] ? N(s.rooms[k].name || '') : '';
-    const staffOnly = k => /boveda|back office|vault|cajas$/.test(rname(k));
+    // qué es cada room y cada elemento: manda el parámetro SA_ (SA_Zona, SA_Servicio) y, solo si falta, el nombre
+    const zk = k => k >= 0 && s.rooms[k] ? E.zoneOf(s.rooms[k]).k : '';
+    const staffOnly = k => zk(k) === 'boveda' || zk(k) === 'personal';
+    const via = { param: 0, nombre: 0 }, svcs = {};
+    s.rooms.forEach(rm => { const z = E.zoneOf(rm); if (z.via) via[z.via]++; });
+    s.obstacles.forEach(o => { const v = E.serviceOf(m, o); svcs[o.id] = v.k; if (v.via) via[v.via]++; });
+    const svcOf = k => s.obstacles.filter(o => svcs[o.id] === k);
     const pub = c => G.free[c] && isFinite(G.dEnt[c]) && !staffOnly(G.room[c]);
     const near = (x, y, maxD, f) => { let b = -1, bd = maxD; for (let c = 0; c < G.n; c++) { if (!G.free[c] || !isFinite(G.dEnt[c]) || (f && !f(c))) continue; const [p, q] = G.xy(c), d = Math.hypot(p - x, q - y); if (d < bd) { bd = d; b = c; } } return b; };
     const los = (x0, y0, x1, y1) => { const d = Math.hypot(x1 - x0, y1 - y0); if (d < G.cell) return true; const h = E.castRay(G, x0, y0, (x1 - x0) / d, (y1 - y0) / d, d, null); return h.d >= d - G.cell * .75; };
@@ -59,13 +63,13 @@
 
     const mk = (o, kind, name, c) => { if (c < 0) return null; const [x, y] = G.xy(c); return { kind, name, o, c, x, y, d: G.dEnt[c], vis: e0 ? los(ex, ey, x, y) : false, room: G.room[c], t: kind === 'atm' ? 'E' : kind === 'ases' ? 'A' : 'T' }; };
     const obs = s.obstacles;
-    const atms = obs.filter(o => /\batm\b|cajero automatico/.test(fam(o))).map((o, i) => { const [x, y] = cen(o); return mk(o, 'atm', `ATM ${i + 1}`, near(x, y, 3, pub)); }).filter(Boolean);
-    const tells = obs.filter(o => /estacion de cajero|\bteller\b/.test(fam(o))).map((o, i) => { const [x, y] = cen(o), own = roomAt(x, y); return mk(o, 'caja', `Caja ${i + 1}`, near(x, y, 4, c => pub(c) && G.room[c] !== own)); }).filter(Boolean);
-    const desks = obs.filter(o => /escritorio asesor/.test(fam(o)));
-    const seats = obs.filter(o => /mesa de asesoria/.test(fam(o))).map((o, i) => { const [x, y] = cen(o); let ux = 0, uy = 0, bd = 1e9;
+    const atms = svcOf('atm').map((o, i) => { const [x, y] = cen(o); return mk(o, 'atm', `ATM ${i + 1}`, near(x, y, 3, pub)); }).filter(Boolean);
+    const tells = svcOf('caja').map((o, i) => { const [x, y] = cen(o), own = roomAt(x, y); return mk(o, 'caja', `Caja ${i + 1}`, near(x, y, 4, c => pub(c) && G.room[c] !== own)); }).filter(Boolean);
+    const desks = svcOf('desk');
+    const seats = svcOf('ases').map((o, i) => { const [x, y] = cen(o); let ux = 0, uy = 0, bd = 1e9;
       desks.forEach(d => { const [dx, dy] = cen(d), dd = Math.hypot(dx - x, dy - y); if (dd < bd) { bd = dd; ux = (x - dx) / dd; uy = (y - dy) / dd; } });
       const k = roomAt(x, y); return mk(o, 'ases', k >= 0 ? s.rooms[k].name : `Asesoría ${i + 1}`, near(x + ux * 1, y + uy * 1, 2.5, pub)); }).filter(Boolean);
-    const host = obs.filter(o => /bienvenida|recepcion|\bhost\b/.test(fam(o))).map(o => { const [x, y] = cen(o); return mk(o, 'host', 'Host', near(x, y, 3, pub)); }).filter(Boolean)[0] || null;
+    const host = svcOf('host').map(o => { const [x, y] = cen(o); return mk(o, 'host', 'Host', near(x, y, 3, pub)); }).filter(Boolean)[0] || null;
 
     // lo que se ve desde la entrada
     const seenEnt = new Uint8Array(G.n);
@@ -83,8 +87,8 @@
       for (let c = 0; c < G.n; c++) { if (!pub(c)) continue; const [x, y] = G.xy(c), dx = x - p.x, dy = y - p.y, d = Math.hypot(dx, dy); if (d < .4 || d > 1.5 || dx * ux + dy * uy <= 0) continue; if (los(x, y, p.x, p.y)) n++; } p.sh = n * A; });
 
     // luz natural en la zona de cada tipo (proxy de la app: vista al vidrio exterior)
-    const ZONE = { E: /atm|autoservicio/, T: /fila|espera/, A: /asesoria|lounge/ }, luz = {}, zones = {};
-    TK.forEach(t => { let n = 0, l = 0; const ks = new Set(); for (let c = 0; c < G.n; c++) { if (!G.free[c] || !ZONE[t].test(rname(G.room[c]))) continue; ks.add(G.room[c]); n++; if (G.day[c] > .5) l++; } luz[t] = n ? l / n * 100 : null; zones[t] = [...ks]; });
+    const ZONE = { E: 'auto', T: 'espera', A: 'ases' }, luz = {}, zones = {};
+    TK.forEach(t => { let n = 0, l = 0; const ks = new Set(); for (let c = 0; c < G.n; c++) { if (!G.free[c] || zk(G.room[c]) !== ZONE[t]) continue; ks.add(G.room[c]); n++; if (G.day[c] > .5) l++; } luz[t] = n ? l / n * 100 : null; zones[t] = [...ks]; });
 
     // seguridad: lo que ya mide el motor
     const segRow = n => { const x = r.metrics.seg.find(m => m[0] === n); return x ? x[1] : null; };
@@ -99,7 +103,7 @@
     const rho = pear(rank(gp.map(p => p.prom)), rank(gp.map(p => CLS[p.kind])));
 
     // sustentabilidad: del schedule (tipos con SA_GWP); base = mismas cantidades con factores genéricos
-    const items = {}; const add = (o, q) => { const t = tp(o), p = t.params || {}; if (p.SA_GWP == null) return; const id = o.type; const it = items[id] || (items[id] = { n: t.family, tipo: t.name, q: 0, u: 0, gwp: +p.SA_GWP, epd: !!+p.SA_EPD, rec: p.SA_Reciclado == null ? 0 : +p.SA_Reciclado / 100, reu: !!+p.SA_Reutilizado, gen: GENERIC[N(t.family || '')] }); it.q += q; };
+    const items = {}; const add = (o, q) => { const t = tp(o), p = t.params || {}; if (p.SA_GWP == null) return; const id = o.type; const it = items[id] || (items[id] = { n: t.family, tipo: t.name, q: 0, u: 0, gwp: +p.SA_GWP, epd: !!+p.SA_EPD, rec: p.SA_Reciclado == null ? 0 : +p.SA_Reciclado / 100, reu: !!+p.SA_Reutilizado, gen: p.SA_GWP_Base != null ? +p.SA_GWP_Base : GENERIC[N(t.family || '')] }); it.q += q; };
     obs.forEach(o => add(o, 1)); s.floors.forEach(f => add(f, f.area || 0));
     const list = Object.values(items).map(it => { const act = it.reu ? 0 : it.q * it.gwp, base = it.q * (it.gen != null ? it.gen : it.gwp); return Object.assign(it, { act, base, src: it.reu ? 'Reutilizado' : it.epd ? 'EPD' : 'Genérico' }); }).sort((a, b) => b.act - a.act);
     const act = list.reduce((a, x) => a + x.act, 0), base = list.reduce((a, x) => a + x.base, 0), epdC = list.filter(x => x.epd).reduce((a, x) => a + x.act, 0);
@@ -108,12 +112,12 @@
     const circF = new Float32Array(G.n).fill(NaN);
     for (let c = 0; c < G.n; c++) if (G.free[c] && G.floor && G.floor[c] >= 0) { const f = s.floors[G.floor[c]], p = (m.types[f.type] || {}).params || {}; if (p.SA_Reciclado != null) circF[c] = clamp(+p.SA_Reciclado / 100, 0, 1); }
     // área de clientes (rooms públicos, sin asesoría ni lounge) y lo que ocupan los muebles ahí
-    const custRooms = new Set(); let custA = 0, furnA = 0; s.rooms.forEach((rm, k) => { const n = rname(k); if (staffOnly(k) || /asesoria|lounge/.test(n)) return; custRooms.add(k); custA += rm.area || 0; });
+    const custRooms = new Set(); let custA = 0, furnA = 0; s.rooms.forEach((rm, k) => { if (staffOnly(k) || zk(k) === 'ases') return; custRooms.add(k); custA += rm.area || 0; });
     obs.forEach(o => { const [x, y] = cen(o); if (custRooms.has(roomAt(x, y))) furnA += E.ringArea(o.footprint); });
     const efF = new Float32Array(G.n).fill(NaN); for (let c = 0; c < G.n; c++) if (G.free[c] && custRooms.has(G.room[c])) efF[c] = .7;
 
-    const svcRoom = {}; for (let c = 0; c < G.n; c++) { const n = rname(G.room[c]); if (!G.free[c]) continue; svcRoom[c] = /atm|autoservicio/.test(n) ? 'E' : /fila|espera/.test(n) ? 'T' : /asesoria|lounge/.test(n) ? 'A' : null; }
-    return { G, ent: e0 ? [ex, ey] : null, atms, tells, seats, host, rho, luz, zones, blindAt, gp,
+    const svcRoom = {}; for (let c = 0; c < G.n; c++) { if (!G.free[c]) continue; const z = zk(G.room[c]); svcRoom[c] = z === 'auto' ? 'E' : z === 'espera' ? 'T' : z === 'ases' ? 'A' : null; }
+    return { G, via, ent: e0 ? [ex, ey] : null, atms, tells, seats, host, rho, luz, zones, blindAt, gp,
       vig: segRow('Área vigilada'), blind: segRow('Puntos ciegos'), cash: G.paths.cash ? G.paths.cash.length : null, nStaff: G.staff.length,
       fields: { orient, priv, seg: r.fields.seg, amb: G.day, carb: r.fields.sust, circ: circF, efic: efF },
       sus: { list, act, base, red: base ? (1 - act / base) * 100 : null, int: floorA ? act / floorA : null, epd: act ? epdC / act * 100 : null, circ, custA, furnA },
@@ -172,7 +176,7 @@
     { id: 'cepd', th: 'carb', ctx: true, n: 'Carbono respaldado por EPD', u: '%', d: 0, src: 'EPD', get: s => s.sus.epd, what: 'Qué tan confiable es el cálculo: parte del carbono que sale de datos del fabricante. No suma puntos.' },
     { id: 'circ', th: 'circ', n: 'Contenido circular', u: '%', d: 0, poor: 0, good: 60, src: 'Genérico', get: s => s.sus.circ,
       what: 'Parte reciclada o reutilizada del material. Mientras no haya masa por elemento, se pondera por carbono.', msg: v => `El ${f1(v)} % del material es reciclado o reutilizado.`, sug: 'Mobiliario reacondicionado y acabados con más contenido reciclado.' },
-    { id: 'efic', th: 'efic', n: 'Área necesaria / área de clientes', u: '', d: 2, poor: .4, good: .8, src: 'Supuesto', get: (s, q) => q.need / (s.sus.custA || 1), sc: v => v >= .8 && v <= 1 ? 100 : v < .8 ? lerpS(v, .4, .8) : lerpS(v, 1.3, 1), rt: ['0.40, sobra', '0.80–1.00'],
+    { id: 'efic', th: 'efic', n: 'Área necesaria / área de clientes', u: '', d: 2, poor: .4, good: .8, src: 'Supuesto', get: (s, q) => s.counts.atm + s.counts.caja + s.counts.ases && s.sus.custA ? q.need / s.sus.custA : null, sc: v => v >= .8 && v <= 1 ? 100 : v < .8 ? lerpS(v, .4, .8) : lerpS(v, 1.3, 1), rt: ['0.40, sobra', '0.80–1.00'],
       what: 'Área que pide la ocupación pico (0.9 m² por persona en fila, 1.4 m² por persona atendida, más los muebles) entre el área de clientes. Ideal: 0.80–1.00.', msg: v => v < .8 ? `En la hora pico se usa el ${f1(v * 100)} % del área de clientes: sobra espacio.` : `En la hora pico se necesita el ${f1(v * 100)} % del área de clientes: falta espacio.`, sug: 'Revisar el umbral con Fabiola: en sucursales chicas siempre sobra.' }
   ];
   const MBY = Object.fromEntries(MET.map(m => [m.id, m]));

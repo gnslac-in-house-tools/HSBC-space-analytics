@@ -1,0 +1,28 @@
+{
+  "modelo": "racbasicsampleproject.rvt",
+  "nota": "Demostración. Es una casa: no tiene ATMs, cajas ni asesoría. Se declaran como servicios piezas que cumplen un papel parecido (marcadas como sustitutos) para ejercitar el estándar de punta a punta. Los valores de carbono son de orden de magnitud, no de una EPD.",
+  "reglas": [
+    {"nota": "Living: espera", "en": "rooms", "nombre": "^Living$", "param": {"SA_Zona": "Espera"}},
+    {"nota": "Cocina-comedor: asesoría (sustituto)", "en": "rooms", "nombre": "^Kitchen", "param": {"SA_Zona": "Asesoria"}},
+    {"nota": "Vestíbulo y pasillo: cliente", "en": "rooms", "nombre": "^(Entry Hall|Hall)$", "param": {"SA_Zona": "Cliente"}},
+    {"nota": "Recámaras, baños y servicios: personal", "en": "rooms", "nombre": "Bedroom|Bath|Laundry|Mech|Linen", "param": {"SA_Zona": "Personal"}},
+
+    {"nota": "Puerta de acceso público", "en": ["OST_Doors"], "familia": "^Entrance door", "param": {"SA_Rol": "Entrada"}},
+
+    {"nota": "Isla de cocina = mostrador de caja (sustituto)", "en": ["OST_Casework"], "familia": "Kitchen Island",
+     "param": {"SA_Servicio": "Caja", "SA_GWP": 210, "SA_GWP_Base": 260, "SA_Reciclado": 8}},
+    {"nota": "Mesa de comedor = mesa de asesoría (sustituto)", "en": ["OST_Furniture"], "familia": "^Table-Dining",
+     "param": {"SA_Servicio": "Asesoria", "SA_GWP": 85, "SA_GWP_Base": 100, "SA_Reciclado": 10}},
+    {"nota": "Sillas y bancos: espera", "en": ["OST_Furniture"], "familia": "Dining Chair|Bar Chair",
+     "param": {"SA_Rol": "Espera", "SA_GWP": 28, "SA_GWP_Base": 32, "SA_Reciclado": 15}},
+    {"nota": "Sofás y sillones: espera", "en": ["OST_Furniture"], "familia": "Sofa|Seating",
+     "param": {"SA_Rol": "Espera", "SA_GWP": 120, "SA_GWP_Base": 150, "SA_Reciclado": 12}},
+
+    {"nota": "Pisos (kgCO₂e/m²)", "en": ["OST_Floors"], "familia": "^Floor$",
+     "param": {"SA_GWP": 55, "SA_GWP_Base": 70, "SA_Reciclado": 20}},
+    {"nota": "Muros (kgCO₂e/m²)", "en": ["OST_Walls"], "familia": "^Basic Wall$",
+     "param": {"SA_GWP": 40, "SA_GWP_Base": 52, "SA_Reciclado": 15}},
+    {"nota": "Muro cortina: transparente", "en": ["OST_Walls"], "familia": "^Curtain Wall$",
+     "param": {"SA_Opaco": 0}}
+  ]
+}
