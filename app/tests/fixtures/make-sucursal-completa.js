@@ -1,7 +1,7 @@
 // Escribe la sucursal de ejemplo que abre la app: una sucursal bancaria de unos 36 × 26 m, de huella irregular (nicho de entrada hacia la calle,
 // esquina achaflanada y un muro oblicuo al fondo), en dos niveles, en la forma del contrato.
 // Es la sucursal de prueba de los mockups (make-sucursal.js) ampliada: autoservicio con tres ATMs, lobby con host y guardia, fila
-// frente a cuatro cajas con barrera blindada, espera, cuatro salas de asesoría, bóveda, back office y un mezzanine de personal
+// cuatro cajas con un pasillo de 1 m al frente y, más allá, un muro del largo de la fila de cajas que tapa la vista de la sala de espera, espera, cuatro salas de asesoría, bóveda, back office y un mezzanine de personal
 // con su escalera. Trae el estándar de parámetros SA_ completo (docs/parametros-sa.md): cada familia dice qué es con SA_Servicio,
 // cada room con SA_Zona, y el carbono con SA_GWP y SA_GWP_Base.
 // No es un modelo real: es un ejemplo para probar y mostrar la app sin un modelo de Revit.
@@ -43,7 +43,8 @@ function build() {
       T_BAN: { category: 'Furniture', family: 'Banca lounge espera', name: '3 plazas · tapiz reciclado', type_mark: 'F01', cost: 18500, materials: [], params: { SA_Rol: 'Espera', SA_GWP: 86, SA_GWP_Base: 120, SA_Reciclado: 62, SA_EPD: 1, SA_VOC: 0, SA_NRC: 0.35 } },
       T_MES: { category: 'Furniture', family: 'Mesa de asesoría', name: 'Ø 1.2 m · roble FSC', type_mark: 'F02', cost: 24800, materials: [], params: { SA_Servicio: 'Asesoria', SA_GWP: 54, SA_GWP_Base: 75, SA_Reciclado: 18, SA_EPD: 1, SA_VOC: 0 } },
       T_ESC: { category: 'Furniture', family: 'Escritorio asesor', name: '1600 × 700', type_mark: 'F11', cost: 21000, materials: [], params: { SA_Servicio: 'Asesor', SA_Rol: 'Personal', SA_GWP: 120, SA_GWP_Base: 150, SA_Reciclado: 35, SA_EPD: 1 } },
-      T_BLIND: { category: 'Walls', family: 'Muro cortina', name: 'Cristal blindado nivel III con ventanillas', type_mark: 'W04', cost: 9800, materials: [], params: { SA_GWP: 140, SA_GWP_Base: 175, SA_Reciclado: 9, SA_EPD: 0 } },
+      T_BLIND: { category: 'Walls', family: 'Muro básico', name: 'Muro de la fila de cajas 150', type_mark: 'W04', cost: 7400, materials: [{ name: 'Concreto', thickness: 0.1 }, { name: 'Yeso', thickness: 0.0125 }], params: { SA_GWP: 85, SA_GWP_Base: 105, SA_Reciclado: 20, SA_EPD: 0 } },
+      T_BAR: { category: 'Furniture', family: 'Barrera blindada de cajas', name: 'Cristal nivel III · h 1.10', type_mark: 'F03', cost: 312000, materials: [], params: { SA_Servicio: 'Ninguno', SA_GWP: 410, SA_GWP_Base: 410, SA_Reciclado: 9, SA_EPD: 0 } },
       T_CAJ: { category: 'Furniture', family: 'Estación de cajero', name: 'Módulo 1200', type_mark: 'F12', cost: 46000, materials: [], params: { SA_Servicio: 'Caja', SA_Rol: 'Personal', SA_GWP: 160, SA_GWP_Base: 200, SA_Reciclado: 20, SA_EPD: 0 } },
       T_BIEN: { category: 'Furniture', family: 'Módulo de bienvenida', name: 'Isla 1800', type_mark: 'F13', cost: 58000, materials: [], params: { SA_Servicio: 'Host', SA_Rol: 'Personal', SA_GWP: 140, SA_GWP_Base: 190, SA_EPD: 1 } },
       T_GUA: { category: 'Furniture', family: 'Puesto de guardia', name: 'Atril', type_mark: 'F14', cost: 12000, materials: [], params: { SA_Servicio: 'Ninguno', SA_Rol: 'Personal', SA_GWP: 40, SA_GWP_Base: 40 } },
@@ -66,7 +67,7 @@ function build() {
   const ROOMS = [
     // nivel, nombre, SA_Zona, x, y, w, h
     ['L0', 'Autoservicio', 'Autoservicio', 0, 0, 9, 9], ['L0', 'Baños', 'Cliente', 0, 9, 9, 5], ['L0', 'Escalera', 'Personal', 0, 14, 9, 10, [[0, 14], [9, 14], [9, 24], [3, 24]]],
-    ['L0', 'Lobby', 'Cliente', 9, 0, 18, 9, [[9, 0], [12, -2], [24, -2], [27, 0], [27, 9], [9, 9]]], ['L0', 'Fila', 'Espera', 9, 9, 18, 5], ['L0', 'Cajas', 'Personal', 9, 14, 12, 4],
+    ['L0', 'Lobby', 'Cliente', 9, 0, 18, 5, [[9, 0], [12, -2], [24, -2], [27, 0], [27, 5], [9, 5]]], ['L0', 'Espera y fila', 'Espera', 9, 5, 18, 9], ['L0', 'Cajas', 'Personal', 9, 14, 12, 4],
     ['L0', 'Bóveda', 'Boveda', 9, 18, 6, 6], ['L0', 'Back office', 'Personal', 15, 18, 6, 6], ['L0', 'Pasillo', 'Cliente', 21, 14, 6, 10],
     ['L0', 'Espera', 'Espera', 27, 0, 9, 9, [[27, 0], [33, 0], [36, 3], [36, 9], [27, 9]]],
     ['L0', 'Asesoría 1', 'Asesoria', 27, 9, 9, 3.75], ['L0', 'Asesoría 2', 'Asesoria', 27, 12.75, 9, 3.75], ['L0', 'Asesoría 3', 'Asesoria', 27, 16.5, 9, 3.75], ['L0', 'Asesoría 4', 'Asesoria', 27, 20.25, 9, 3.75],
@@ -99,8 +100,8 @@ function build() {
   W('L0', 'T_INT', [0, 9], [9, 9], 0.12); W('L0', 'T_INT', [0, 14], [9, 14], 0.12);
   const y18 = W('L0', 'T_INT', [9, 18], [21, 18], 0.12); W('L0', 'T_INT', [15, 18], [15, 24], 0.12);
   W('L0', 'T_INT', [27, 9], [36, 9], 0.12); [12.75, 16.5, 20.25].forEach(y => W('L0', 'T_INT', [27, y], [36, y], 0.12));
-  // el muro de ventanillas: cristal blindado entre la fila (y la espera) y las cajas; se ve a través, no se pasa
-  W('L0', 'T_BLIND', [9, 14], [21, 14], 0.1, { curtain: true });
+  // frente a las cajas, un pasillo de 1 m (y 12.98 a 13.95) y luego un muro de 15 cm, del largo de la fila de cajas (x 10.5 a 20.1), que tapa la vista de la espera; se rodea por cualquiera de sus extremos
+  W('L0', 'T_BLIND', [10.5, 12.9], [20.1, 12.9], 0.15);
   // mezzanine
   const m9 = W('L1', 'T_INT', [9, 14], [9, 24], 0.12), m15 = W('L1', 'T_INT', [15, 14], [15, 24], 0.12);
   W('L1', 'T_EXT', [0, 14], [21, 14], 0.3); W('L1', 'T_EXT', [21, 14], [21, 24], 0.3); W('L1', 'T_EXT', [21, 24], [3, 24], 0.3); W('L1', 'T_EXT', [3, 24], [0, 14], 0.3);
@@ -111,26 +112,29 @@ function build() {
   D('L0', 'T_ENT', [18, -2], [1, 0], cw, 1.8, null, 'Lobby', { height: 2.4 });
   D('L0', 'T_ATMD', [4.5, 0], [1, 0], wSW, 1.2, null, 'Autoservicio', { height: 2.4 });
   D('L0', 'T_PTA', [9, 4.5], [0, 1], x9, 1.6, 'Autoservicio', 'Lobby');
-  D('L0', 'T_PTA', [9, 11.5], [0, 1], x9, 0.9, 'Fila', 'Baños');
+  D('L0', 'T_PTA', [9, 11.5], [0, 1], x9, 0.9, 'Espera y fila', 'Baños');
   D('L0', 'T_PTA', [9, 16], [0, 1], x9, 0.9, 'Cajas', 'Escalera');
   D('L0', 'T_BOV', [12, 18], [1, 0], y18, 1.0, 'Cajas', 'Bóveda');
   D('L0', 'T_PTA', [18, 18], [1, 0], y18, 0.9, 'Cajas', 'Back office');
   D('L0', 'T_PTA', [21, 20.5], [0, 1], x21, 0.9, 'Back office', 'Pasillo');
   D('L0', 'T_PTA', [27, 4.5], [0, 1], x27, 2.0, 'Lobby', 'Espera');
-  [['Fila', 'Asesoría 1', 10.9], ['Pasillo', 'Asesoría 2', 14.6], ['Pasillo', 'Asesoría 3', 18.4], ['Pasillo', 'Asesoría 4', 22.1]].forEach(([a, b, y]) => D('L0', 'T_PTA', [27, y], [0, 1], x27, 0.9, a, b));
+  [['Espera y fila', 'Asesoría 1', 10.9], ['Pasillo', 'Asesoría 2', 14.6], ['Pasillo', 'Asesoría 3', 18.4], ['Pasillo', 'Asesoría 4', 22.1]].forEach(([a, b, y]) => D('L0', 'T_PTA', [27, y], [0, 1], x27, 0.9, a, b));
   D('L1', 'T_PTA', [9, 19], [0, 1], m9, 0.9, 'Escalera (mezzanine)', 'Gerencia');
   D('L1', 'T_PTA', [15, 19], [0, 1], m15, 0.9, 'Gerencia', 'Sala de capacitación');
-  const V = (host, at, hand, width) => m.windows.push({ id: nid(), level: 'L0', type: 'T_VEN', host: host.id, at: P(...at), hand, facing: [-hand[1], hand[0]], width, height: 1.5, sill: 0.9, head: 2.4, z: 0.9, from_room: null, to_room: null, params: {} });
+  const V = (host, at, hand, width, type = 'T_VEN', o = {}) => m.windows.push(Object.assign({ id: nid(), level: 'L0', type, host: host.id, at: P(...at), hand, facing: [-hand[1], hand[0]], width, height: 1.5, sill: 0.9, head: 2.4, z: 0.9, from_room: null, to_room: null, params: {} }, o));
   [4.5, 7.5, 10.9, 14.6, 18.4, 22.1].forEach(y => V(wE, [36, y], [0, 1], 1.5));
   [18].forEach(x => V(wN, [x, 24], [1, 0], 1.5));
 
   // ---------------------------------------------------------------- mobiliario y equipo
   const O = (level, type, category, footprint, z, o = {}) => m.obstacles.push(Object.assign({ id: nid(), level, type, category, footprint, z, room: null, params: {} }, o));
   [2.2, 4.4, 6.6].forEach(y => O('L0', 'T_ATM', 'Equipment', rect(0.4, y - 0.4, 0.8, 0.9), [0, 1.7]));                    // tres ATMs contra el muro oeste del autoservicio
-  O('L0', 'T_BIEN', 'Furniture', circle(18, 5, 0.9), [0, 1.0]);                                                              // host al centro del lobby
-  O('L0', 'T_GUA', 'Furniture', rect(23, 1.6, 0.5, 0.5), [0, 1.1]);                                                         // guardia junto a la entrada
+  O('L0', 'T_BIEN', 'Furniture', circle(18, 1.6, 0.9), [0, 1.0]);                                                            // host junto a la puerta, en el lobby
+  O('L0', 'T_GUA', 'Furniture', rect(22.2, 0.5, 0.5, 0.5), [0, 1.1]);                                                         // guardia junto a la entrada
+  O('L0', 'T_BAR', 'Furniture', rect(9.2, 13.95, 11.6, 0.1), [0, 1.1]);                                                       // barrera blindada entre el pasillo de la fila y los cajeros
   [10.5, 13.3, 16.1, 18.9].forEach(x => O('L0', 'T_CAJ', 'Furniture', rect(x, 14.8, 1.2, 1.2), [0, 0.75]));               // cuatro cajas
-  // sala de espera: sillas individuales en filas frente a frente con mesa de centro, y dos bancas contra el muro norte
+  // el salón: tras el lobby, cuatro filas de sillas de espera en dos bloques con pasillo al centro, de frente al muro de la fila de cajas
+  [5.9, 7.3, 8.7, 10.1].forEach(y => { [12.4, 13.1, 13.8, 14.5, 15.2, 15.9].forEach(x => O('L0', 'T_SIL', 'Furniture', rect(x, y, 0.5, 0.5), [0, 0.9])); [19.6, 20.3, 21.0, 21.7, 22.4, 23.1].forEach(x => O('L0', 'T_SIL', 'Furniture', rect(x, y, 0.5, 0.5), [0, 0.9])); });
+  // sala de espera lateral: sillas individuales en filas frente a frente con mesa de centro, y dos bancas contra el muro norte
   [28.3, 29.0, 29.7, 30.4, 31.1].forEach(x => { O('L0', 'T_SIL', 'Furniture', rect(x, 1.6, 0.5, 0.5), [0, 0.9]); O('L0', 'T_SIL', 'Furniture', rect(x, 4.7, 0.5, 0.5), [0, 0.9]); });
   [33.0, 33.7].forEach(x => O('L0', 'T_SIL', 'Furniture', rect(x, 1.6, 0.5, 0.5), [0, 0.9])); [33.0, 33.7, 34.4].forEach(x => O('L0', 'T_SIL', 'Furniture', rect(x, 4.7, 0.5, 0.5), [0, 0.9]));
   O('L0', 'T_MCAF', 'Furniture', rect(28.4, 2.9, 1.2, 0.6), [0, 0.45]); O('L0', 'T_MCAF', 'Furniture', rect(33.2, 2.9, 1.2, 0.6), [0, 0.45]);
@@ -142,7 +146,7 @@ function build() {
   });
   [[15.8, 19.2], [15.8, 21.4], [18.3, 19.2], [18.3, 21.4]].forEach(([x, y]) => O('L0', 'T_OPS', 'Furniture', rect(x, y, 1.4, 0.7), [0, 0.75])); // back office
   [[15.8, 19.2], [15.8, 21.4], [18.3, 19.2], [18.3, 21.4]].forEach(([x, y]) => O('L0', 'T_SILO', 'Furniture', rect(x + 0.45, y - 0.55, 0.5, 0.5), [0, 0.9])); // sillas del back office
-  [[12, 7], [24, 7], [12, 12], [24, 12]].forEach(([x, y]) => O('L0', 'T_COL', 'Columns', rect(x - 0.25, y - 0.25, 0.5, 0.5), [0, H0]));
+  [[10.6, 6.5], [25.4, 6.5], [10.6, 11], [25.4, 11]].forEach(([x, y]) => O('L0', 'T_COL', 'Columns', rect(x - 0.25, y - 0.25, 0.5, 0.5), [0, H0]));
   [[10.5, 1.2], [25.5, 1.2], [28, 8], [1.5, 12], [13.5, -0.9], [22.5, -0.9]].forEach(([x, y]) => O('L0', 'T_MAC', 'Planting', circle(x, y, 0.45), [0, 1.6]));
   O('L1', 'T_GER', 'Furniture', rect(11, 21, 1.8, 0.9), [H0, H0 + 0.75]);
   [17, 19, 21].forEach(y => { O('L1', 'T_CAP', 'Furniture', rect(16, y, 4.2, 0.6), [H0, H0 + 0.75]); [16.4, 17.6, 18.8].forEach(x => O('L1', 'T_SILO', 'Furniture', rect(x, y - 0.6, 0.5, 0.5), [H0, H0 + 0.9])); });

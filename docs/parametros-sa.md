@@ -110,8 +110,9 @@ parámetro:
 
 **Lo que abre la app** es una sucursal bancaria de ejemplo, inventada (`app/samples/sucursal.js`, generada por
 `app/tests/fixtures/make-sucursal-completa.js`): de huella irregular (entrada en un nicho hacia la calle, esquina achaflanada,
-muro oblicuo al fondo) y en dos niveles. Planta baja con un autoservicio de 3 ATMs con su puerta a la calle, lobby con host y
-guardia, fila frente a 4 cajas tras un muro de cristal blindado, sala de espera con sillas, 4 salas de asesoría con sus sillas,
+muro oblicuo al fondo) y en dos niveles. Planta baja con un autoservicio de 3 ATMs con su puerta a la calle, lobby pegado a la
+puerta con host y guardia, sala de espera con cuatro filas de sillas (de frente al muro) y fila, un pasillo de 1 m frente a las 4 cajas y, antes
+de las sillas, un muro delgado (15 cm), del largo de la fila de cajas, que impide verlas desde las cajas, sala de espera lateral, 4 salas de asesoría con sus sillas,
 bóveda, back office y baños; mezzanine de personal (gerencia y sala de capacitación) unido por una escalera. Cada tipo de familia
 trae su `SA_Servicio` y su carbono (`SA_GWP`, `SA_GWP_Base`), y cada room su `SA_Zona`: los 36 elementos de la planta baja se
 identifican por parámetro y ninguno por nombre, y una prueba lo vigila.
