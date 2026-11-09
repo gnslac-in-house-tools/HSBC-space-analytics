@@ -97,8 +97,4 @@ const out = path.join(__dirname);
 const m = build();
 fs.writeFileSync(path.join(out, 'sucursal.json'), JSON.stringify(m));
 console.log('escrito sucursal.json');
-// la misma sucursal para el botón "Ver sucursal de prueba" de la app (se carga con <script>, funciona desde file://)
-const sample = path.join(__dirname, '..', '..', 'samples', 'sucursal.js');
-fs.mkdirSync(path.dirname(sample), { recursive: true });
-fs.writeFileSync(sample, '// Sucursal de prueba (app/tests/fixtures/make-sucursal.js). No es un modelo real.\nwindow.SA_SAMPLE = ' + JSON.stringify(m) + ';\n');
-console.log('escrito samples/sucursal.js');
+// La sucursal que abre la app es la ampliada: node app/tests/fixtures/make-sucursal-completa.js
