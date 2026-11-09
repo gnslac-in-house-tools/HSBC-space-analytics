@@ -31,7 +31,7 @@ h1,h2,h3,.ttl{font-family:Outfit,Manrope,sans-serif;font-weight:500;letter-spaci
 .top{display:flex;align-items:center;gap:6px;padding:0 5px 0 9px;border-radius:999px;min-width:0}
 .mark{width:22px;height:22px;border-radius:50%;background:conic-gradient(from 200deg,#FF8A65,#F178B6,#8C7BF5,#5B9BFF,#5DBB8A,#FF8A65);box-shadow:inset 0 0 0 4.5px var(--bg);flex:none}
 .proj{display:flex;gap:8px;align-items:baseline;white-space:nowrap;overflow:hidden;min-width:0}
-.proj b{font:500 13.5px Outfit;flex:none}.proj span{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+.proj b{font:500 13.5px Outfit;flex:0 1 auto;overflow:hidden;text-overflow:ellipsis}.proj span{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
 .sp{flex:1}
 .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font:500 11.5px Manrope;height:28px;padding:0 10px;border-radius:999px;cursor:pointer;white-space:nowrap;transition:background .2s,border-color .2s}
 .btn:hover{border-color:var(--line-2)}
@@ -597,7 +597,7 @@ select.lvl{height:28px;border:1px solid var(--line);border-radius:999px;backgrou
 <div class="app">
   <div class="glass top">
     <div class="mark" aria-hidden="true"></div>
-    <div class="proj"><b>Space Analytics</b><span id="projsub">Sin modelo · arrastra un space-model.json</span></div>
+    <div class="proj"><b>Branch Experience &amp; Sustainability Potential Tool</b><span id="projsub">Sin modelo · arrastra un space-model.json</span></div>
     <span class="sp"></span>
     <button class="btn" id="b-open" title="Abrir uno o varios space-model.json"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>Abrir</button>
     <button class="btn" id="b-pal" title="Buscar cualidad o acción (Ctrl K)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Buscar<span class="wide">&nbsp;cualidad o acción</span> <kbd>Ctrl K</kbd></button>

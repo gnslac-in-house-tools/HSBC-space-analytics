@@ -145,7 +145,16 @@ function applyHash() {
 function updateTop() {
   const m = cur();
   $('projsub').textContent = m ? `${m.model.source.file || m.from || 'modelo'} · ${S.res ? S.res.level.name : ''} · Revit ${m.model.source.version || ''}` : 'Sin modelo · arrastra un space-model.json';
+  fitProj();
 }
+// La línea del modelo (archivo · nivel · versión) va junto al nombre solo si cabe entera; si no, se oculta y queda en el
+// tooltip del nombre, para que el encabezado no corte los botones.
+function fitProj() {
+  const sp = $('projsub'), box = sp.parentElement;
+  box.title = sp.textContent; sp.hidden = false;
+  if (sp.scrollWidth > sp.clientWidth + 1 || box.scrollWidth > box.clientWidth + 1) sp.hidden = true;
+}
+addEventListener('resize', fitProj);
 function renderLevels() {
   const m = cur(), s = $('lvl');
   if (!m) { s.innerHTML = '<option>—</option>'; s.disabled = true; return; }
