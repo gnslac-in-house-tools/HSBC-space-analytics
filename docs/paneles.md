@@ -26,6 +26,14 @@ estilizarlo a mano.
 | Chip | `.rc` | Relaciones y acciones de texto. `.on` = la que se ve en el plano; `.new` (punteado) = crearla. |
 | Botón de ícono | `.ib` | Capas (`.tg`, tachado si está apagada) y el ojo de las métricas (`.sm`). Activo = tinte violeta. |
 
+## Piezas de los modos Experiencia y Sustentabilidad
+
+Viven en el mismo bloque de `app/index.html` y se documentan en `docs/modos.md`: el interruptor de modo (`.ix2.pxtabs`,
+con palomita y color del modo), la métrica plegable (`details.pxmd`), el selector de usuario (`.seg.pxty`), el origen del
+dato (`.og`), la letra de tipo (`.tl`), la conclusión (`.pxc`), la leyenda de la animación (`.pxcap`) y la retícula
+personalizada (`.pxcp`). Los dos paneles llevan el color del modo (`--pxm`): tinte de fondo, encabezado más intenso y
+franja de 4 px en el borde. Sin scroll en laptop: por alto de ventana, con plegados (un solo abierto por panel).
+
 ## Reglas
 
 - **Escala de texto:** 10 · 11 · 12.5 · 17 · 20 · 38 px. Nada fuera de ella.

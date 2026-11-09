@@ -1,9 +1,26 @@
-# Propuesta de paneles: brief de diseño
+# Modos Experiencia y Sustentabilidad
 
-`propuesta.html` es la app real (`app/`) con la propuesta encima: mismo CSS, misma planta, mismo motor y la sucursal de
-prueba (`app/samples/sucursal.js`). Se arma con `python docs/mockups/app-propuesta/build.py` y abre con doble clic.
-Para comparar: `app/index.html#sample=1` es la app de hoy con la misma sucursal. `#resumen=1` abre el panel Resumen de
-Revit en los dos.
+La app tiene dos modos: **Experiencia** (cómo vive la sucursal cada tipo de cliente) y **Sustentabilidad** (lo que aportan los
+elementos y el espacio, sin depender del usuario). Esta nota dice cómo se ve cada uno, qué cambia en la interfaz al pasar de
+uno a otro y cómo nace cada mapa en el plano. Nació como la propuesta `docs/mockups/app-propuesta/` (queda en el historial de git)
+y ya es la app: `app/index.html`, `app/app.js` y `app/indices.js`.
+
+## Cómo está armado
+
+- **`app/indices.js`:** el cálculo. Temas por familia, métricas con rango malo → bueno, tipos de cliente, hallazgos por regla
+  y espera por Erlang C. Corre sobre el resultado del motor (`engine.js`): `spatial()` una vez por análisis y `score()` cada
+  vez que cambian los supuestos. Se prueba con `node --test app/tests/indices.test.js`.
+- **`app/app.js`, bloque «modos Experiencia y Sustentabilidad»:** la interfaz. Reemplaza el tablero, el inspector, la leyenda,
+  el Resumen, el plano y las slides de la presentación. Las funciones originales quedan como `renderBoardBase`,
+  `renderInspectorBase`, `renderLegendBase`, `renderDigestBase`, `renderViewportBase` y `drawSlideBase`, y cada reemplazo las
+  llama para lo que no es de estos dos modos (relaciones, pilares de la presentación, estado vacío, Senses).
+- **`app/index.html`:** los estilos de las piezas nuevas, al final de su `<style>`, y `<script src="indices.js">`. El
+  exportador de Revit (`bundle.py`) incrusta ese script como los demás.
+- **Los pilares de antes** (flujo, visibilidad, seguridad, confort, sustentabilidad) siguen en el motor y en la presentación;
+  las relaciones se calculan con ellos. El tablero ya no los lista: muestra los 8 temas.
+- **Modelo de muestra:** la app abre el de Autodesk, que no trae ATMs, cajas ni parámetros `SA_`. Lo que no tiene datos dice
+  «Sin datos» y los índices dicen «Índice parcial · 2 de 5 temas con datos». `#sample=1` abre la sucursal de prueba, que sí
+  los trae y calcula los 8 temas.
 
 ## Reglas (las de `docs/paneles.md`, sin excepciones)
 
@@ -50,6 +67,12 @@ solo plegado abierto por panel; las capas muestran solo sus íconos (opacidad, r
 **900 px** (14"): todo más apretado, sin el encabezado del tablero; al abrir un plegado se esconde lo demás para que siga
 cabiendo. Hasta **640 px**: sin la pregunta del tema. Lo único que todavía hace scroll son *Hallazgos* y *Supuestos* abiertos.
 
+## Cuando el modelo no trae el dato
+
+Un servicio que el modelo no tiene (0 ATMs, 0 cajas o 0 mesas de asesoría) no se califica como 0: su espera y las salidas sin
+atender quedan en **«Sin datos»** y no suman al índice. Quitar un ATM a propósito en «¿Qué pasa si…?» sí cuenta (la espera
+se vuelve infinita y el puntaje baja a 0). Cada índice dice cuántos de sus temas tienen datos; si faltan, es **parcial**.
+
 ## Color del modo
 
 Los dos paneles laterales llevan el color del modo (morado en Experiencia, verde en Sustentabilidad): un tinte en el
@@ -73,7 +96,7 @@ El botón muestra el tamaño elegido (`Personalizado · 0.1 m`). Elegir 0.5 o 1.
 redondeo contaba como «mejora» y el mismo costo se volvía a meter al montículo una y otra vez: 940 millones de
 relajaciones a 0.2 m (28 s) y más de 9 minutos sin terminar a 0.1 m. Ahora la distancia se redondea a Float32 antes de
 comparar (`Math.fround`), en `relax8` y en los saltos entre niveles. En la sucursal de prueba, el análisis completo con la
-capa de la propuesta tarda 0.4 s a 0.2 m y 4.6 s a 0.1 m (unos 10 s en el navegador). La prueba
+capa de los índices tarda 0.4 s a 0.2 m y 4.6 s a 0.1 m (unos 10 s en el navegador). La prueba
 «una retícula fina no dispara el grafo» lo cuida; las 25 del motor pasan.
 
 **Ojo:** los puntajes cambian con la retícula (de 0.5 a 0.1 m: Experiencia 70 → 67, Privacidad 87 → 73, Confort 57 → 45).
@@ -82,7 +105,7 @@ Para comparar sucursales hay que fijar una retícula de referencia.
 ## Cómo nace cada tema
 
 Al cambiar de tema, de relación o de análisis, las celdas aparecen en el orden que dicta **el mismo dato con el que se
-calcula** (`pxOrigin` en `propuesta-ui.js`). No es decoración: si el dato cambia, cambia la animación. Cada una marca de
+calcula** (`pxOrigin` en `app/app.js`). No es decoración: si el dato cambia, cambia la animación. Cada una marca de
 dónde nace (un pulso en cada origen) y lo dice en una frase al pie del plano.
 
 | Tema | De dónde nace | Orden de las celdas | Qué se ve además |
@@ -124,7 +147,7 @@ Las demás relaciones usan los mismos tres actos con frases genéricas («Flujo 
 - **Interrupción:** si cambias a media animación, arranca la nueva; nunca quedan dos encima.
 - **Presentación:** cada slide con planta (pilar o relación) reproduce su animación al entrar.
 - **Dónde:** solo en planta, no en 3D. No corre con el Resumen abierto ni con «reducir movimiento» del sistema.
-- **Para estudiarlas:** `propuesta.html?lento=8` las hace 8 veces más lentas.
+- **Para estudiarlas:** `app/index.html?lento=8` las hace 8 veces más lentas.
 - **Técnica:** el calor se pinta en un canvas por acto (`foreignObject`) encima del fondo y debajo de muros y muebles; al
   terminar se cambia por la imagen final ya decodificada, así que no hay salto.
 

@@ -1,4 +1,4 @@
-/* Propuesta (mockup): temas por familia, métricas con rango malo → bueno, tipos de cliente y hallazgos por regla.
+/* Índices de Experiencia y Sustentabilidad: temas por familia, métricas con rango malo → bueno, tipos de cliente y hallazgos por regla.
  * Se calcula sobre el resultado del motor real (engine.js). spatial() corre una vez por análisis; score() cada vez
  * que cambian los supuestos (mezcla de clientes, puntos de servicio). Rangos y pesos: por revisar con el equipo. */
 (function (root) {
@@ -140,11 +140,11 @@
       what: 'Ruta más corta de la puerta a la ventanilla más cercana, del lado del cliente.', msg: v => `La ventanilla más cercana está a ${f1(v, 1)} m del acceso.`, sug: 'Acortar el recorrido a cajas.', at: s => ctr(s.tells[0]) },
     { id: 'grad', th: 'orient', n: 'Gradiente de velocidad', ty: { E: .3, T: .3, A: .4 }, u: 'ρ', d: 2, poor: -1, good: 1, rt: ['−1, invertido', '+1, ideal'], src: 'Modelado', get: s => s.rho, txt: v => (v > 0 ? '+' : '') + f1(v, 2),
       what: 'Correlación de Spearman entre qué tan a la mano está cada servicio y qué tan rápido es: lo rápido al frente y la asesoría al fondo.', msg: v => v < 0 ? `El gradiente está invertido (ρ ${f1(v, 2)}): la asesoría queda más a la mano que el autoservicio.` : `El gradiente es débil (ρ ${f1(v, 2)}).`, sug: 'Autoservicio al frente, cajas al centro, asesoría al fondo.', at: s => ctr(s.atms[0]) },
-    { id: 'p90E', th: 'espera', n: 'P90 de espera en ATM', ty: { E: .7 }, u: 'min', d: 1, poor: 5, good: 1, src: 'Supuesto', get: (s, q) => q.E.p90, txt: p90t,
+    { id: 'p90E', th: 'espera', n: 'P90 de espera en ATM', ty: { E: .7 }, u: 'min', d: 1, poor: 5, good: 1, src: 'Supuesto', get: (s, q) => s.counts.atm ? q.E.p90 : null, txt: p90t,
       what: 'En la hora pico, 9 de cada 10 clientes Express esperan menos que esto.', msg: v => isFinite(v) ? `En la hora pico, 1 de cada 10 clientes Express espera más de ${p90t(v)} min por un ATM.` : `ATM: ${over}.`, sug: 'Probar con un ATM más en «¿Qué pasa si…?».', at: s => ctr(s.atms[0]) },
-    { id: 'p90T', th: 'espera', n: 'P90 de espera en caja', ty: { T: .7 }, u: 'min', d: 1, poor: 20, good: 7, src: 'Supuesto', get: (s, q) => q.T.p90, txt: p90t,
+    { id: 'p90T', th: 'espera', n: 'P90 de espera en caja', ty: { T: .7 }, u: 'min', d: 1, poor: 20, good: 7, src: 'Supuesto', get: (s, q) => s.counts.caja ? q.T.p90 : null, txt: p90t,
       what: 'En la hora pico, 9 de cada 10 clientes Transaccionales esperan menos que esto.', msg: v => isFinite(v) ? `En la hora pico, 1 de cada 10 clientes espera más de ${p90t(v)} min en caja.` : `Cajas: ${over}.`, sug: 'Abrir otra caja en la hora pico.', at: s => ctr(s.tells[0]) },
-    { id: 'p90A', th: 'espera', n: 'P90 de espera en asesoría', ty: { A: .7 }, u: 'min', d: 1, poor: 20, good: 5, src: 'Supuesto', get: (s, q) => q.A.p90, txt: p90t,
+    { id: 'p90A', th: 'espera', n: 'P90 de espera en asesoría', ty: { A: .7 }, u: 'min', d: 1, poor: 20, good: 5, src: 'Supuesto', get: (s, q) => s.counts.ases ? q.A.p90 : null, txt: p90t,
       what: 'Solo los que llegan sin cita (40 %): en la hora pico, 9 de cada 10 esperan menos que esto.', msg: v => isFinite(v) ? `En asesoría, 1 de cada 10 espera más de ${p90t(v)} min.` : `Asesoría: ${over}.`, sug: 'Más asesores o más citas programadas.', at: s => ctr(s.seats[0]) },
     { id: 'aband', th: 'espera', n: 'Se van sin ser atendidos', ty: { E: .3, T: .3, A: .3 }, u: '%', d: 1, poor: 10, good: 0, src: 'Supuesto', get: (s, q) => q.ab,
       what: 'Clientes cuya espera pasa su paciencia: 4 min Express, 20 Transaccional, 15 Asesoría.', msg: v => `El ${f1(v, 1)} % de los clientes se iría antes de ser atendido.`, sug: 'Ver qué servicio se satura en «¿Qué pasa si…?».', at: s => ctr(s.tells[0]) },
@@ -184,10 +184,11 @@
   function score(sp, o) {
     o = o || {}; const counts = o.counts || sp.counts, lam = PEAK * (o.peak || 1), mw = mixW(o.mix);
     // asesoría: el 60 % llega con cita (no hace fila, pero ocupa asesores); los que llegan sin cita hacen fila con los asesores que quedan libres
-    const q = {}; let ab = 0, need = sp.sus.furnA; TK.forEach(t => { const l = lam * MIX[t], c = counts[SRV[t]];
-      if (t === 'A') { const appt = Math.round(APPT * l * SVC_MIN.A / 60), walk = l * (1 - APPT); q[t] = queue(walk, SVC_MIN.A, Math.max(0, c - appt), PAT.A); q[t].appt = appt; q[t].a += appt; ab += walk * q[t].ab; }
-      else { q[t] = queue(l, SVC_MIN[t], c, PAT[t]); ab += l * q[t].ab; }
-      need += (isFinite(q[t].lq) ? q[t].lq : 10) * .9 + Math.min(q[t].a, c) * 1.4; }); q.ab = ab / lam * 100; q.need = need; q.lam = lam;
+    // un servicio que el modelo no trae (0 ATMs, por ejemplo) no se califica: «Sin datos». Bajarlo a 0 en «¿Qué pasa si…?» sí cuenta.
+    const q = {}; let ab = 0, abL = 0, need = sp.sus.furnA; TK.forEach(t => { const l = lam * MIX[t], c = counts[SRV[t]], has = sp.counts[SRV[t]] > 0;
+      if (t === 'A') { const appt = Math.round(APPT * l * SVC_MIN.A / 60), walk = l * (1 - APPT); q[t] = queue(walk, SVC_MIN.A, Math.max(0, c - appt), PAT.A); q[t].appt = appt; q[t].a += appt; if (has) { ab += walk * q[t].ab; abL += l; } }
+      else { q[t] = queue(l, SVC_MIN[t], c, PAT[t]); if (has) { ab += l * q[t].ab; abL += l; } }
+      need += (isFinite(q[t].lq) ? q[t].lq : 10) * .9 + Math.min(q[t].a, c) * 1.4; }); q.ab = abL ? ab / abL * 100 : null; q.need = need; q.lam = lam;
     const m = {}; MET.forEach(x => { const v = x.get(sp, q); m[x.id] = { v, s: x.ctx || v == null ? null : x.sc ? x.sc(v) : lerpS(v, x.poor, x.good) }; });
     const th = {}; THEMES.forEach(T => { if (T.fam === 'sus') { const x = MET.find(y => y.th === T.k && !y.ctx); th[T.k] = { all: m[x.id].s }; return; }
       const r = {}; TK.forEach(t => { let w = 0, s = 0; MET.filter(x => x.th === T.k && x.ty && x.ty[t]).forEach(x => { if (m[x.id].s != null) { w += x.ty[t]; s += x.ty[t] * m[x.id].s; } }); r[t] = w ? s / w : null; });
@@ -203,7 +204,9 @@
       finds.push({ x, sev: r.s < 40 ? 'low' : 'mid', lost: (100 - r.s) * imp(x), msg: x.msg(r.v, sp), sug: x.sug, rule: rule(x), at: x.at ? x.at(sp) : null, zone: x.zone ? sp.zones[x.zone] : null }); });
     const top = sp.sus.list[0]; if (top && top.src === 'Genérico') finds.push({ x: MBY.carb, sev: 'info', lost: 0, msg: `Lo que más carbono aporta (${top.n}) usa un factor genérico.`, sug: 'Pedir su EPD al fabricante.', rule: 'Regla: el elemento con más carbono no tiene EPD.' });
     const so = { low: 0, mid: 1, info: 2 }; finds.sort((a, b) => so[a.sev] - so[b.sev] || b.lost - a.lost);
-    return { q, m, th, types, exp, sus, mw, finds, counts, fields: Object.assign({}, sp.fields, { espera }) };
+    // cuántos temas de cada familia tienen datos: con pocos, el índice es parcial y la interfaz lo dice
+    const cov = { exp: THEMES.filter(T => T.fam === 'exp' && th[T.k].all != null).length, sus: THEMES.filter(T => T.fam === 'sus' && th[T.k].all != null).length };
+    return { q, m, th, types, exp, sus, mw, finds, counts, cov, fields: Object.assign({}, sp.fields, { espera }) };
   }
   /** El texto de la regla: a partir de qué valor la métrica pasa a «Mejorar» y a «Atención». */
   function rule(x) {
@@ -213,5 +216,5 @@
   }
 
   const api = { TYPES, TK, MIX, APPT, PEAK, SVC_MIN, PAT, TW, SPIW, THEMES, TH, FAM, MET, MBY, spatial, score, mixW, queue, lerpS };
-  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SAProp = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SAIndices = api;
 })(typeof window !== 'undefined' ? window : this);
