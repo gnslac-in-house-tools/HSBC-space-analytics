@@ -116,7 +116,7 @@ dónde nace (un pulso en cada origen) y lo dice en una frase al pie del plano.
 
 | Tema | De dónde nace | Orden de las celdas | Qué se ve además |
 |---|---|---|---|
-| Orientación | La entrada | Distancia caminando desde la puerta (`dEnt`), esquivando muros y muebles. | Pulso en cada acceso. |
+| Orientación | La entrada, luego los clientes y el personal | La onda camina desde la puerta; después se encienden los puntos de los clientes (cada ATM y seis puntos repartidos en la sala de espera, rombos azules) y al final los puestos del personal. El mapa suma lo que ve cada grupo. | Pulso en cada acceso y en cada punto. |
 | Espera | ATM, caja y mesa | Distancia a su punto de servicio, en etapas: Express, luego Transaccional, al final Asesoría. | Pulso en cada punto. La intensidad es la ocupación. |
 | Privacidad | Asientos y ventanillas | Un anillo por punto, solo donde hay vista directa, hasta 8 m (como la métrica). | Dentro de cada sala de asesoría no se pinta: la métrica excluye su propia sala. |
 | Seguridad | Puestos de personal | Barrido de radar desde el norte. La primera mirada pinta a medias y la última completa: donde se traslapan, se intensifica. | La aguja del radar se detiene en los muros. |
@@ -159,6 +159,12 @@ Las demás relaciones usan los mismos tres actos con frases genéricas («Flujo 
 
 ## Números
 
-Todo sale del motor real sobre la sucursal de prueba, salvo los supuestos (mezcla 50/35/15, 30 clientes/h en la hora pico,
+Todo sale del motor real sobre la sucursal de prueba, salvo los supuestos (mezcla 50/35/15, 45 clientes/h en la hora pico,
 60 % de asesoría con cita, tiempos de servicio y paciencia) y los factores genéricos de carbono, que son de ejemplo. La
 espera usa Erlang C; la versión final usará una simulación con semilla fija.
+
+Mapas con relieve: **Carbono** pinta el carbono de lo que hay cerca de cada celda (alcance ~2.5 m); **Espera** reparte la carga
+desigual (más gente en el servicio más cercano a la puerta) y concentra la ocupación junto a cada ATM, caja o mesa;
+**Eficiencia** se mide por cuarto, con 60 % extra de circulación y una escala provisional (0 pts con 0.05 o 1.50; ideal 0.30–1.00).
+Si se elige un tipo de cliente, Orientación, Espera, Privacidad, Seguridad y Confort pintan su recorrido y su zona.
+La retícula para el video es de 0.2 m: se abre con `#cell=0.2` en la dirección.

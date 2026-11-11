@@ -101,7 +101,8 @@ test('con los nombres cambiados, SA_Servicio y SA_Zona dan los mismos puntajes q
   assert.deepStrictEqual(b.sp.counts, a.sp.counts);
   assert.ok(b.sp.via.param > 0 && b.sp.via.nombre === 0, JSON.stringify(b.sp.via));
   const X = PX.score(a.sp, {}), Y = PX.score(b.sp, {});
-  THEMES.forEach(k => assert.ok(Math.abs(X.th[k].all - Y.th[k].all) < 1e-9, `${k}: ${X.th[k].all} vs ${Y.th[k].all}`));
+  // Eficiencia no se compara: depende de qué rooms son de personal (SA_Zona), y por nombre «Escalera» no se reconoce como tal
+  THEMES.filter(k => k !== 'efic').forEach(k => assert.ok(Math.abs(X.th[k].all - Y.th[k].all) < 1e-9, `${k}: ${X.th[k].all} vs ${Y.th[k].all}`));
 });
 
 test('si el elemento trae SA_Servicio, el nombre de su familia ya no cuenta', () => {
@@ -140,4 +141,32 @@ test('la misma sucursal sin el estándar cae al nombre de familia y de room y en
   const con = run(sample('sucursal.js', 'SA_SAMPLE')).sp, sin = run(sinId(sample('sucursal.js', 'SA_SAMPLE'))).sp;
   assert.deepStrictEqual(sin.counts, con.counts);
   assert.ok(sin.via.param === 0 && sin.via.nombre > 0, JSON.stringify(sin.via));
+});
+
+test('con un tipo de cliente elegido, los mapas de Experiencia son los suyos (recorrido y zona)', () => {
+  const { sp } = run(sample('sucursal.js', 'SA_SAMPLE')), cnt = f => f.reduce((a, v) => a + (isNaN(v) ? 0 : 1), 0);
+  const all = PX.score(sp, {}), byT = Object.fromEntries(PX.TK.map(t => [t, PX.score(sp, { type: t })]));
+  PX.TK.forEach(t => {
+    assert.ok(cnt(byT[t].fields.orient) > 0, `${t}: su recorrido tiene celdas`);
+    assert.notStrictEqual(cnt(byT[t].fields.orient), cnt(all.fields.orient), `${t}: Orientación cambia`);
+    assert.ok(cnt(byT[t].fields.espera) < cnt(all.fields.espera), `${t}: Espera solo en su zona`);
+    assert.ok(cnt(byT[t].fields.seg) < cnt(all.fields.seg), `${t}: Seguridad solo en su recorrido y su zona`);
+  });
+  assert.notStrictEqual(cnt(byT.E.fields.orient), cnt(byT.A.fields.orient));
+  assert.deepStrictEqual(byT.E.th, all.th, 'los puntajes no dependen del tipo elegido');
+});
+
+test('circularidad por elemento: muebles, materiales y acabados', () => {
+  const { sp } = run(sample('sucursal.js', 'SA_SAMPLE')), g = sp.circEl.groups, X = PX.score(sp, {});
+  ['all', 'furn', 'mat', 'acab'].forEach(k => { assert.ok(g[k].n > 0, k); assert.ok(inRange(g[k].share) && inRange(g[k].avg), k); assert.ok(g[k].nRec <= g[k].n, k); });
+  assert.strictEqual(g.all.n, g.furn.n + g.mat.n + g.acab.n);
+  assert.ok(sp.circEl.list.some(it => it.g === 'furn' && it.fam === 'Silla de espera' && it.circ === 70));
+  assert.strictEqual(X.m.circM.v, g.furn.share); assert.strictEqual(X.m.circM.s, null, 'contexto: no suma puntos');
+});
+
+test('mapas con relieve: Carbono, Eficiencia, Espera y Orientación varían y Eficiencia ya no es cero', () => {
+  const { sp } = run(sample('sucursal.js', 'SA_SAMPLE')), X = PX.score(sp, {}), uniq = f => { const u = new Set(); f.forEach(v => { if (!isNaN(v)) u.add(v.toFixed(2)); }); return u.size; };
+  assert.ok(uniq(X.fields.carb) > 20, 'carbono'); assert.ok(uniq(X.fields.espera) > 20, 'espera'); assert.ok(uniq(X.fields.orient) > 20, 'orientación'); assert.ok(uniq(X.fields.efic) >= 3, 'eficiencia por cuarto');
+  assert.ok(X.m.efic.s > 0 && X.m.efic.s < 100, 'eficiencia: ' + X.m.efic.s);
+  assert.ok(sp.vps.some(v => v.kind === 'entrada') && sp.vps.filter(v => v.kind === 'cliente').length >= 4 && sp.vps.some(v => v.kind === 'personal'), 'puntos de vista: entrada, clientes y personal');
 });

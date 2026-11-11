@@ -138,6 +138,10 @@ button.row{cursor:pointer;transition:background .15s,box-shadow .15s}button.row:
 .eye .off{display:none}
 /* capas */
 .lyg{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}.lyg .ib{width:auto;height:30px}
+/* capas del plano: gris discreto (como el interruptor Planta/3D y los .seg), sin violeta */
+.lyg .ib:hover{border-color:var(--line-2);color:var(--ink)}
+.lyg .ib[aria-pressed=true]{background:var(--line);border-color:var(--line-2);color:var(--ink)}
+.lyg .ib[aria-pressed=false]{color:var(--muted)}
 .lyo{display:grid;gap:2px;margin-top:10px}
 .ly-op{display:grid;grid-template-columns:48px 1fr 38px;align-items:center;gap:8px;min-height:26px;font-size:11px;color:var(--muted);transition:opacity .2s}
 .ly-op input{width:100%;margin:0;height:14px;background:transparent;cursor:pointer;-webkit-appearance:none;appearance:none}
@@ -529,6 +533,22 @@ select.lvl{height:28px;border:1px solid var(--line);border-radius:999px;backgrou
 .pxmb{padding:0 2px 9px 14px}.pxmb .pxc{flex-basis:100%;margin-top:4px}
 .pxfold .pxsum{font-size:10.5px}
 #px-lyt{display:none}#ly-name{margin-left:auto}
+/* Circularidad · qué es reciclado */
+.pxrec{min-width:0}
+.pxrec .ly-row{display:grid;grid-template-columns:62px minmax(0,1fr);align-items:center;gap:6px;margin-bottom:5px;font-size:11px;color:var(--muted);line-height:1.15}
+.pxrec .ly-row.full{grid-template-columns:minmax(0,1fr)}
+.pxrec .seg{display:flex;width:100%;min-width:0}
+.pxrec .seg button{flex:1 1 auto;min-width:0;padding:0 2px;font-size:10.5px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pxrec .row.s .lab span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pxrec-k{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 4px}
+.pxrec-k>div{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--c) 10%,var(--surface-2));border:1px solid color-mix(in srgb,var(--c) 30%,transparent)}
+.pxrec-k .val{font-size:24px;line-height:1.05;color:var(--c)}.pxrec-k .val small{font-size:12px;margin-left:1px}
+.pxrec-k .meta{font-size:11px;line-height:1.25}
+.pxrec>.meta{margin:2px 0 6px}
+.pxrec .row.s .val small{font-size:9px;margin-left:1px}
+.pxrec .row.s.on{background:color-mix(in srgb,var(--c) 14%,transparent)}
+.pxrec-b{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.pxrec-b .btn[disabled]{opacity:.45;cursor:default}
+.pxrec-b .btn[aria-pressed=true]{background:color-mix(in srgb,#1F9E8F 16%,var(--surface-2));border-color:color-mix(in srgb,#1F9E8F 50%,transparent)}
 /* ===== sin scroll en laptop. Hasta 1100 px de alto: plegados y métricas en dos líneas ===== */
 @media (max-height:1100px){
  #px-lyt{display:grid}
@@ -566,6 +586,9 @@ select.lvl{height:28px;border:1px solid var(--line);border-radius:999px;backgrou
  #insp .row.s{padding:3px 8px}
  #insp:has(details[open]) .pxcomo{display:none}
  #insp:has(details[open]) .pxmd:not([open]) :is(.pxmst,.b4){display:none}
+ .pxrec .list .row:nth-child(n+6){display:none}
+ .pxrec-k{margin:5px 0 3px}.pxrec-k>div{padding:5px 8px}.pxrec-k .val{font-size:20px}
+ #insp:has(.pxrec) .pxfold:not([open]){display:none}
 }
 /* laptops más chicas (1366 × 768) */
 @media (max-height:640px){

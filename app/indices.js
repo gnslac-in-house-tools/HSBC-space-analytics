@@ -12,16 +12,17 @@
   const SVC_MIN = { E: 8 / 3, T: 8, A: 30 };                      // supuesto: tiempo de servicio (media de la triangular: ATM 1·2·5, caja 3·6·15, asesoría 15·25·50 min)
   const PAT = { E: 4, T: 20, A: 15 };                            // supuesto: paciencia en minutos
   const APPT = .6;                                               // supuesto: parte de Asesoría que llega con cita
-  const PEAK = 30;                                               // supuesto: clientes por hora en la hora pico (sucursal chica)
+  const PEAK = 45;                                               // supuesto: clientes por hora en la hora pico (sucursal mediana, de dos niveles)
+  const CIRC_K = 1.6;                                             // supuesto: el área necesaria suma circulación y holguras (+60 %)
   const TW = { E: { orient: .35, espera: .35, priv: .10, seg: .15, amb: .05 }, T: { orient: .20, espera: .35, priv: .15, seg: .15, amb: .15 }, A: { orient: .15, espera: .10, priv: .35, seg: .15, amb: .25 } };
   const SPIW = { carb: .5, circ: .25, efic: .25 };
   // factores genéricos (kgCO₂e por pieza; pisos por m²): ejemplo del mockup, a revisar con Fabiola
   const GENERIC = { 'banca lounge espera': 120, 'mesa de asesoria': 75, 'escritorio asesor': 150, 'barrera blindada de cajas': 410, 'estacion de cajero': 160, 'atm 24 h': 520, 'modulo de bienvenida': 190, 'puesto de guardia': 40, 'macetero': 15, 'piso': 22 };
 
   const THEMES = [
-    { k: 'orient', fam: 'exp', name: 'Orientación', s: 'Orientación', c1: '#3F86F5', c2: '#A8D8FF', f: 587.33, q: 'Al entrar, ¿el cliente ve a dónde ir y cuánto camina hasta su servicio?', unit: 'lo que se ve desde la entrada · más intenso = más cerca', lo: '30 m', hi: '0 m',
+    { k: 'orient', fam: 'exp', name: 'Orientación', s: 'Orientación', c1: '#3F86F5', c2: '#A8D8FF', f: 587.33, q: 'Al entrar, ¿el cliente ve a dónde ir y cuánto camina hasta su servicio?', unit: 'lo que se ve desde la entrada, desde donde están los clientes y desde los puestos del personal · más intenso = lo ven más puntos', lo: 'lo ve uno', hi: 'lo ven todos',
       ic: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>' },
-    { k: 'espera', fam: 'exp', name: 'Espera y capacidad', s: 'Espera', c1: '#F2734B', c2: '#FFC48C', f: 523.25, q: 'Con la demanda supuesta, ¿cuánto espera cada cliente y alcanzan los puntos de servicio?', unit: 'ocupación de cada servicio en la hora pico', lo: '0 %', hi: '100 %',
+    { k: 'espera', fam: 'exp', name: 'Espera y capacidad', s: 'Espera', c1: '#F2734B', c2: '#FFC48C', f: 523.25, q: 'Con la demanda supuesta, ¿cuánto espera cada cliente y alcanzan los puntos de servicio?', unit: 'ocupación de cada servicio en la hora pico · más intensa junto al ATM, la caja o la mesa', lo: '0 %', hi: '100 %',
       ic: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/>' },
     { k: 'priv', fam: 'exp', name: 'Privacidad', s: 'Privacidad', c1: '#E25FA3', c2: '#FFC2DD', f: 783.99, q: '¿Quién alcanza a ver la conversación en asesoría, la ventanilla o la pantalla del ATM?', unit: 'desde dónde se ve una asesoría o una ventanilla', lo: '8 m', hi: '≤ 4 m',
       ic: '<path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z"/><path d="M4 4l16 16"/>' },
@@ -29,11 +30,11 @@
       ic: '<path d="M12 21s7-3.5 7-9V5.5L12 3 5 5.5V12c0 5.5 7 9 7 9Z"/><path d="m9 12 2 2 4-4"/>', alias: 'seg' },
     { k: 'amb', fam: 'exp', name: 'Confort ambiental', s: 'Confort', c1: '#E0A030', c2: '#FFE0A3', f: 698.46, q: 'Donde la gente pasa más tiempo, ¿hay luz natural?', unit: 'luz natural estimada (proxy por vista al vidrio)', lo: 'sin luz', hi: 'bien iluminado',
       ic: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>' },
-    { k: 'carb', fam: 'sus', name: 'Carbono incorporado', s: 'Carbono', c1: '#3FA673', c2: '#C8EBB5', f: 880, q: '¿Cuánto CO₂e traen el mobiliario y los acabados, contra una base genérica?', unit: 'desempeño del piso por sus parámetros SA_', lo: 'bajo', hi: 'alto',
+    { k: 'carb', fam: 'sus', name: 'Carbono incorporado', s: 'Carbono', c1: '#3FA673', c2: '#C8EBB5', f: 880, q: '¿Cuánto CO₂e traen el mobiliario y los acabados, contra una base genérica?', unit: 'carbono de lo que hay cerca de cada celda (piezas, muros y piso) · intenso = poco carbono', lo: 'mucho carbono', hi: 'poco carbono',
       ic: '<path d="M5 19c0-8 5-13 14-14-1 9-6 14-14 14Z"/><path d="M5 19 13 11"/>' },
-    { k: 'circ', fam: 'sus', name: 'Circularidad', s: 'Circularidad', c1: '#1F9E8F', c2: '#B5E8E0', f: 987.77, q: '¿Qué parte del material es reutilizado o reciclado?', unit: 'contenido reciclado del piso', lo: '0 %', hi: '100 %',
+    { k: 'circ', fam: 'sus', name: 'Circularidad', s: 'Circularidad', c1: '#1F9E8F', c2: '#B5E8E0', f: 987.77, q: '¿Qué parte del material es reutilizado o reciclado?', unit: 'contenido reciclado de cada mueble, muro y piso', lo: '0 %', hi: '100 %',
       ic: '<path d="M20 12a8 8 0 0 1-14 5.3M4 12a8 8 0 0 1 14-5.3"/><path d="M18 3v4h-4M6 21v-4h4"/>' },
-    { k: 'efic', fam: 'sus', name: 'Eficiencia del espacio', s: 'Eficiencia', c1: '#8DB33A', c2: '#DDEFB3', f: 1046.5, q: '¿El área de clientes está dimensionada para la ocupación pico?', unit: 'área de clientes que se cuenta', lo: '', hi: 'área de clientes',
+    { k: 'efic', fam: 'sus', name: 'Eficiencia del espacio', s: 'Eficiencia', c1: '#8DB33A', c2: '#DDEFB3', f: 1046.5, q: '¿El área de clientes está dimensionada para la ocupación pico?', unit: 'qué tan bien se usa cada cuarto de clientes · intenso = bien dimensionado', lo: 'sobra o falta', hi: 'bien usado',
       ic: '<rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 3"/><path d="M9 9h6v6H9z"/>' }
   ];
   const TH = Object.fromEntries(THEMES.map(t => [t.k, t]));
@@ -74,17 +75,32 @@
     // lo que se ve desde la entrada
     const seenEnt = new Uint8Array(G.n);
     if (e0) for (let k = 0; k < 720; k++) { const a = (k + .5) / 720 * 2 * Math.PI; E.castRay(G, ex, ey, Math.cos(a), Math.sin(a), 40, c => { seenEnt[c] = 1; }); }
-    const orient = new Float32Array(G.n).fill(NaN);
-    for (let c = 0; c < G.n; c++) if (G.free[c] && seenEnt[c]) orient[c] = clamp(1 - G.dEnt[c] / 30, .12, 1);
+    // orientación: no solo lo que se ve al cruzar la puerta, sino desde varios puntos de vista —la entrada, donde están los clientes
+    // (cada ATM y puntos repartidos en la sala de espera) y donde está el personal—. Cada celda suma lo que ve cada grupo.
+    const entT = new Float32Array(G.n).fill(NaN);
+    for (let c = 0; c < G.n; c++) if (G.free[c] && seenEnt[c]) entT[c] = clamp(1 - G.dEnt[c] / 30, .12, 1);
+    const vps = []; if (e0) vps.push({ kind: 'entrada', x: ex, y: ey, name: 'Entrada' });
+    atms.forEach(p => vps.push({ kind: 'cliente', x: p.x, y: p.y, name: `Cliente en ${p.name}` }));
+    { const cs = []; for (let c = 0; c < G.n; c++) if (G.free[c] && isFinite(G.dEnt[c]) && zk(G.room[c]) === 'espera') cs.push(c);
+      const pick = []; if (cs.length) { pick.push(cs.reduce((a, c) => G.dEnt[c] < G.dEnt[a] ? c : a, cs[0]));
+        while (pick.length < 6) { let bc = -1, bd = 2.5; for (let i = 0; i < cs.length; i += 3) { const [x, y] = G.xy(cs[i]); let md = 1e9; pick.forEach(q => { const [u, v] = G.xy(q); md = Math.min(md, Math.hypot(u - x, v - y)); }); if (md > bd) { bd = md; bc = cs[i]; } } if (bc < 0) break; pick.push(bc); } }
+      pick.forEach((c, i) => { const [x, y] = G.xy(c); vps.push({ kind: 'cliente', x, y, name: `Cliente en espera ${i + 1}` }); }); }
+    const cli = vps.filter(v => v.kind === 'cliente'), cliSeen = new Uint8Array(G.n);
+    cli.forEach(p => { const sn = new Set(); for (let k = 0; k < 360; k++) { const a = (k + .5) / 360 * 2 * Math.PI; E.castRay(G, p.x, p.y, Math.cos(a), Math.sin(a), 40, c => sn.add(c)); } sn.forEach(c => { cliSeen[c]++; }); });
+    const staffPts = G.watch.filter(p => p.kind === 'staff'); staffPts.forEach(p => { const [x, y] = G.xy(p.c); vps.push({ kind: 'personal', x, y, name: 'Puesto de personal' }); });
+    const nC = cli.length, nS = staffPts.length, sw = .4 + (nC ? .35 : 0) + (nS ? .25 : 0), orient = new Float32Array(G.n).fill(NaN); let omx = 0;
+    for (let c = 0; c < G.n; c++) { if (!G.free[c]) continue; const v = ((isNaN(entT[c]) ? 0 : .4 * entT[c]) + (nC ? .35 * cliSeen[c] / nC : 0) + (nS ? .25 * Math.min(1, G.seen[c] / 4) : 0)) / sw; if (v > 0) { orient[c] = v; if (v > omx) omx = v; } }
+    if (omx > 0) for (let c = 0; c < G.n; c++) if (!isNaN(orient[c])) orient[c] = Math.max(.1, Math.sqrt(orient[c] / omx)); // raíz: lo que ve solo un punto también se nota
 
     // privacidad: m² de área pública que ve cada asiento o ventanilla a menos de 8 m (peso 1 hasta 4 m, baja a 0 en 8 m)
-    const priv = new Float32Array(G.n).fill(NaN);
-    const expo = p => { const seen = new Set(); for (let k = 0; k < 360; k++) { const a = (k + .5) / 360 * 2 * Math.PI; E.castRay(G, p.x, p.y, Math.cos(a), Math.sin(a), 8, c => seen.add(c)); }
+    const nanF = () => new Float32Array(G.n).fill(NaN), maxIn = (f, c, w) => { f[c] = isNaN(f[c]) ? w : Math.max(f[c], w); };
+    const priv = nanF(), privT = { E: nanF(), T: nanF(), A: nanF() }; // privT: lo mismo, separado por quién se expone (pantalla del ATM, ventanilla, mesa)
+    const expo = (p, tgt) => { const seen = new Set(); for (let k = 0; k < 360; k++) { const a = (k + .5) / 360 * 2 * Math.PI; E.castRay(G, p.x, p.y, Math.cos(a), Math.sin(a), 8, c => seen.add(c)); }
       let a = 0; seen.forEach(c => { if (!pub(c)) return; const [x, y] = G.xy(c), d = Math.hypot(x - p.x, y - p.y); if (d < 1.5 || d > 8) return; if (p.kind === 'ases' && G.room[c] === p.room) return;
-        const w = d <= 4 ? 1 : (8 - d) / 4; a += w * A; priv[c] = isNaN(priv[c]) ? w : Math.max(priv[c], w); }); return a; };
-    seats.forEach(p => { p.exp = expo(p); }); tells.forEach(p => { p.exp = expo(p); });
+        const w = d <= 4 ? 1 : (8 - d) / 4; a += w * A; maxIn(priv, c, w); maxIn(tgt, c, w); }); return a; };
+    seats.forEach(p => { p.exp = expo(p, privT.A); }); tells.forEach(p => { p.exp = expo(p, privT.T); });
     atms.forEach(p => { const [ax, ay] = cen(p.o), L = Math.hypot(p.x - ax, p.y - ay) || 1, ux = (p.x - ax) / L, uy = (p.y - ay) / L; let n = 0;
-      for (let c = 0; c < G.n; c++) { if (!pub(c)) continue; const [x, y] = G.xy(c), dx = x - p.x, dy = y - p.y, d = Math.hypot(dx, dy); if (d < .4 || d > 1.5 || dx * ux + dy * uy <= 0) continue; if (los(x, y, p.x, p.y)) n++; } p.sh = n * A; });
+      for (let c = 0; c < G.n; c++) { if (!pub(c)) continue; const [x, y] = G.xy(c), dx = x - p.x, dy = y - p.y, d = Math.hypot(dx, dy); if (d < .4 || d > 1.5 || dx * ux + dy * uy <= 0) continue; if (los(x, y, p.x, p.y)) { n++; maxIn(privT.E, c, 1 - d / 3); } } p.sh = n * A; });
 
     // luz natural en la zona de cada tipo (proxy de la app: vista al vidrio exterior)
     const ZONE = { E: 'auto', T: 'espera', A: 'ases' }, luz = {}, zones = {};
@@ -112,14 +128,56 @@
     const circF = new Float32Array(G.n).fill(NaN);
     for (let c = 0; c < G.n; c++) if (G.free[c] && G.floor && G.floor[c] >= 0) { const f = s.floors[G.floor[c]], p = (m.types[f.type] || {}).params || {}; if (p.SA_Reciclado != null) circF[c] = clamp(+p.SA_Reciclado / 100, 0, 1); }
     // área de clientes (rooms públicos, sin asesoría ni lounge) y lo que ocupan los muebles ahí
-    const custRooms = new Set(); let custA = 0, furnA = 0; s.rooms.forEach((rm, k) => { if (staffOnly(k) || zk(k) === 'ases') return; custRooms.add(k); custA += rm.area || 0; });
-    obs.forEach(o => { const [x, y] = cen(o); if (custRooms.has(roomAt(x, y))) furnA += E.ringArea(o.footprint); });
+    const custRooms = new Set(), cust = []; let custA = 0, furnA = 0; s.rooms.forEach((rm, k) => { if (staffOnly(k) || zk(k) === 'ases') return; custRooms.add(k); custA += rm.area || 0;
+      cust.push({ k, A: rm.area || 0, furnA: 0, t: zk(k) === 'auto' ? 'E' : zk(k) === 'espera' ? 'T' : null }); });
+    obs.forEach(o => { const [x, y] = cen(o), k = roomAt(x, y); if (custRooms.has(k)) { const a = E.ringArea(o.footprint); furnA += a; cust.find(q => q.k === k).furnA += a; } });
     const efF = new Float32Array(G.n).fill(NaN); for (let c = 0; c < G.n; c++) if (G.free[c] && custRooms.has(G.room[c])) efF[c] = .7;
 
     const svcRoom = {}; for (let c = 0; c < G.n; c++) { if (!G.free[c]) continue; const z = zk(G.room[c]); svcRoom[c] = z === 'auto' ? 'E' : z === 'espera' ? 'T' : z === 'ases' ? 'A' : null; }
-    return { G, via, ent: e0 ? [ex, ey] : null, atms, tells, seats, host, rho, luz, zones, blindAt, gp,
+
+    // el mapa de cada tipo de cliente: su recorrido (de la puerta a su servicio) y su zona
+    // recorrido = celdas por donde pasa una ruta casi tan corta como la mejor (rodeo ≤ 1.5 m); vale 1 en la ruta y baja con el rodeo
+    const SVC = { E: atms, T: tells, A: seats }, DET = 1.5, fieldsT = {}, routeT = {};
+    TK.forEach(t => { const route = nanF(), ps = SVC[t].filter(p => isFinite(G.dEnt[p.c])); routeT[t] = route;
+      if (ps.length) { const dS = E.dijkstra(G, ps.map(p => p.c)).dist, L = Math.min(...ps.map(p => G.dEnt[p.c]));
+        for (let c = 0; c < G.n; c++) { if (!pub(c) || !isFinite(dS[c])) continue; const det = G.dEnt[c] + dS[c] - L; if (det <= DET) route[c] = 1 - det / DET * .8; } }
+      const zone = nanF(), terr = nanF(); let nz = 0;
+      for (let c = 0; c < G.n; c++) { if (!G.free[c]) continue; const inZ = zk(G.room[c]) === ZONE[t]; if (inZ) { zone[c] = 1; nz++; } if (inZ || !isNaN(route[c])) terr[c] = 1; }
+      const mask = (f, m) => { const o = nanF(); for (let c = 0; c < G.n; c++) if (!isNaN(m[c])) o[c] = f[c]; return o; };
+      fieldsT[t] = { orient: route, priv: privT[t], seg: mask(r.fields.seg, terr), amb: mask(G.day, nz ? zone : terr) }; });
+
+    // circularidad por elemento: qué tiene contenido reciclado o es reutilizado, por grupo (muebles · materiales · acabados)
+    const GRP = { Furniture: 'furn', Equipment: 'furn', 'Specialty Equipment': 'furn', Casework: 'furn', Floors: 'acab', Ceilings: 'acab', Walls: 'mat', Doors: 'mat', Windows: 'mat', Columns: 'mat', 'Structural Columns': 'mat', Stairs: 'mat' };
+    const cTypes = {}, grpOf = o => GRP[o.category || tp(o).category];
+    const addC = (o, q) => { const g = grpOf(o); if (!g || E.plantOf(m, o)) return; const t = tp(o), p = t.params || {}, id = o.type;
+      const it = cTypes[id] || (cTypes[id] = { id, g, fam: t.family || o.category, name: t.name || '', n: 0, q: 0, rec: p.SA_Reciclado == null ? null : clamp(+p.SA_Reciclado, 0, 100), reu: !!+p.SA_Reutilizado });
+      it.n++; it.q += q; };
+    obs.forEach(o => addC(o, 1)); s.walls.forEach(o => addC(o, 1)); s.doors.forEach(o => addC(o, 1)); s.windows.forEach(o => addC(o, 1)); s.floors.forEach(o => addC(o, o.area || 0));
+    const cList = Object.values(cTypes).map(it => Object.assign(it, { circ: it.reu ? 100 : it.rec, isRec: it.reu || it.rec > 0 })).sort((a, b) => (b.circ == null ? -1 : b.circ) - (a.circ == null ? -1 : a.circ) || b.n - a.n);
+    // muebles y materiales cuentan por pieza; acabados por m²; «todo» por pieza (no se mezclan unidades)
+    const grpSum = g => { const L = cList.filter(it => g === 'all' || it.g === g), wq = it => g === 'acab' ? it.q : it.n, sum = (A, f) => A.reduce((a, it) => a + f(it), 0), withD = L.filter(it => it.circ != null), q = sum(L, wq), qd = sum(withD, wq);
+      return { n: sum(L, it => it.n), nRec: sum(L.filter(it => it.isRec), it => it.n), nNo: sum(L.filter(it => it.circ == null), it => it.n), q, qRec: sum(L.filter(it => it.isRec), wq),
+        share: q ? sum(L.filter(it => it.isRec), wq) / q * 100 : null, avg: qd ? sum(withD, it => wq(it) * it.circ) / qd : null, unit: g === 'acab' ? 'm²' : 'piezas' }; };
+    const circEl = { list: cList, byType: cTypes, groups: { all: grpSum('all'), furn: grpSum('furn'), mat: grpSum('mat'), acab: grpSum('acab') } };
+
+    // carbono con relieve: cada celda recibe el carbono de lo que tiene cerca (piezas, muros, puertas y ventanas con SA_GWP),
+    // con alcance de ~2.5 m, junto con el desempeño de su piso. Verde = poco carbono cerca; flojo = mucho (ATMs, barreras, escalera, muros de concreto).
+    const csrc = [], gw = o => { const p = tp(o).params || {}; return p.SA_GWP == null ? null : (+p.SA_Reutilizado ? 0 : +p.SA_GWP); };
+    obs.forEach(o => { const w = gw(o); if (w != null && !E.plantOf(m, o)) { const [x, y] = cen(o); csrc.push([x, y, w]); } });
+    [].concat(s.doors, s.windows).forEach(o => { const w = gw(o); if (w != null && o.at) csrc.push([o.at[0], o.at[1], w]); });
+    s.walls.forEach(wl => { const w = gw(wl); if (w == null || w <= 0 || wl.path.length < 2) return; const H = Math.max(0, Math.min(wl.z[1], s.top) - Math.max(wl.z[0], s.e)); let tot = 0; const segs = [];
+      for (let k = 0; k < wl.path.length - 1; k++) { const a = wl.path[k], b = wl.path[k + 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]); segs.push([a, b, L]); tot += L; } if (!tot) return;
+      segs.forEach(([a, b, L]) => { const n = Math.max(1, Math.ceil(L / 1)); for (let i = 0; i < n; i++) { const t = (i + .5) / n; csrc.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, w * H * L / n]); } }); });
+    const SIG = 2.5, dens = new Float32Array(G.n), fl = r.fields.sust; let dv = [];
+    for (let c = 0; c < G.n; c++) { if (!G.free[c]) continue; const [x, y] = G.xy(c); let d = 0; for (let i = 0; i < csrc.length; i++) { const q = csrc[i], dx = q[0] - x; if (dx > 3 * SIG || dx < -3 * SIG) continue; const dy = q[1] - y; if (dy > 3 * SIG || dy < -3 * SIG) continue; d += q[2] * Math.exp(-(dx * dx + dy * dy) / (SIG * SIG)); } dens[c] = d; dv.push(d); }
+    dv.sort((a, b) => a - b); const dRef = dv.length ? Math.max(1, dv[Math.floor(dv.length * .92)]) : 1, carbF = nanF();
+    for (let c = 0; c < G.n; c++) if (G.free[c]) { const g = clamp(dens[c] / dRef, 0, 1), f = isNaN(fl[c]) ? .55 : fl[c]; carbF[c] = clamp(.25 * f + .75 * (1 - Math.pow(g, .75)), .04, 1); }
+    // espera: cada celda de una zona de servicio sabe cuál es su punto más cercano (ATM, caja o mesa) y a qué distancia
+    const nearI = new Int16Array(G.n).fill(-1), nearD = new Float32Array(G.n).fill(NaN);
+    for (const c in svcRoom) { const t = svcRoom[c]; if (!t) continue; const pts = SVC[t]; if (!pts.length) continue; const [x, y] = G.xy(+c); let b = 1e9, bi = -1; pts.forEach((p, i) => { const d = Math.hypot(p.x - x, p.y - y); if (d < b) { b = d; bi = i; } }); nearI[c] = bi; nearD[c] = b; }
+    return { G, via, ent: e0 ? [ex, ey] : null, atms, tells, seats, host, rho, luz, zones, blindAt, gp, fieldsT, routeT, circEl, vps, cust, nearI, nearD,
       vig: segRow('Área vigilada'), blind: segRow('Puntos ciegos'), cash: G.paths.cash ? G.paths.cash.length : null, nStaff: G.staff.length,
-      fields: { orient, priv, seg: r.fields.seg, amb: G.day, carb: r.fields.sust, circ: circF, efic: efF },
+      fields: { orient, priv, seg: r.fields.seg, amb: G.day, carb: carbF, circ: circF, efic: efF },
       sus: { list, act, base, red: base ? (1 - act / base) * 100 : null, int: floorA ? act / floorA : null, epd: act ? epdC / act * 100 : null, circ, custA, furnA },
       svcRoom, counts: { atm: atms.length, caja: tells.length, ases: seats.length }, roomOfCell: c => G.room[c] };
   }
@@ -133,6 +191,8 @@
   const p90t = v => isFinite(v) ? f1(v, 1) : '> 60';
   const over = 'llegan más clientes de los que se alcanzan a atender: la fila no se vacía';
   const ctr = p => p ? [p.x, p.y] : null;
+  const EF = { lo: .05, ok: .3, hi: 1.5 };                      // escala provisional de eficiencia: 0 pts en lo, 100 de ok a 1.00, 0 pts otra vez en hi
+  const eficS = v => v >= EF.ok && v <= 1 ? 100 : v < EF.ok ? lerpS(v, EF.lo, EF.ok) : lerpS(v, EF.hi, 1);
   const MET = [
     { id: 'atmvis', th: 'orient', n: 'ATMs visibles desde la entrada', ty: { E: .4 }, u: '', d: 0, poor: 0, good: 1, rt: ['ninguno', 'todos'], src: 'Modelado', get: s => s.atms.length ? s.atms.filter(p => p.vis).length / s.atms.length : null, txt: (v, s) => `${s.atms.filter(p => p.vis).length} de ${s.atms.length}`,
       what: 'Cuántos ATMs quedan dentro de lo que se ve al cruzar la puerta (corte de vista a 1.20 m).', msg: (v, s) => `Desde la entrada se ven ${s.atms.filter(p => p.vis).length} de ${s.atms.length} ATMs.`, sug: 'Llevar el autoservicio al campo visual de la entrada.', at: s => ctr(s.atms.find(p => !p.vis) || s.atms[0]) },
@@ -176,8 +236,12 @@
     { id: 'cepd', th: 'carb', ctx: true, n: 'Carbono respaldado por EPD', u: '%', d: 0, src: 'EPD', get: s => s.sus.epd, what: 'Qué tan confiable es el cálculo: parte del carbono que sale de datos del fabricante. No suma puntos.' },
     { id: 'circ', th: 'circ', n: 'Contenido circular', u: '%', d: 0, poor: 0, good: 60, src: 'Genérico', get: s => s.sus.circ,
       what: 'Parte reciclada o reutilizada del material. Mientras no haya masa por elemento, se pondera por carbono.', msg: v => `El ${f1(v)} % del material es reciclado o reutilizado.`, sug: 'Mobiliario reacondicionado y acabados con más contenido reciclado.' },
-    { id: 'efic', th: 'efic', n: 'Área necesaria / área de clientes', u: '', d: 2, poor: .4, good: .8, src: 'Supuesto', get: (s, q) => s.counts.atm + s.counts.caja + s.counts.ases && s.sus.custA ? q.need / s.sus.custA : null, sc: v => v >= .8 && v <= 1 ? 100 : v < .8 ? lerpS(v, .4, .8) : lerpS(v, 1.3, 1), rt: ['0.40, sobra', '0.80–1.00'],
-      what: 'Área que pide la ocupación pico (0.9 m² por persona en fila, 1.4 m² por persona atendida, más los muebles) entre el área de clientes. Ideal: 0.80–1.00.', msg: v => v < .8 ? `En la hora pico se usa el ${f1(v * 100)} % del área de clientes: sobra espacio.` : `En la hora pico se necesita el ${f1(v * 100)} % del área de clientes: falta espacio.`, sug: 'Revisar el umbral con Fabiola: en sucursales chicas siempre sobra.' }
+    { id: 'circM', th: 'circ', ctx: true, n: 'Muebles con contenido reciclado', u: '%', d: 0, src: 'SA_Reciclado', get: s => s.circEl.groups.furn.share,
+      what: 'Parte de las piezas de mobiliario y equipo que trae algo de material reciclado o es reutilizada. No suma puntos.' },
+    { id: 'circMavg', th: 'circ', ctx: true, n: 'Contenido reciclado de los muebles', u: '%', d: 0, src: 'SA_Reciclado', get: s => s.circEl.groups.furn.avg,
+      what: 'Qué tan reciclado es, en promedio, el mobiliario: el SA_Reciclado de cada pieza (reutilizado = 100 %). No suma puntos.' },
+    { id: 'efic', th: 'efic', n: 'Área necesaria / área de clientes', u: '', d: 2, poor: EF.lo, good: EF.ok, src: 'Supuesto', get: (s, q) => s.counts.atm + s.counts.caja + s.counts.ases && s.sus.custA ? q.need / s.sus.custA : null, sc: eficS, rt: [f1(EF.lo, 2) + ', sobra', f1(EF.ok, 2) + '–1.00'],
+      what: 'Área que pide la ocupación pico (0.9 m² por persona en fila, 1.4 m² por persona atendida, más los muebles y 60 % de circulación) entre el área de clientes. Ideal: 0.30–1.00; con menos de 0.05 o más de 1.50 da 0.', msg: v => v < EF.ok ? `En la hora pico se usa el ${f1(v * 100)} % del área de clientes: sobra espacio.` : `En la hora pico se necesita el ${f1(v * 100)} % del área de clientes: falta espacio.`, sug: 'Revisar el umbral con Fabiola: la escala es provisional.' }
   ];
   const MBY = Object.fromEntries(MET.map(m => [m.id, m]));
 
@@ -192,7 +256,7 @@
     const q = {}; let ab = 0, abL = 0, need = sp.sus.furnA; TK.forEach(t => { const l = lam * MIX[t], c = counts[SRV[t]], has = sp.counts[SRV[t]] > 0;
       if (t === 'A') { const appt = Math.round(APPT * l * SVC_MIN.A / 60), walk = l * (1 - APPT); q[t] = queue(walk, SVC_MIN.A, Math.max(0, c - appt), PAT.A); q[t].appt = appt; q[t].a += appt; if (has) { ab += walk * q[t].ab; abL += l; } }
       else { q[t] = queue(l, SVC_MIN[t], c, PAT[t]); if (has) { ab += l * q[t].ab; abL += l; } }
-      need += (isFinite(q[t].lq) ? q[t].lq : 10) * .9 + Math.min(q[t].a, c) * 1.4; }); q.ab = abL ? ab / abL * 100 : null; q.need = need; q.lam = lam;
+      const dem = (isFinite(q[t].lq) ? q[t].lq : 10) * .9 + Math.min(q[t].a, c) * 1.4; (q.dem = q.dem || {})[t] = dem; need += dem; }); q.ab = abL ? ab / abL * 100 : null; q.need = need * CIRC_K; q.lam = lam;
     const m = {}; MET.forEach(x => { const v = x.get(sp, q); m[x.id] = { v, s: x.ctx || v == null ? null : x.sc ? x.sc(v) : lerpS(v, x.poor, x.good) }; });
     const th = {}; THEMES.forEach(T => { if (T.fam === 'sus') { const x = MET.find(y => y.th === T.k && !y.ctx); th[T.k] = { all: m[x.id].s }; return; }
       const r = {}; TK.forEach(t => { let w = 0, s = 0; MET.filter(x => x.th === T.k && x.ty && x.ty[t]).forEach(x => { if (m[x.id].s != null) { w += x.ty[t]; s += x.ty[t] * m[x.id].s; } }); r[t] = w ? s / w : null; });
@@ -201,7 +265,16 @@
     const exp = TK.reduce((a, t) => a + mw[t] * (types[t] || 0), 0);
     let sw = 0, ss = 0; for (const k in SPIW) if (th[k].all != null) { sw += SPIW[k]; ss += SPIW[k] * th[k].all; } const sus = sw ? ss / sw : null;
     // espera en la planta: ocupación del servicio de cada zona
-    const espera = new Float32Array(sp.G.n).fill(NaN); for (const c in sp.svcRoom) { const t = sp.svcRoom[c]; if (t) espera[c] = clamp(q[t].rho, 0, 1); }
+    // con un tipo elegido (o.type), solo su zona; y los demás temas de Experiencia pintan su recorrido y su zona (spatial → fieldsT)
+    const ty = TYPES[o.type] ? o.type : null;
+    // la carga no es pareja: el servicio más cercano a la puerta recibe más gente, y la ocupación se concentra junto a cada punto de servicio
+    const SV = { E: sp.atms, T: sp.tells, A: sp.seats }, ld = {}; TK.forEach(t => { const P = SV[t], w = P.map(p => 1 / (1 + p.d / 12)), mw1 = w.reduce((a, b) => a + b, 0) / (w.length || 1); ld[t] = w.map(v => clamp(q[t].rho * v / mw1, 0, 1)); });
+    const espera = new Float32Array(sp.G.n).fill(NaN); for (const c in sp.svcRoom) { const t = sp.svcRoom[c]; if (!t || (ty && t !== ty)) continue; const i = sp.nearI[c];
+      espera[c] = i < 0 ? clamp(q[t].rho, 0, 1) : clamp(ld[t][i] * (.4 + .6 * Math.exp(-sp.nearD[c] / 4)), 0, 1); }
+    // eficiencia por cuarto: lo que pide cada cuarto (muebles + la demanda de su servicio, con circulación) contra su área
+    const efic = new Float32Array(sp.G.n).fill(NaN), At = {}; sp.cust.forEach(q2 => { if (q2.t) At[q2.t] = (At[q2.t] || 0) + q2.A; });
+    sp.cust.forEach(q2 => { if (!q2.A) return; const need = (q2.furnA + (q2.t && At[q2.t] ? q.dem[q2.t] * q2.A / At[q2.t] : 0)) * CIRC_K, sc = eficS(need / q2.A);
+      for (let c = 0; c < sp.G.n; c++) if (sp.G.free[c] && sp.G.room[c] === q2.k) efic[c] = Math.max(.2, (sc == null ? 0 : sc) / 100); });
     // hallazgos: una regla fija por métrica; se activa bajo 70 (mejorar) o bajo 40 (atención)
     const imp = x => x.ty ? TK.reduce((a, t) => a + (x.ty[t] ? MIX[t] * TW[t][x.th] * x.ty[t] / mw0(x.th, t) : 0), 0) : SPIW[x.th] * .25;
     const finds = []; MET.forEach(x => { const r = m[x.id]; if (x.ctx || r.s == null || r.s >= 70) return;
@@ -210,15 +283,15 @@
     const so = { low: 0, mid: 1, info: 2 }; finds.sort((a, b) => so[a.sev] - so[b.sev] || b.lost - a.lost);
     // cuántos temas de cada familia tienen datos: con pocos, el índice es parcial y la interfaz lo dice
     const cov = { exp: THEMES.filter(T => T.fam === 'exp' && th[T.k].all != null).length, sus: THEMES.filter(T => T.fam === 'sus' && th[T.k].all != null).length };
-    return { q, m, th, types, exp, sus, mw, finds, counts, cov, fields: Object.assign({}, sp.fields, { espera }) };
+    return { q, m, th, types, exp, sus, mw, finds, counts, cov, fields: Object.assign({}, sp.fields, ty && sp.fieldsT ? sp.fieldsT[ty] : {}, { espera, efic }) };
   }
   /** El texto de la regla: a partir de qué valor la métrica pasa a «Mejorar» y a «Atención». */
   function rule(x) {
-    if (x.id === 'efic') return 'Regla: fuera de 0.80–1.00 pasa a «Mejorar»; bajo 0.56 o sobre 1.09, a «Atención».';
+    if (x.id === 'efic') return `Regla: fuera de ${f1(EF.ok, 2)}–1.00 pasa a «Mejorar»; bajo ${f1(EF.lo + .7 * (EF.ok - EF.lo), 2)} o sobre ${f1(EF.hi - .7 * (EF.hi - 1), 2)}, y con menos de ${f1(EF.lo + .4 * (EF.ok - EF.lo), 2)} o más de ${f1(EF.hi - .4 * (EF.hi - 1), 2)}, a «Atención».`;
     const v = p => x.poor + p * (x.good - x.poor), worse = x.good > x.poor ? 'menos de' : 'más de', fx = p => x.rt && x.poor === 0 && x.good === 1 ? f1(v(p) * 100) + ' %' : f1(v(p), x.d) + (x.u ? ' ' + x.u : '');
     return `Regla: con ${worse} ${fx(.7)} pasa a «Mejorar»; con ${worse} ${fx(.4)}, a «Atención».`;
   }
 
-  const api = { TYPES, TK, MIX, APPT, PEAK, SVC_MIN, PAT, TW, SPIW, THEMES, TH, FAM, MET, MBY, spatial, score, mixW, queue, lerpS };
+  const api = { TYPES, TK, MIX, APPT, PEAK, EF, SVC_MIN, PAT, TW, SPIW, THEMES, TH, FAM, MET, MBY, spatial, score, mixW, queue, lerpS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.SAIndices = api;
 })(typeof window !== 'undefined' ? window : this);
