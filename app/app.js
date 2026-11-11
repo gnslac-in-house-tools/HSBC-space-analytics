@@ -38,7 +38,7 @@ const S = {w:{flujo:.7,visib:.6,seg:.8,conf:.9,sust:.75},inc:{flujo:true,visib:t
  stack:false,gap:1,bld:null,broute:null}; // 3D con todos los niveles (gap = separación entre ellos, 1 = automática) y rutas del edificio
 const $ = id => document.getElementById(id);
 const NS = 'http://www.w3.org/2000/svg';
-function el(tag, a = {}, p) { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); p && p.appendChild(e); return e; }
+function el(tag, a = {}, p) { const e = document.createElementNS(NS, tag); for (const k in a) if (a[k] != null) e.setAttribute(k, a[k]); p && p.appendChild(e); return e; }
 const polar = (cx, cy, r, deg) => { const a = deg * Math.PI / 180; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; };
 function arc(cx, cy, r, a0, sw) { sw = Math.max(.01, sw); const [x0, y0] = polar(cx, cy, r, a0), [x1, y1] = polar(cx, cy, r, a0 + sw); return `M${x0} ${y0} A${r} ${r} 0 ${sw > 180 ? 1 : 0} 1 ${x1} ${y1}`; }
 const span = k => 50 + S.w[k] * 110;
@@ -402,10 +402,16 @@ function drawPlan(svg, opts = {}) { svg.innerHTML = ''; svg.classList.add('plan'
  s.doors.forEach(d => drawOpening(w, d, 'door', wb)); s.windows.forEach(o => drawOpening(w, o, 'window', wb));
  const fu = el('g', {opacity: S.lay.furnOp}, w);
  s.obstacles.forEach(o => { const pl = E.plantOf(r.model, o); if (pl) { if (S.lay.plants) drawPlant(w, pl, o.id); return; }
-  if (S.lay.furn) el('polygon', {points: pts(o.footprint), class: 'furn', style: o.category === 'Columns' ? 'fill:var(--wall);fill-opacity:.55' : ''}, fu); });
+  if (!S.lay.furn) return; const cs = circStyle(o);
+  if (cs) { el('polygon', {points: pts(o.footprint), class: 'furn', style: 'fill:var(--floor);fill-opacity:1'}, fu); el('polygon', {points: pts(o.footprint), fill: cs.fill, 'fill-opacity': cs.op.toFixed(2), stroke: cs.dash ? 'var(--muted)' : BY.circ.c1, 'stroke-width': .8, 'stroke-dasharray': cs.dash ? '2 2' : null}, fu); return; }
+  el('polygon', {points: pts(o.footprint), class: 'furn', style: o.category === 'Columns' ? 'fill:var(--wall);fill-opacity:.55' : ''}, fu); });
+ // Circularidad: los muros y puertas también se tiñen según su contenido reciclado
+ if (circOn()) [].concat(s.walls).forEach(wl => { const cs = circStyle(wl); if (!cs || cs.dash) return; el('polyline', {points: pts(wl.path), fill: 'none', stroke: cs.fill, 'stroke-opacity': cs.op.toFixed(2), 'stroke-width': Math.max(2.5, wl.thickness * SC + 1.5), 'stroke-linecap': 'square'}, w); });
  // puestos de personal y accesos
- const showWatch = S.lay.watch || S.focus.k.indexOf('seg') >= 0; // en Seguridad siempre: el mapa trata de ellos
+ const showWatch = S.lay.watch || S.focus.k.indexOf('seg') >= 0 || S.focus.k === 'orient'; // en Seguridad y Orientación siempre: el mapa sale de ellos
  if (showWatch) G.watch.forEach(p => { const [x, y] = G.xy(p.c); el('circle', {cx: X(x), cy: Y(y), r: 4.2, class: 'pin', stroke: BY.seg.c1}, w); el('circle', {cx: X(x), cy: Y(y), r: 1.6, fill: BY.seg.c1}, w); });
+ if (S.focus.type === 'pillar' && S.focus.k === 'orient' && S.px.type === 'all' && S.res._sp) S.res._sp.vps.filter(v => v.kind === 'cliente').forEach(v => { const cx = X(v.x), cy = Y(v.y), c1 = BY.orient.c1, g = el('g', {}, w); el('title', {}, g).textContent = v.name;
+  el('path', {d: `M${cx} ${cy - 5.2} L${cx + 5.2} ${cy} L${cx} ${cy + 5.2} L${cx - 5.2} ${cy} Z`, fill: c1, stroke: 'var(--floor)', 'stroke-width': 1.3}, g); el('circle', {cx, cy, r: 1.5, fill: 'var(--floor)'}, g); }); // puntos de vista de los clientes
  if (S.lay.ent) G.entrances.forEach(e => { const [x, y] = G.xy(e.c); el('path', {d: `M${X(x) - 5} ${Y(y) + 4} L${X(x)} ${Y(y) - 4} L${X(x) + 5} ${Y(y) + 4}`, fill: 'none', stroke: 'var(--ink)', 'stroke-width': 1.6, 'stroke-linecap': 'round', 'stroke-linejoin': 'round'}, w); });
  // rutas
  if (S.path && G.paths[S.path]) { const ps = G.paths[S.path].cells.map(c => G.xy(c)), col = S.path === 'cash' ? BY.seg.c1 : BY.flujo.c1;
@@ -535,7 +541,8 @@ function drawLayer3D(g, Ly, heat, stack, i) {
  s.floors.forEach(f => { el('polygon', {points: quad(f.outline[0].map(p => [X(p[0]), Y(p[1]), -6])), fill: 'var(--line)'}, g); el('polygon', {points: quad(f.outline[0].map(p => [X(p[0]), Y(p[1]), 0])), fill: 'var(--floor)', 'fill-opacity': stack && i ? .82 : 1, stroke: 'var(--wall)', 'stroke-width': .6}, g); });
  // la imagen del campo se calcula una vez por vista y nivel; al girar o mover solo cambia su transformación
  const o0 = ISO(0, 0), o1 = ISO(1, 0), o2 = ISO(0, 1), id = r.level.id;
- el('image', {href: heat[id] || (heat[id] = heatImage(r)), x: X(G.ox), y: Y(G.oy + G.ny * G.cell), width: G.nx * G.cell * SC, height: G.ny * G.cell * SC, preserveAspectRatio: 'none', transform: `matrix(${o1[0] - o0[0]} ${o1[1] - o0[1]} ${o2[0] - o0[0]} ${o2[1] - o0[1]} ${o0[0]} ${o0[1]})`}, g);
+ const him = el('image', {href: heat[id] || (heat[id] = heatImage(r)), x: X(G.ox), y: Y(G.oy + G.ny * G.cell), width: G.nx * G.cell * SC, height: G.ny * G.cell * SC, preserveAspectRatio: 'none', transform: `matrix(${o1[0] - o0[0]} ${o1[1] - o0[1]} ${o2[0] - o0[0]} ${o2[1] - o0[1]} ${o0[0]} ${o0[1]})`}, g);
+ if (Ly.cur) (g.ownerSVGElement || g)._img3 = him; // la animación de «cómo nace» se monta sobre esta imagen, con su misma posición e inclinación
  const items = [], hOf = z => Math.max(.05, Math.min(CUT, z - e)) * SC;
  const openings = [].concat(s.doors, s.windows);
  s.walls.forEach(wl => { if (!(s.wallMoves(wl) || s.wallSight(wl))) return; const H = hOf(wl.z[1]);
@@ -550,11 +557,14 @@ function drawLayer3D(g, Ly, heat, stack, i) {
  const st = selTypes();
  s.obstacles.forEach(o => { const pl = E.plantOf(r.model, o); if (pl) { if (S.lay.plants) items.push({d: DEPTH(X(pl.x), Y(pl.y)), draw: () => drawPlant3D(g, pl, o.id, hOf(o.z[1]), st.has(o.type))}); return; }
   if (!S.lay.furn) return;
-  const H = hOf(o.z[1]), fp = o.footprint.map(p => [X(p[0]), Y(p[1])]), cx = fp.reduce((a, p) => a + DEPTH(p[0], p[1]), 0) / fp.length, sel = st.has(o.type);
+  const H = hOf(o.z[1]), fp = o.footprint.map(p => [X(p[0]), Y(p[1])]), cx = fp.reduce((a, p) => a + DEPTH(p[0], p[1]), 0) / fp.length, sel = st.has(o.type), cs = circStyle(o);
   items.push({d: cx, draw: () => { const fg = el('g', {opacity: S.lay.furnOp}, g);
    const edges = fp.map((p, i) => [p, fp[(i + 1) % fp.length]]).sort((u, v) => (DEPTH(u[0][0], u[0][1]) + DEPTH(u[1][0], u[1][1])) - (DEPTH(v[0][0], v[0][1]) + DEPTH(v[1][0], v[1][1])));
-   edges.forEach(([p, q]) => el('polygon', {points: quad([[p[0], p[1], 0], [q[0], q[1], 0], [q[0], q[1], H], [p[0], p[1], H]]), fill: o.category === 'Columns' ? 'var(--line-2)' : 'var(--line)', stroke: 'var(--wall)', 'stroke-width': .35}, fg));
-   el('polygon', {points: quad(fp.map(p => [p[0], p[1], H])), fill: 'var(--surface-2)', stroke: 'var(--wall)', 'stroke-width': .5, class: sel ? 'selshape' : ''}, fg); }}); });
+   edges.forEach(([p, q]) => { const pq = quad([[p[0], p[1], 0], [q[0], q[1], 0], [q[0], q[1], H], [p[0], p[1], H]]); el('polygon', {points: pq, fill: o.category === 'Columns' ? 'var(--line-2)' : 'var(--line)', stroke: 'var(--wall)', 'stroke-width': .35}, fg);
+    if (cs && !cs.dash) el('polygon', {points: pq, fill: cs.fill, 'fill-opacity': (cs.op * .8).toFixed(2)}, fg); });
+   const top = quad(fp.map(p => [p[0], p[1], H]));
+   el('polygon', {points: top, fill: 'var(--surface-2)', stroke: 'var(--wall)', 'stroke-width': .5, class: sel ? 'selshape' : '', 'stroke-dasharray': cs && cs.dash ? '2 2' : null}, fg);
+   if (cs && !cs.dash) el('polygon', {points: top, fill: cs.fill, 'fill-opacity': cs.op.toFixed(2), stroke: BY.circ.c1, 'stroke-width': .5}, fg); }}); });
  items.sort((a, b) => a.d - b.d).forEach(it => it.draw());
  if (Ly.cur && S.path && G.paths[S.path]) { const ps = G.paths[S.path].cells.map(c => G.xy(c)); el('polyline', {points: ps.map(p => ISO(X(p[0]), Y(p[1]), 2).map(v => v.toFixed(1)).join(',')).join(' '), class: 'route flow', stroke: S.path === 'cash' ? BY.seg.c1 : BY.flujo.c1}, g); }
  if (Ly.cur && S.lay.labels) s.rooms.forEach(rm => { const [cx, cy] = E.ringCentroid(rm.outline[0]); const [x, y] = ISO(X(cx), Y(cy), 0); const t = el('text', {x, y, 'text-anchor': 'middle', class: 'lbl'}, g); t.textContent = rm.name || rm.number; });
@@ -1162,7 +1172,7 @@ addEventListener('keydown', e => { const k = e.key.toLowerCase();
  * (relaciones, pilares de la presentación, estado vacío, Senses). Los índices viven en indices.js. Ver docs/modos.md. */
 const PX = window.SAIndices, PXT = PX.THEMES, PXK = PXT.map(t => t.k);
 PXT.forEach(t => { BY[t.k] = Object.assign({}, BY[t.k] || {}, t, {target: 70}); ICON[t.k] = t.ic; });
-S.px = {type: 'all', mix: 'visitas', counts: null, of: null, supOpen: false, hallOpen: false, mode: 'exp', last: {exp: null, sus: null}, fold: {}};
+S.px = {type: 'all', mix: 'visitas', counts: null, of: null, supOpen: false, hallOpen: false, mode: 'exp', last: {exp: null, sus: null}, fold: {}, circG: 'furn', circMin: 1}; // Circularidad abre en Muebles: es lo que el proyecto quiere poner al frente
 // laptop (14"): sin scroll. Lo secundario queda plegado y en cada panel se abre un plegado a la vez (details name)
 const pxMQ = matchMedia('(max-height:1100px)'); pxMQ.onchange = () => { if (S.res) renderAll(); };
 const pxGroup = g => pxMQ.matches ? ` name="${g}"` : '';
@@ -1176,7 +1186,19 @@ const famDots = fam => dots(...PXT.filter(t => t.fam === fam).map(t => t.c1));
 const tl = t => `<span class="tl" style="--c:${PX.TYPES[t].c}" title="${PX.TYPES[t].n}">${t}</span>`;
 function pxNow() { const r = S.res; if (!r) return null; if (!r._sp) r._sp = PX.spatial(r, E);
  if (S.px.of !== r) { S.px.of = r; S.px.counts = Object.assign({}, r._sp.counts); }
- const X = PX.score(r._sp, {counts: S.px.counts, mix: S.px.mix}); Object.assign(r.fields, X.fields); r._px = X; return X; }
+ const X = PX.score(r._sp, {counts: S.px.counts, mix: S.px.mix, type: S.px.type}); // con un usuario elegido, Experiencia pinta su recorrido y su zona
+ if (S.px.circG === 'furn' || S.px.circG === 'mat') X.fields.circ = new Float32Array(r.G.n).fill(NaN); // el calor de Circularidad es de los pisos (acabados)
+ Object.assign(r.fields, X.fields); r._px = X; return X; }
+const pxTyKey = k => isTh(k) && PX.TH[k].fam === 'exp' && S.px.type !== 'all' ? k + ':' + S.px.type : k;
+/* Circularidad: qué tiene contenido reciclado, por grupo. Muebles y equipo · materiales (muros, puertas, ventanas) · acabados (pisos). */
+const CIRC_G = [['all', 'Todo'], ['furn', 'Muebles'], ['mat', 'Materiales'], ['acab', 'Acabados']], CIRC_GN = Object.fromEntries(CIRC_G);
+const circOn = () => !!(S.px && S.res && S.res._sp && S.res._sp.circEl && S.focus.type === 'pillar' && S.focus.k === 'circ');
+const circIt = o => { const it = S.res._sp.circEl.byType[o.type]; return it && (S.px.circG === 'all' || it.g === S.px.circG) ? it : null; };
+const circPass = it => it.reu || it.circ != null && it.circ >= S.px.circMin;
+/** Relleno de un elemento en Circularidad: más intenso = más reciclado; bajo el mínimo, apenas teñido; sin dato, gris punteado. */
+function circStyle(o) { if (!circOn()) return null; const it = circIt(o); if (!it) return null; const iso = S.iso && S.selFam.size && !S.selFam.has(o.type) ? .3 : 1;
+ if (it.circ == null) return {fill: 'var(--surface-2)', op: .9 * iso, dash: true};
+ return {fill: BY.circ.c1, op: (circPass(it) ? .3 + .65 * it.circ / 100 : .1) * iso}; }
 const thScore = (X, k) => { const v = X.th[k]; return v == null ? null : PX.TH[k].fam === 'sus' || S.px.type === 'all' ? v.all : v[S.px.type]; };
 
 function thRow(X, t, tag) { tag = tag || 'button'; const sc = rnd(thScore(X, t.k)), rt = rate70(sc), on = tag === 'button' && S.focus.type === 'pillar' && S.focus.k === t.k;
@@ -1256,7 +1278,7 @@ function metRow(x, X) { const r = X.m[x.id], s = r.s, rt = x.ctx ? null : rate70
  const ly = x.path ? `path:${x.path}` : x.id === 'blind' ? 'mark:blind' : null;
  const eye = ly ? `<button class="ib sm" data-ly="${ly}" aria-pressed="false" aria-label="Ver ${x.n.toLowerCase()} en el plano">${EYE}</button>` : '<span class="ib-ph"></span>';
  const unit = x.u === 'ρ' ? '' : x.u;
- const rng = x.ctx ? '' : x.id === 'efic' ? 'ideal 0.80–1.00 · 0.40 o 1.30 dan 0' : `bueno ${x.rt ? x.rt[1] : fmt(x.good, x.d) + (x.u ? ' ' + x.u : '')} · malo ${x.rt ? x.rt[0] : fmt(x.poor, x.d) + (x.u ? ' ' + x.u : '')}`;
+ const rng = x.ctx ? '' : x.id === 'efic' ? `ideal ${fmt(PX.EF.ok, 2)}–1.00 · ${fmt(PX.EF.lo, 2)} o ${fmt(PX.EF.hi, 2)} dan 0` : `bueno ${x.rt ? x.rt[1] : fmt(x.good, x.d) + (x.u ? ' ' + x.u : '')} · malo ${x.rt ? x.rt[0] : fmt(x.poor, x.d) + (x.u ? ' ' + x.u : '')}`;
  const id = 'm:' + x.id;
  return `<details class="pxmd" data-fold="${id}"${pxGroup('pxi')}${pxFoldOpen(id) ? ' open' : ''} style="--c:${BY[x.th].c1}"><summary class="row m pxm"><span class="lab"><span title="${esc(x.n)}">${x.n}</span></span><span class="end"><span class="val">${vt}<small>${unit}</small></span>${eye}</span>
   ${x.ctx ? '' : `<span class="b4 ind full" aria-hidden="true"><i style="width:${s || 0}%"></i><em style="left:70%"></em></span>`}
@@ -1264,6 +1286,31 @@ function metRow(x, X) { const r = X.m[x.id], s = r.s, rt = x.ctx ? null : rate70
   <div class="pxmb mt">${rng ? `<span class="meta">${rng}</span>` : ''}<span class="meta src">${x.what}</span>
    <span class="pxo"><span class="og" title="De dónde sale el dato">${x.src}</span>${x.ty ? Object.keys(x.ty).map(tl).join('') : ''}</span>
    ${!x.ctx && s != null && s < 70 ? `<p class="pxc"><b>${esc(x.msg(r.v, S.res._sp))}</b> ${esc(x.sug)}</p>` : ''}</div></details>`; }
+
+/* Qué dice el mapa: con un usuario elegido, los temas de Experiencia hablan de su recorrido y su zona. */
+const PXUNIT_T = {orient: 'su recorrido, de la puerta a su servicio · más intenso = ruta más directa', espera: 'ocupación de su servicio en la hora pico',
+ priv: {E: 'desde dónde se ve la pantalla del ATM', T: 'desde dónde se ve la ventanilla', A: 'desde dónde se ve la mesa de asesoría'}, seg: 'puestos de personal que ven su recorrido y su zona', amb: 'luz natural en su zona'};
+const pxUnit = t => { if (t.fam !== 'exp' || S.px.type === 'all' || !PXUNIT_T[t.k]) return t.unit; const u = PXUNIT_T[t.k]; return `${PX.TYPES[S.px.type].n} · ${typeof u === 'string' ? u : u[S.px.type]}`; };
+
+/** Circularidad: qué es reciclado. Filtro por grupo y por mínimo de contenido reciclado; seleccionar o aislar lo reciclado en el viewport. */
+function circSec() { const ce = S.res._sp.circEl, g = S.px.circG, su = ce.groups[g], L = ce.list.filter(it => g === 'all' || it.g === g), sel = L.filter(circPass), nSel = sel.reduce((a, it) => a + it.n, 0);
+ const pct = v => v == null ? '—' : fmt(v), one = S.selFam.size === 1 ? [...S.selFam][0] : null;
+ const rows = L.slice(0, 8).map(it => { const v = it.circ, pass = circPass(it); return `<button class="row s${one === it.id ? ' on' : ''}" data-cf="${esc(it.id)}" style="--c:${BY.circ.c1}${pass ? '' : ';opacity:.55'}" title="Seleccionar ${esc(it.fam)} en el viewport"><span class="lab"><span>${esc(it.fam)} <span class="muted">· ${fmt(it.n)}${it.reu ? ' · reutilizado' : ''}</span></span></span><span class="b4"><i style="width:${v || 0}%"></i></span><span class="val s">${v == null ? '—' : Math.round(v) + '<small>%</small>'}</span></button>`; }).join('');
+ return `<section class="sec pxrec"><div class="sec-h"><span class="eyebrow">Qué es reciclado</span><span class="sec-m">${CIRC_GN[g].toLowerCase()} · ${su.unit === 'm²' ? 'por m²' : 'por pieza'}</span></div>
+  <div class="ly-row full"><span class="seg" id="px-cg" role="group" aria-label="Qué grupo ver">${CIRC_G.map(([kk, n]) => `<button data-cg="${kk}" aria-pressed="${g === kk}">${n}</button>`).join('')}</span></div>
+  <div class="ly-row"><span>Reciclado al menos</span><span class="seg" id="px-cm">${[[1, 'Algo'], [30, '30 %'], [50, '50 %']].map(([v, n]) => `<button data-cm="${v}" aria-pressed="${S.px.circMin === v}" title="${v === 1 ? 'Cualquier contenido reciclado' : `Al menos ${v} % reciclado`}">${n}</button>`).join('')}</span></div>
+  <div class="pxrec-k" style="--c:${BY.circ.c1}"><div><span class="val">${pct(su.share)}<small>%</small></span><span class="meta">${g === 'acab' ? 'del piso' : 'de las piezas'} trae material reciclado</span></div><div><span class="val">${pct(su.avg)}<small>%</small></span><span class="meta">de contenido reciclado, en promedio</span></div></div>
+  <p class="meta">${fmt(su.nRec)} de ${fmt(su.n)} piezas con contenido reciclado${su.nNo ? ` · ${fmt(su.nNo)} sin dato` : ''}. En el plano: más intenso = más reciclado.</p>
+  <div class="list">${rows}</div>
+  <div class="pxrec-b"><button class="btn" id="px-csel"${nSel ? '' : ' disabled'}>Seleccionar lo reciclado · ${fmt(nSel)}</button><button class="btn" id="px-ciso" aria-pressed="${!!(S.iso && S.selFam.size)}"${nSel ? '' : ' disabled'}>Aislar</button>${S.selFam.size ? '<button class="btn" id="px-cclr">Limpiar</button>' : ''}</div></section>`; }
+function wireCirc(box) { const ce = S.res._sp.circEl, g = () => S.px.circG, recIds = () => ce.list.filter(it => (g() === 'all' || it.g === g()) && circPass(it)).map(it => it.id);
+ box.querySelectorAll('[data-cg]').forEach(b => b.onclick = () => { S.px.circG = b.dataset.cg; if (S.selFam.size && S.px.recSel) S.selFam = new Set(recIds()); renderAll(); Snd.click(); });
+ box.querySelectorAll('[data-cm]').forEach(b => b.onclick = () => { S.px.circMin = +b.dataset.cm; if (S.selFam.size && S.px.recSel) S.selFam = new Set(recIds()); renderAll(); Snd.click(); });
+ box.querySelectorAll('[data-cf]').forEach(b => b.onclick = () => { const id = b.dataset.cf; S.px.recSel = false; S.selFam = S.selFam.size === 1 && S.selFam.has(id) ? new Set() : new Set([id]); S.iso = false; renderAll(); Snd.click(); });
+ const sel = $('px-csel'), iso = $('px-ciso'), clr = $('px-cclr');
+ if (sel) sel.onclick = () => { const ids = recIds(); S.selFam = new Set(ids); S.px.recSel = true; S.iso = false; renderAll(); Snd.click(); toast(`${CIRC_GN[g()]}: lo reciclado seleccionado`, `${ids.length} familia${ids.length === 1 ? '' : 's'} en el viewport`); };
+ if (iso) iso.onclick = () => { if (S.iso && S.selFam.size) { S.iso = false; } else { if (!S.selFam.size) { S.selFam = new Set(recIds()); S.px.recSel = true; } S.iso = true; } renderAll(); Snd.click(); };
+ if (clr) clr.onclick = () => { S.selFam.clear(); S.iso = false; S.px.recSel = false; renderAll(); Snd.click(); }; }
 
 function renderInspector() { if (S.res) pxSync(); if (!S.res || S.focus.type !== 'pillar' || !isTh(S.focus.k)) { renderInspectorBase(); const e = S.res && document.querySelector('#insp-h .eyebrow'); if (e) e.textContent = `${PX.FAM[S.px.mode].idx} · ${e.textContent}`; return; }
  const box = $('insp'), X = pxNow(), t = PX.TH[S.focus.k], k = t.k, sc = rnd(thScore(X, k)), rt = rate70(sc), fam = PX.FAM[t.fam], ty = S.px.type, isExp = t.fam === 'exp', mw = PX.mixW(S.px.mix), gap = sc == null ? null : 70 - sc;
@@ -1280,13 +1327,16 @@ function renderInspector() { if (S.res) pxSync(); if (!S.res || S.focus.type !==
  if (k === 'espera') { const c0 = S.res._sp.counts;
   h += foldSec('whatif', '¿Qué pasa si…?', 'puntos de servicio', `<div class="list div">${[['atm', 'ATMs'], ['caja', 'Cajas'], ['ases', 'Asesores']].map(([kk, n]) => `<div class="row kv"><span class="lab"><span>${n}</span></span><span class="end"><span class="meta">${S.px.counts[kk] === c0[kk] ? 'como en el modelo' : `modelo: ${c0[kk]}`}</span><span class="step pxst"><button data-ct="${kk}" data-d="-1" aria-label="Uno menos">−</button><span>${S.px.counts[kk]}</span><button data-ct="${kk}" data-d="1" aria-label="Uno más">+</button></span></span></div>`).join('')}</div>
    <p class="meta pxn">Este tema depende de <b>cuántos</b> puntos de servicio hay, no de <b>dónde</b> están: sirve para dimensionar, no califica la distribución.</p>`); }
+ if (k === 'circ') h += circSec();
  const ms = PX.MET.filter(x => x.th === k && (ty === 'all' || !x.ty || x.ty[ty]));
  h += `<section class="sec"><div class="sec-h"><span class="eyebrow">Métricas</span><span class="sec-m">valor · puntaje · de dónde sale</span></div><div class="list div">${ms.map(x => metRow(x, X)).join('')}</div></section>`;
  if (k === 'carb') h += foldSec('carbtop', 'Lo que más aporta', 'kgCO₂e · origen', `<div class="list div">${S.res._sp.sus.list.slice(0, 6).map(i => `<div class="row kv"><span class="lab"><span>${esc(i.n)}</span></span><span class="end"><span class="og">${i.src}</span><span class="val s">${fmt(i.act)}</span></span></div>`).join('')}</div>`);
  if (k === 'amb') h += foldSec('proxy', 'Cómo se estima', 'proxy', `<p><b>Proxy.</b> Por ahora la luz se estima con la vista al vidrio exterior. Después, sDA (300 lux, 50 % de las horas) con Radiance y los edificios vecinos.</p>`);
  if (t.fam === 'sus') h += foldSec('revisar', 'Por revisar', 'con Fabiola', `<p><b>Por revisar con Fabiola:</b> factores genéricos, línea base y umbrales de este tema.</p>`);
- h += `<section class="sec pxplano"><div class="sec-h"><span class="eyebrow">En el plano</span></div><p>${t.unit[0].toUpperCase() + t.unit.slice(1)}.</p></section>`;
+ const un = pxUnit(t);
+ h += `<section class="sec pxplano"><div class="sec-h"><span class="eyebrow">En el plano</span></div><p>${un[0].toUpperCase() + un.slice(1)}.</p></section>`;
  box.innerHTML = h; syncLayers();
+ if (k === 'circ') wireCirc(box);
  box.querySelectorAll('[data-fold]').forEach(d => d.ontoggle = () => { S.px.fold[d.dataset.fold] = d.open; });
  box.querySelectorAll('[data-ty]').forEach(b => b.onclick = () => { S.px.type = b.dataset.ty; renderAll(); Snd.click(); });
  box.querySelectorAll('[data-ct]').forEach(b => b.onclick = () => { const kk = b.dataset.ct; S.px.counts[kk] = Math.max(0, Math.min(9, S.px.counts[kk] + +b.dataset.d)); renderAll(); Snd.click(); });
@@ -1301,23 +1351,27 @@ const PXREDUCE = matchMedia('(prefers-reduced-motion: reduce)'), PXSLOW = +new U
 // alias: los pilares de la presentación nacen igual que el tema que miden
 const PXALIAS = {flujo: 'orient', sust: 'carb', conf: 'amb'};
 const PXCAP = {flujo: 'Nace en la entrada · avanza caminando', conf: 'Nace en los vidrios, lejos del paso · luz y calma', visib: 'Nace en lo más abierto · hacia los rincones', sust: 'Nace en los elementos del schedule · primero lo que más CO₂ aporta'};
-function pxOrigin(k, r) { r._org = r._org || {}; if (r._org[k]) return r._org[k];
+function pxOrigin(k, r) { r._org = r._org || {}; const ck = pxTyKey(k); if (r._org[ck]) return r._org[ck];
  const G = r.G, sp = r._sp, s = r.sel, m = r.model, n = G.n, val = r.fields[k], t = new Float32Array(n).fill(1), o = {t, t2: null, a1: 1, src: [], cap: '', D: 1900, W: .16}, kk = PXALIAS[k] || k;
  const has = c => G.free[c] && !isNaN(val[c]);
  // desde cada punto, lo que alcanza a ver: visit(celda, distancia, dx, dy)
  const rays = (x, y, maxD, visit) => { for (let q = 0; q < 360; q++) { const a = (q + .5) / 360 * 2 * Math.PI; E.castRay(G, x, y, Math.cos(a), Math.sin(a), maxD, c => { const [p, u] = G.xy(c); visit(c, Math.hypot(p - x, u - y), p - x, u - y); }); } };
  const north = (dx, dy) => { const a = Math.atan2(dx, dy); return (a < 0 ? a + 2 * Math.PI : a) / (2 * Math.PI); }; // 0 = norte, en sentido de las manecillas
- if (kk === 'orient') { // la onda camina desde la puerta: dEnt es la ruta más corta, esquivando muros y muebles
+ if (kk === 'orient') { // la onda camina desde la puerta; luego se encienden los puntos de los clientes y al final los del personal
   let mx = 1; for (let c = 0; c < n; c++) if (has(c) && isFinite(G.dEnt[c]) && G.dEnt[c] > mx) mx = G.dEnt[c];
-  for (let c = 0; c < n; c++) if (has(c) && isFinite(G.dEnt[c])) t[c] = G.dEnt[c] / mx;
-  o.src = G.entrances.map(e => { const [x, y] = G.xy(e.c); return {x, y, at: 0}; }); o.cap = 'Nace en la entrada · avanza caminando';
+  const grp = kd => sp.vps.filter(v => v.kind === kd), cc = v => { const [i, j] = [Math.floor((v.x - G.ox) / G.cell), Math.floor((v.y - G.oy) / G.cell)]; return j * G.nx + i; };
+  const dC = grp('cliente').length ? E.dijkstra(G, grp('cliente').map(cc)).dist : null, dS = grp('personal').length ? E.dijkstra(G, grp('personal').map(cc)).dist : null;
+  for (let c = 0; c < n; c++) if (has(c)) { let v = isFinite(G.dEnt[c]) ? G.dEnt[c] / mx * .5 : 1;
+   if (dC && isFinite(dC[c])) v = Math.min(v, .2 + dC[c] / mx * .5); if (dS && isFinite(dS[c])) v = Math.min(v, .4 + dS[c] / mx * .5); t[c] = Math.min(1, v); }
+  o.src = G.entrances.map(e => { const [x, y] = G.xy(e.c); return {x, y, at: 0}; }).concat(grp('cliente').map(v => ({x: v.x, y: v.y, at: .2})), grp('personal').map(v => ({x: v.x, y: v.y, at: .4})));
+  o.cap = 'Nace en la entrada · luego los clientes · luego el personal'; o.D = 2400;
  } else if (kk === 'espera') { // cada zona se llena desde sus puntos de servicio: primero lo rápido, al final la asesoría
   const pts = {E: sp.atms, T: sp.tells, A: sp.seats}, st = {E: 0, T: .18, A: .36}, mx = {E: 1, T: 1, A: 1}, d = new Float32Array(n);
   for (const c in sp.svcRoom) { const ty = sp.svcRoom[c]; if (!ty || !pts[ty].length) continue; const [x, y] = G.xy(+c); let b = Infinity; pts[ty].forEach(p => { const v = Math.hypot(p.x - x, p.y - y); if (v < b) b = v; }); d[c] = b; if (b > mx[ty]) mx[ty] = b; }
   for (const c in sp.svcRoom) { const ty = sp.svcRoom[c]; if (ty) t[c] = st[ty] + .64 * d[c] / mx[ty]; }
   PX.TK.forEach(ty => pts[ty].forEach(p => o.src.push({x: p.x, y: p.y, at: st[ty]}))); o.cap = 'Nace en cada ATM, caja y mesa · se llena con la demanda'; o.D = 2000;
  } else if (kk === 'priv') { // un anillo por asiento o ventanilla, solo hasta donde hay vista; se apaga a los 8 m, como la métrica
-  const ps = sp.seats.concat(sp.tells);
+  const tp = pxTyKey(k) !== k ? S.px.type : 'all', ps = tp === 'E' ? sp.atms : tp === 'T' ? sp.tells : tp === 'A' ? sp.seats : sp.seats.concat(sp.tells);
   ps.forEach((p, i) => { const at = i / Math.max(1, ps.length) * .5; o.src.push({x: p.x, y: p.y, at}); rays(p.x, p.y, 8, (c, dd) => { const v = at + dd / 8 * .5; if (v < t[c]) t[c] = v; }); });
   o.cap = 'Nace en cada asiento y ventanilla · hasta donde alcanza la vista'; o.D = 2100;
  } else if (kk === 'seg') { // un radar por puesto: la primera mirada pinta a medias y la última completa; donde se traslapan, se intensifica
@@ -1355,7 +1409,12 @@ function pxOrigin(k, r) { r._org = r._org || {}; if (r._org[k]) return r._org[k]
   const A = sp.sus.custA; o.capFn = f => `Contando el área de clientes · ${fmt(A * f)} m²`; o.W = .05; o.D = 2200;
  }
  if (PXCAP[k]) o.cap = PXCAP[k];
- return (r._org[k] = o); }
+ const ty = pxTyKey(k) !== k ? S.px.type : null;
+ if (ty) { const Tn = PX.TYPES[ty].n, sv = {E: 'el ATM', T: 'la caja', A: 'la asesoría'}[ty];
+  o.cap = `Cliente ${Tn} · ` + ({orient: `su recorrido, de la puerta a ${sv}`, espera: `nace en ${sv} · se llena con su demanda`,
+   priv: {E: 'quién alcanza a ver la pantalla del ATM', T: 'quién alcanza a ver la ventanilla', A: 'quién alcanza a ver la mesa de asesoría'}[ty],
+   seg: 'lo que ve el personal en su recorrido y su zona', amb: 'la luz natural en su zona'}[kk] || o.cap); }
+ return (r._org[ck] = o); }
 
 /* Relaciones: tres actos. 1, el primer tema nace desde su origen; 2, el segundo desde el suyo (en un conflicto, lo que le falta);
  * 3, los dos se apagan y se encienden en rojo las celdas donde se cruzan, de la más fuerte a la más débil. */
@@ -1378,10 +1437,12 @@ const PXGLYPH = [0, 1, 2].map(j => { const a0 = j * 2 * Math.PI / 3 + .3, a1 = a
 function pxPlay(slot, r, svg, img, oldHref, acts, D) { pxStop(slot); const G = r.G, finalHref = img.getAttribute('href'), K = Math.max(3, Math.min(24, Math.floor(2400 / Math.max(G.nx, G.ny))));
  // el fondo es la misma imagen sin calor ni contornos (retícula y marcas)
  const h = S.lay.heat, f0 = S.focus; S.lay.heat = false; S.focus = {type: 'pillar', k: 'seg'}; const base = heatImage(r); S.lay.heat = h; S.focus = f0; img.setAttribute('href', base);
- const fo = el('foreignObject', {x: 0, y: 0, width: F.W, height: F.H, style: 'pointer-events:none'}); img.after(fo);
+ // la geometría sale de la imagen del campo: en planta va de 0,0 a F.W×F.H; en 3D lleva la matriz que la acuesta sobre el piso de la maqueta
+ const gx = img.getAttribute('x') || 0, gy = img.getAttribute('y') || 0, gw = img.getAttribute('width'), gh = img.getAttribute('height'), gt = img.getAttribute('transform');
+ const fo = el('foreignObject', {x: gx, y: gy, width: gw, height: gh, transform: gt, style: 'pointer-events:none'}); img.after(fo);
  const box = document.createElement('div'); box.style.cssText = 'position:relative;width:100%;height:100%'; fo.appendChild(box);
- let old = oldHref ? el('image', {href: oldHref, x: 0, y: 0, width: F.W, height: F.H, preserveAspectRatio: 'none', style: 'pointer-events:none'}) : null; if (old) img.after(old);
- const g = el('g', {style: 'pointer-events:none'}, svg);
+ let old = oldHref ? el('image', {href: oldHref, x: gx, y: gy, width: gw, height: gh, transform: gt, preserveAspectRatio: 'none', style: 'pointer-events:none'}) : null; if (old) img.after(old);
+ const g = el('g', {style: 'pointer-events:none', transform: gt}, svg); // pulsos, radares y destellos van en coordenadas de planta: en 3D, sobre el piso
  acts.forEach(A => { const cv = document.createElement('canvas'); cv.width = G.nx * K; cv.height = G.ny * K; cv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%'; box.appendChild(cv);
   A.x = cv.getContext('2d'); A.x.fillStyle = A.col; A.cv = cv; A.i = 0; A.shown = 0; A.active = [];
   // de dónde nace: pulso en cada origen; barrido donde hay radar; flechas que giran donde hay ciclo; vidrios que brillan; elementos que se encienden
@@ -1433,11 +1494,13 @@ function pxPlayRel(slot, r, rk, svg, img, old) { const [a, b] = rk.split('|'), c
   pxAct(r, ob, BY[b].c1, c => conf ? 1 - Fd[b][c] : Fd[b][c], .3, .64, conf ? {t: ob.t.map(v => 1 - v), t2: null, a1: 1, lines: null, src: [], cap: '2 · ' + cp[1], capFn: null, fade: [.62, .92, .1]} : {cap: '2 · ' + cp[1], capFn: null, fade: [.62, .92, .1]}),
   pxAct(r, {t: tc, W: .25}, '#D42A3C', c => valueAt(c, r), .62, 1, {cap: '3 · ' + cp[2]})];
  pxPlay(slot, r, svg, img, old, acts, 4600); }
-function renderViewport() { if (S.px) pxStop('vp'); renderViewportBase(); if (!S.px || !S.res) return;
- const f = S.focus, r = S.res, key = f.type === 'pillar' && isTh(f.k) ? f.k : f.type === 'rel' ? 'rel:' + f.k : null, svg = document.querySelector('#vbody .vp svg.plan'), img = svg && svg.querySelector('image');
- const changed = S.px.animFor !== r || S.px.animK !== key, old = S.px.animFor === r ? S.px.lastHref : null; S.px.animFor = r; S.px.animK = key; if (img) S.px.lastHref = img.getAttribute('href');
- if (!changed || !key || !img || !S.lay.heat || PXREDUCE.matches || document.hidden || $('dg').classList.contains('on')) return;
- if (!r._sp) pxNow(); if (f.type === 'rel') pxPlayRel('vp', r, f.k, svg, img, old); else pxPlayTheme('vp', r, f.k, svg, img, old); }
+function renderViewport() { if (S.px) { pxStop('vp'); pxStop('vp3'); } renderViewportBase(); if (!S.px || !S.res) return;
+ const f = S.focus, r = S.res, key = f.type === 'pillar' && isTh(f.k) ? pxTyKey(f.k) : f.type === 'rel' ? 'rel:' + f.k : null;
+ // cada vista abierta (planta, 3D o las dos en «Dividida») tiene su propia imagen del campo y su propia animación
+ const vs = [...document.querySelectorAll('#vbody .vp svg.plan')].map(svg => { const d3 = !!svg._img3, img = d3 ? svg._img3 : svg.querySelector('image'); return img ? {svg, img, d3, slot: d3 ? 'vp3' : 'vp'} : null; }).filter(Boolean);
+ const changed = S.px.animFor !== r || S.px.animK !== key, same = S.px.animFor === r, prev = S.px.lastHrefs || {}; S.px.animFor = r; S.px.animK = key; S.px.lastHrefs = {}; vs.forEach(v => { S.px.lastHrefs[v.slot] = v.img.getAttribute('href'); });
+ if (!changed || !key || !vs.length || !S.lay.heat || PXREDUCE.matches || document.hidden || $('dg').classList.contains('on')) return;
+ if (!r._sp) pxNow(); vs.forEach(v => { const old = same ? prev[v.slot] || null : null; if (f.type === 'rel') pxPlayRel(v.slot, r, f.k, v.svg, v.img, old); else pxPlayTheme(v.slot, r, f.k, v.svg, v.img, old); }); }
 // presentación: cada slide con planta (pilar o relación) cuenta cómo nace su mapa
 function drawSlide() { if (S.px) pxStop('pres'); drawSlideBase(); const it = deck()[pIdx]; if (!it || (it.type !== 'pillar' && it.type !== 'rel') || PXREDUCE.matches || !S.lay.heat) return;
  const svg = $('pplan'), img = svg && svg.querySelector('image'); if (!img) return;
@@ -1445,7 +1508,8 @@ function drawSlide() { if (S.px) pxStop('pres'); drawSlideBase(); const it = dec
  try { if (!S.res._sp) pxNow(); if (it.type === 'rel') pxPlayRel('pres', S.res, it.k, svg, img, null); else pxPlayTheme('pres', S.res, it.k, svg, img, null); } finally { S.focus = f0; S.thr = th0; } }
 
 function renderLegend() { renderLegendBase(); if (!(S.focus.type === 'pillar' && isTh(S.focus.k))) return; const t = PX.TH[S.focus.k], l = document.querySelector('#vlegend .scale-l');
- if (l) l.innerHTML = `<span>${t.lo}</span><span>${t.hi}</span>`; }
+ if (l) l.innerHTML = `<span>${t.lo}</span><span>${t.hi}</span>`;
+ const u = document.querySelector('#vlegend .unit'); if (u) { u.textContent = pxUnit(t); u.title = pxUnit(t); } }
 
 function renderDigest() { const box = $('dg'); if (!box.classList.contains('on')) return; if (!S.res) { renderDigestBase(); return; }
  const m = cur(), X = pxNow(), src = m.model.source, d = src.exported_at ? new Date(src.exported_at) : null;
@@ -1509,6 +1573,7 @@ const hp = new URLSearchParams(location.hash.slice(1));
 if (hp.get('bg')) setBg(hp.get('bg')); if (hp.get('theme')) setTheme(hp.get('theme'));
 let embedded = null;
 try { embedded = JSON.parse($('space-model-data').textContent); } catch (e) { toast('Los datos incrustados no se pudieron leer'); }
+if (hp.get('cell') && +hp.get('cell') >= .1 && +hp.get('cell') <= 1) { S.cell = +(+hp.get('cell')).toFixed(2); const pb = document.querySelector('#px-cb'); if (pb && ![.5, 1].includes(S.cell)) { pb.textContent = `Personalizado · ${S.cell} m`; document.querySelectorAll('#cells button').forEach(x => x.setAttribute('aria-pressed', x === pb)); } else document.querySelectorAll('#cells button[data-c]').forEach(x => x.setAttribute('aria-pressed', +x.dataset.c === S.cell)); } // #cell=0.2: abre con esa retícula (el video se graba a 0.2 m)
 if (embedded) { window.SA_HAS_SAMPLE = false; addModels(embedded, 'exportación de Revit'); }
 else if (!hp.get('vacio')) loadSample();   // #vacio=1 abre el estado vacío (Abrir space-model.json)
 if (hp.get('view')) setView(hp.get('view'));
