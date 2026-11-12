@@ -1,0 +1,548 @@
+{
+  "app/app.js": {
+    "mtime": 1794429014.9775472,
+    "seen": 1794429162.7838306,
+    "ast_hash": "27a454d056b7b6033068b5c6550f6c46",
+    "semantic_hash": ""
+  },
+  "app/engine.js": {
+    "mtime": 1794246127.52997,
+    "seen": 1794247806.7909148,
+    "ast_hash": "e92f141ee78e4326fb4492c43c44f92a",
+    "semantic_hash": ""
+  },
+  "app/samples/sucursal.js": {
+    "mtime": 1794254123.564691,
+    "seen": 1794254172.523886,
+    "ast_hash": "dea42fa2db2d1684406b14ee05406507",
+    "semantic_hash": ""
+  },
+  "app/tests/engine.test.js": {
+    "mtime": 1794239867.9047513,
+    "seen": 1794239910.873863,
+    "ast_hash": "2e75a75c78af7d8aba917b59e585add9",
+    "semantic_hash": ""
+  },
+  "app/tests/fixtures/make-sucursal.js": {
+    "mtime": 1794252810.653984,
+    "seen": 1794253189.2100582,
+    "ast_hash": "e133150fd47f57a0cdfd9bd5b431b5d6",
+    "semantic_hash": ""
+  },
+  "revit/SpaceAnalytics.extension/SpaceAnalytics.tab/Analisis.panel/Abrir.pushbutton/bundle.yaml": {
+    "mtime": 1793320444.0422091,
+    "seen": 1793377037.9833221,
+    "ast_hash": "3c70dbce9093f4fa35d4095f09bea6df",
+    "semantic_hash": "3c70dbce9093f4fa35d4095f09bea6df"
+  },
+  "revit/SpaceAnalytics.extension/SpaceAnalytics.tab/Analisis.panel/Abrir.pushbutton/script.py": {
+    "mtime": 1793320422.4512992,
+    "seen": 1793377037.9833226,
+    "ast_hash": "f5a85de3c8c645672c643829e7b57eb4",
+    "semantic_hash": "f5a85de3c8c645672c643829e7b57eb4"
+  },
+  "revit/SpaceAnalytics.extension/SpaceAnalytics.tab/Analisis.panel/Exportar.pushbutton/bundle.yaml": {
+    "mtime": 1793388304.7884674,
+    "seen": 1793629749.9742017,
+    "ast_hash": "f109061be12740feb7931f0eec1f1301",
+    "semantic_hash": "f109061be12740feb7931f0eec1f1301"
+  },
+  "revit/SpaceAnalytics.extension/SpaceAnalytics.tab/Analisis.panel/Exportar.pushbutton/export.xaml": {
+    "mtime": 1793392172.1889346,
+    "seen": 1793629749.9742029,
+    "ast_hash": "2b35b8d231aa3396e4a91e0dafbb51bd",
+    "semantic_hash": "2b35b8d231aa3396e4a91e0dafbb51bd"
+  },
+  "revit/SpaceAnalytics.extension/SpaceAnalytics.tab/Analisis.panel/Exportar.pushbutton/lib/export_window.py": {
+    "mtime": 1793392204.9326994,
+    "seen": 1793629749.974204,
+    "ast_hash": "f776935c1471a98d07d394cc22b7b021",
+    "semantic_hash": "f776935c1471a98d07d394cc22b7b021"
+  },
+  "revit/SpaceAnalytics.extension/SpaceAnalytics.tab/Analisis.panel/Exportar.pushbutton/script.py": {
+    "mtime": 1793392204.9326994,
+    "seen": 1793629749.974205,
+    "ast_hash": "00b17c2d1d74cc0f2baee8184991ba0a",
+    "semantic_hash": "00b17c2d1d74cc0f2baee8184991ba0a"
+  },
+  "revit/SpaceAnalytics.extension/SpaceAnalytics.tab/Analisis.panel/bundle.yaml": {
+    "mtime": 1793392095.173054,
+    "seen": 1793629749.9742117,
+    "ast_hash": "8da0c88ad5009a0cd9a44a075592205c",
+    "semantic_hash": "8da0c88ad5009a0cd9a44a075592205c"
+  },
+  "revit/SpaceAnalytics.extension/SpaceAnalytics.tab/bundle.yaml": {
+    "mtime": 1793320443.8860765,
+    "seen": 1793377037.9833274,
+    "ast_hash": "48274dd055b73b02298618be555fcee9",
+    "semantic_hash": "48274dd055b73b02298618be555fcee9"
+  },
+  "revit/SpaceAnalytics.extension/lib/sa_model/__init__.py": {
+    "mtime": 1793388295.4970448,
+    "seen": 1793629749.9742146,
+    "ast_hash": "94a4218bbf033576675c40026a73b989",
+    "semantic_hash": "94a4218bbf033576675c40026a73b989"
+  },
+  "revit/SpaceAnalytics.extension/lib/sa_model/bundle.py": {
+    "mtime": 1793388295.5136898,
+    "seen": 1793629749.9742157,
+    "ast_hash": "9bbfce29ffb3cccf86a37cecaf334230",
+    "semantic_hash": "9bbfce29ffb3cccf86a37cecaf334230"
+  },
+  "revit/SpaceAnalytics.extension/lib/sa_model/document.py": {
+    "mtime": 1793388295.4985511,
+    "seen": 1793629749.9742167,
+    "ast_hash": "144c848aabaaa359b4e5af37354628f7",
+    "semantic_hash": "144c848aabaaa359b4e5af37354628f7"
+  },
+  "revit/SpaceAnalytics.extension/lib/sa_model/exports.py": {
+    "mtime": 1793388295.5136898,
+    "seen": 1793629749.974218,
+    "ast_hash": "d7c98d4eb670c1e05c81df248af80674",
+    "semantic_hash": "d7c98d4eb670c1e05c81df248af80674"
+  },
+  "revit/SpaceAnalytics.extension/lib/sa_model/geometry.py": {
+    "mtime": 1793320069.1052577,
+    "seen": 1793377037.9833307,
+    "ast_hash": "0c56487db78a49684920a37306df44aa",
+    "semantic_hash": "0c56487db78a49684920a37306df44aa"
+  },
+  "revit/SpaceAnalytics.extension/lib/sa_model/roles.py": {
+    "mtime": 1793373953.8458736,
+    "seen": 1793377037.9833317,
+    "ast_hash": "90916e282d1be670faebe3afb13dc246",
+    "semantic_hash": "90916e282d1be670faebe3afb13dc246"
+  },
+  "revit/SpaceAnalytics.extension/lib/sa_model/text.py": {
+    "mtime": 1793388295.5151932,
+    "seen": 1793629749.9742227,
+    "ast_hash": "7f22b4c7af7f79a9f2106c83507d4b1d",
+    "semantic_hash": "7f22b4c7af7f79a9f2106c83507d4b1d"
+  },
+  "revit/SpaceAnalytics.extension/lib/sa_model/vertical.py": {
+    "mtime": 1793373932.7846675,
+    "seen": 1793377037.983333,
+    "ast_hash": "c95c4af3605ccd821bc9570ae6b8bb6a",
+    "semantic_hash": "c95c4af3605ccd821bc9570ae6b8bb6a"
+  },
+  "revit/SpaceAnalytics.extension/lib/sa_revit/__init__.py": {
+    "mtime": 1793320284.179698,
+    "seen": 1793377037.9833338,
+    "ast_hash": "b148f5e993b886f5dd92491c1471eb47",
+    "semantic_hash": "b148f5e993b886f5dd92491c1471eb47"
+  },
+  "revit/SpaceAnalytics.extension/lib/sa_revit/collect.py": {
+    "mtime": 1794247589.0722709,
+    "seen": 1794247806.7909892,
+    "ast_hash": "c889d1def0c488b50f3e4260d5e40f89",
+    "semantic_hash": ""
+  },
+  "revit/SpaceAnalytics.extension/lib/sa_revit/common.py": {
+    "mtime": 1793320284.5775802,
+    "seen": 1793377037.983335,
+    "ast_hash": "ba5e2ef2ffe69723bdabdbdaac1d1de3",
+    "semantic_hash": "ba5e2ef2ffe69723bdabdbdaac1d1de3"
+  },
+  "revit/SpaceAnalytics.extension/lib/sa_revit/shell.py": {
+    "mtime": 1793630568.901698,
+    "seen": 1793630840.6029003,
+    "ast_hash": "5001e24796461fcd05d3ea341783d9e8",
+    "semantic_hash": ""
+  },
+  "revit/tests/conftest.py": {
+    "mtime": 1793320510.560404,
+    "seen": 1793377037.9833362,
+    "ast_hash": "f5de5593b412f5035c29abcf1a2f008c",
+    "semantic_hash": "f5de5593b412f5035c29abcf1a2f008c"
+  },
+  "revit/tests/fixtures/app/app.js": {
+    "mtime": 1793320478.5867083,
+    "seen": 1793377037.983337,
+    "ast_hash": "ac9c7bfb7d84b157eb75b9b86be4dc1f",
+    "semantic_hash": "ac9c7bfb7d84b157eb75b9b86be4dc1f"
+  },
+  "revit/tests/fixtures/app/js/geometry.js": {
+    "mtime": 1793320478.789997,
+    "seen": 1793377037.9833376,
+    "ast_hash": "1db919f2486a940d3b49ebafa15f4913",
+    "semantic_hash": "1db919f2486a940d3b49ebafa15f4913"
+  },
+  "revit/tests/test_bundle.py": {
+    "mtime": 1793388347.8394704,
+    "seen": 1793629749.9742324,
+    "ast_hash": "747425b8e3b0c383d0563148ee24fb18",
+    "semantic_hash": "747425b8e3b0c383d0563148ee24fb18"
+  },
+  "revit/tests/test_document.py": {
+    "mtime": 1793388344.0015156,
+    "seen": 1793629749.9742334,
+    "ast_hash": "6f49372c4f466a9e11d9d8a90ada3542",
+    "semantic_hash": "6f49372c4f466a9e11d9d8a90ada3542"
+  },
+  "revit/tests/test_exports.py": {
+    "mtime": 1793388333.4845307,
+    "seen": 1793629749.9742346,
+    "ast_hash": "ddb46f7ff51aa252b8b468c4e86783dc",
+    "semantic_hash": "ddb46f7ff51aa252b8b468c4e86783dc"
+  },
+  "revit/tests/test_extension.py": {
+    "mtime": 1793392224.5646956,
+    "seen": 1793629749.9742355,
+    "ast_hash": "54012257b445432a70fdc1f3aaee0708",
+    "semantic_hash": "54012257b445432a70fdc1f3aaee0708"
+  },
+  "revit/tests/test_geometry.py": {
+    "mtime": 1793320531.4189053,
+    "seen": 1793377037.9833407,
+    "ast_hash": "2fda07d33142cbc6a1b696a8e84a64a0",
+    "semantic_hash": "2fda07d33142cbc6a1b696a8e84a64a0"
+  },
+  "revit/tests/test_text.py": {
+    "mtime": 1793388333.4845307,
+    "seen": 1793629749.9742389,
+    "ast_hash": "9a417dad500c9b5f074f1aff8d61da75",
+    "semantic_hash": "9a417dad500c9b5f074f1aff8d61da75"
+  },
+  "revit/tests/test_vertical.py": {
+    "mtime": 1793374111.1154656,
+    "seen": 1793377037.9833422,
+    "ast_hash": "3f88ed7ff50b62c063476cd659871122",
+    "semantic_hash": "3f88ed7ff50b62c063476cd659871122"
+  },
+  "revit/tests/test_window.py": {
+    "mtime": 1793392227.0386367,
+    "seen": 1793629749.974241,
+    "ast_hash": "3db62464381344807fb2d7f0babf7e23",
+    "semantic_hash": "3db62464381344807fb2d7f0babf7e23"
+  },
+  "revit/tools/make_icons.py": {
+    "mtime": 1793392102.4930065,
+    "seen": 1793629749.9742422,
+    "ast_hash": "a8c6dc6a793f0916c0eb1cb01fe09481",
+    "semantic_hash": "a8c6dc6a793f0916c0eb1cb01fe09481"
+  },
+  "README.md": {
+    "mtime": 1794253178.8563478,
+    "seen": 1794253189.2102072,
+    "ast_hash": "4673c13d30740e058c792199ecc99760",
+    "semantic_hash": ""
+  },
+  "app/index.html": {
+    "mtime": 1794428313.2414389,
+    "seen": 1794428328.9505558,
+    "ast_hash": "59f0e00cebdcc633f4bda638bf9c6628",
+    "semantic_hash": ""
+  },
+  "docs/space-model.md": {
+    "mtime": 1794246333.0452633,
+    "seen": 1794247806.791033,
+    "ast_hash": "522a37093eabf5ed6826262f6465caf1",
+    "semantic_hash": ""
+  },
+  "revit/README.md": {
+    "mtime": 1793392519.452764,
+    "seen": 1793629749.9742482,
+    "ast_hash": "c95e9ecc8068d29b27491a1f928bd498",
+    "semantic_hash": "c95e9ecc8068d29b27491a1f928bd498"
+  },
+  "revit/tests/fixtures/app/index.html": {
+    "mtime": 1793320478.453436,
+    "seen": 1793377037.9833474,
+    "ast_hash": "be8295dcdf797d770f2ba59ce87926f6",
+    "semantic_hash": "be8295dcdf797d770f2ba59ce87926f6"
+  },
+  "revit/SpaceAnalytics.extension/SpaceAnalytics.tab/Analisis.panel/Abrir.pushbutton/icon.dark.png": {
+    "mtime": 1793392104.794777,
+    "seen": 1793392527.543312,
+    "ast_hash": "d09adc4c822fa923b6fd407fb4f3847b",
+    "semantic_hash": "d09adc4c822fa923b6fd407fb4f3847b"
+  },
+  "revit/SpaceAnalytics.extension/SpaceAnalytics.tab/Analisis.panel/Abrir.pushbutton/icon.png": {
+    "mtime": 1793392104.3428252,
+    "seen": 1793392527.543314,
+    "ast_hash": "ec861fcb39155be45b863a45b4754e24",
+    "semantic_hash": "ec861fcb39155be45b863a45b4754e24"
+  },
+  "revit/SpaceAnalytics.extension/SpaceAnalytics.tab/Analisis.panel/Exportar.pushbutton/icon.dark.png": {
+    "mtime": 1793392105.4829679,
+    "seen": 1793392527.5433156,
+    "ast_hash": "770e516346ccf24509d818dffc697fbe",
+    "semantic_hash": "770e516346ccf24509d818dffc697fbe"
+  },
+  "revit/SpaceAnalytics.extension/SpaceAnalytics.tab/Analisis.panel/Exportar.pushbutton/icon.png": {
+    "mtime": 1793392105.1307828,
+    "seen": 1793392527.5433173,
+    "ast_hash": "5775572ed30bdfadd198d7f6a7ffe7d3",
+    "semantic_hash": "5775572ed30bdfadd198d7f6a7ffe7d3"
+  },
+  "revit/SpaceAnalytics.extension/SpaceAnalytics.tab/Analisis.panel/Exportar.pushbutton/mark.png": {
+    "mtime": 1793392107.1401694,
+    "seen": 1793392527.543319,
+    "ast_hash": "4b0c0332c2bf92d7faff70244c5ea869",
+    "semantic_hash": "4b0c0332c2bf92d7faff70244c5ea869"
+  },
+  ".claude/settings.json": {
+    "mtime": 1793377797.9435835,
+    "seen": 1793629749.9741783,
+    "ast_hash": "7514cca8615deddaf09173de3fa72182",
+    "semantic_hash": "7514cca8615deddaf09173de3fa72182"
+  },
+  "CLAUDE.md": {
+    "mtime": 1793377797.9405768,
+    "seen": 1793629749.9742434,
+    "ast_hash": "67d88e9d0760c3ba54c75dfd9551c1c5",
+    "semantic_hash": "67d88e9d0760c3ba54c75dfd9551c1c5"
+  },
+  "app/tests/fixtures/sucursal.json": {
+    "mtime": 1793388375.332479,
+    "seen": 1793629749.9741964,
+    "ast_hash": "b52dd811a579d4cdafcf4f030924b084",
+    "semantic_hash": "b52dd811a579d4cdafcf4f030924b084"
+  },
+  "docs/paneles.md": {
+    "mtime": 1794245468.3987055,
+    "seen": 1794245472.5917723,
+    "ast_hash": "dab806cb2a41f39489317d54b318ed41",
+    "semantic_hash": ""
+  },
+  "revit/SpaceAnalytics.extension/SpaceAnalytics.tab/Analisis.panel/Presentar.pushbutton/bundle.yaml": {
+    "mtime": 1793392095.1070182,
+    "seen": 1793629749.9742064,
+    "ast_hash": "823bcbcb22e7d8c32dd2a9968f5007df",
+    "semantic_hash": "823bcbcb22e7d8c32dd2a9968f5007df"
+  },
+  "revit/SpaceAnalytics.extension/SpaceAnalytics.tab/Analisis.panel/Presentar.pushbutton/script.py": {
+    "mtime": 1793392093.693522,
+    "seen": 1793629749.9742074,
+    "ast_hash": "17f78dfa18a795300c72f4029d9416bd",
+    "semantic_hash": "17f78dfa18a795300c72f4029d9416bd"
+  },
+  "revit/SpaceAnalytics.extension/SpaceAnalytics.tab/Analisis.panel/Resumen.pushbutton/bundle.yaml": {
+    "mtime": 1793392095.1070182,
+    "seen": 1793629749.974209,
+    "ast_hash": "d95f26306033e901ddd09d8e0cc11572",
+    "semantic_hash": "d95f26306033e901ddd09d8e0cc11572"
+  },
+  "revit/SpaceAnalytics.extension/SpaceAnalytics.tab/Analisis.panel/Resumen.pushbutton/script.py": {
+    "mtime": 1793392093.3435192,
+    "seen": 1793629749.9742105,
+    "ast_hash": "4f1b7a8ed5276f2660a4792ce8da74c0",
+    "semantic_hash": "4f1b7a8ed5276f2660a4792ce8da74c0"
+  },
+  "revit/SpaceAnalytics.extension/lib/sa_model/launch.py": {
+    "mtime": 1793630568.646218,
+    "seen": 1793630840.6028907,
+    "ast_hash": "688d5b1e7334b27849c0e0f6b23b75f1",
+    "semantic_hash": ""
+  },
+  "revit/tests/test_launch.py": {
+    "mtime": 1793630569.1207297,
+    "seen": 1793630840.6029124,
+    "ast_hash": "a9b5187a160909dafff242904ed48896",
+    "semantic_hash": ""
+  },
+  "revit/SpaceAnalytics.extension/SpaceAnalytics.tab/Analisis.panel/Presentar.pushbutton/icon.dark.png": {
+    "mtime": 1793392106.254639,
+    "seen": 1793629749.974255,
+    "ast_hash": "a50f896042d0cf4c7e0c7b478c906a36",
+    "semantic_hash": "a50f896042d0cf4c7e0c7b478c906a36"
+  },
+  "revit/SpaceAnalytics.extension/SpaceAnalytics.tab/Analisis.panel/Presentar.pushbutton/icon.png": {
+    "mtime": 1793392105.803402,
+    "seen": 1793629749.974256,
+    "ast_hash": "7e50fc8297347bf76d0b0e6a6833cc4a",
+    "semantic_hash": "7e50fc8297347bf76d0b0e6a6833cc4a"
+  },
+  "revit/SpaceAnalytics.extension/SpaceAnalytics.tab/Analisis.panel/Resumen.pushbutton/icon.dark.png": {
+    "mtime": 1793392106.9301164,
+    "seen": 1793629749.9742572,
+    "ast_hash": "5e458191689e383dae2c6c6e3b3bad3d",
+    "semantic_hash": "5e458191689e383dae2c6c6e3b3bad3d"
+  },
+  "revit/SpaceAnalytics.extension/SpaceAnalytics.tab/Analisis.panel/Resumen.pushbutton/icon.png": {
+    "mtime": 1793392106.5883825,
+    "seen": 1793629749.9742584,
+    "ast_hash": "c5b328f6f4391861fe0075b7dfa490d5",
+    "semantic_hash": "c5b328f6f4391861fe0075b7dfa490d5"
+  },
+  "demo/hoja-contactos.ps1": {
+    "mtime": 1793630284.207565,
+    "seen": 1793630307.6011846,
+    "ast_hash": "be7e55ae41fb1acf431710b70d09eabc",
+    "semantic_hash": ""
+  },
+  "demo/revit-ui.ps1": {
+    "mtime": 1793633894.3634417,
+    "seen": 1793634014.8719802,
+    "ast_hash": "077ffc75392a2cd04cfba39704d45d25",
+    "semantic_hash": ""
+  },
+  "demo/deck/assets.mjs": {
+    "mtime": 1793632885.2149312,
+    "seen": 1793632992.9887865,
+    "ast_hash": "017fea05580d051943a2d684bfb8735c",
+    "semantic_hash": ""
+  },
+  "demo/deck/build.js": {
+    "mtime": 1793637225.565431,
+    "seen": 1793637299.0191662,
+    "ast_hash": "bd94a1f521ce0aad74754abd8fad4a6c",
+    "semantic_hash": ""
+  },
+  "demo/deck/package.json": {
+    "mtime": 1793637234.5091143,
+    "seen": 1793637299.0191755,
+    "ast_hash": "3ac9487d47ea6e8f20a600077ca7396f",
+    "semantic_hash": ""
+  },
+  "demo/grabar-revit.ps1": {
+    "mtime": 1793634637.1917741,
+    "seen": 1793634847.3439813,
+    "ast_hash": "18e9750f77508605a0003d3797f81990",
+    "semantic_hash": ""
+  },
+  "demo/deck/fix-media.ps1": {
+    "mtime": 1793636285.3623896,
+    "seen": 1793636364.9030774,
+    "ast_hash": "760ce92c3419d298c93d1f6594cd5740",
+    "semantic_hash": ""
+  },
+  "demo/deck/halo/halo.js": {
+    "mtime": 1792603555.5741184,
+    "seen": 1793637299.0191727,
+    "ast_hash": "4d8fbb3748228447cfa6ce5c42956730",
+    "semantic_hash": ""
+  },
+  "demo/deck/render.mjs": {
+    "mtime": 1793637156.7315822,
+    "seen": 1793637299.019177,
+    "ast_hash": "f59869b60d9298eac02382d3940afbfd",
+    "semantic_hash": ""
+  },
+  "demo/deck/slides.html": {
+    "mtime": 1793638810.2826774,
+    "seen": 1793642233.3683686,
+    "ast_hash": "669c2be744ed673c637c4f0fe5fe609b",
+    "semantic_hash": ""
+  },
+  "demo/deck/check-app.mjs": {
+    "mtime": 1793638627.2908187,
+    "seen": 1793638664.7109377,
+    "ast_hash": "527d6e00332558ba40b708685db1dd04",
+    "semantic_hash": ""
+  },
+  "index.html": {
+    "mtime": 1794253217.3333874,
+    "seen": 1794253261.0897243,
+    "ast_hash": "46a70f67f55710aae0f97d68ae379439",
+    "semantic_hash": ""
+  },
+  "demo/deck/check-load.mjs": {
+    "mtime": 1793642157.8395855,
+    "seen": 1793642233.3682709,
+    "ast_hash": "3d949da0f11ffb70552f6db60ebec834",
+    "semantic_hash": ""
+  },
+  "docs/mockups/diagnostico-datos-claros.html": {
+    "mtime": 1793995739.9046135,
+    "seen": 1794238013.488536,
+    "ast_hash": "71a77b266afa2b195f951e9ed4fc85fc",
+    "semantic_hash": ""
+  },
+  "app/indices.js": {
+    "mtime": 1794429135.2023811,
+    "seen": 1794429162.7838402,
+    "ast_hash": "302d629c4dc013f6f3d241991d991d18",
+    "semantic_hash": ""
+  },
+  "app/tests/indices.test.js": {
+    "mtime": 1794429046.1647162,
+    "seen": 1794429162.7838528,
+    "ast_hash": "bdfe9a0b75cab1b121dcec32c919b2ce",
+    "semantic_hash": ""
+  },
+  "docs/modos.md": {
+    "mtime": 1794429145.6238112,
+    "seen": 1794429162.783946,
+    "ast_hash": "5835f35d0239f022c8ed2a7411bd84fd",
+    "semantic_hash": ""
+  },
+  "revit/standard/biblioteca.json": {
+    "mtime": 1794246220.446915,
+    "seen": 1794247806.790993,
+    "ast_hash": "456bd54bf617bec19e40654e65561d87",
+    "semantic_hash": ""
+  },
+  "revit/standard/generar.py": {
+    "mtime": 1794246220.4883766,
+    "seen": 1794247806.7909942,
+    "ast_hash": "da972be4f8cd7b43d3de069355406739",
+    "semantic_hash": ""
+  },
+  "revit/standard/reglas/rac-advanced.json": {
+    "mtime": 1794247469.9125473,
+    "seen": 1794247806.7909951,
+    "ast_hash": "5380960d9f34376ca333c6047fdca03d",
+    "semantic_hash": ""
+  },
+  "revit/standard/reglas/rac-basic.json": {
+    "mtime": 1794247278.508845,
+    "seen": 1794247806.7909966,
+    "ast_hash": "ca757de4db2accceeed40ad7cc613d45",
+    "semantic_hash": ""
+  },
+  "revit/tests/test_biblioteca.py": {
+    "mtime": 1794246326.9382136,
+    "seen": 1794247806.7910018,
+    "ast_hash": "2e2f9afcf3c36a8210b666b0c07d3f48",
+    "semantic_hash": ""
+  },
+  "revit/tools/etiquetar.py": {
+    "mtime": 1794247203.2238452,
+    "seen": 1794247806.791015,
+    "ast_hash": "391c0265008f514d453574c5be832bbe",
+    "semantic_hash": ""
+  },
+  "revit/tools/muestra.py": {
+    "mtime": 1794247669.8280127,
+    "seen": 1794247806.7910192,
+    "ast_hash": "07d99bb8e10439e5b2de78bb9138d4d8",
+    "semantic_hash": ""
+  },
+  "revit/tools/sa_etiquetar.py": {
+    "mtime": 1794247437.4277446,
+    "seen": 1794247806.7910209,
+    "ast_hash": "63cbee19eef8eec52af730f53bf4733b",
+    "semantic_hash": ""
+  },
+  "docs/parametros-sa.md": {
+    "mtime": 1794254123.467413,
+    "seen": 1794254172.5240593,
+    "ast_hash": "ee63b99d6859eff424c35fa7389f0653",
+    "semantic_hash": ""
+  },
+  "revit/standard/SA_Parametros.txt": {
+    "mtime": 1794246220.5626392,
+    "seen": 1794247806.7910368,
+    "ast_hash": "cbea84e5304952873338f26de6742d2d",
+    "semantic_hash": ""
+  },
+  "app/tests/fixtures/make-sucursal-completa.js": {
+    "mtime": 1794254123.467413,
+    "seen": 1794254172.5238938,
+    "ast_hash": "3808af102bef09b8dbf067ec9cdcceaf",
+    "semantic_hash": ""
+  },
+  "docs/specs/2026-11-11-ajustes-app-y-video.md": {
+    "mtime": 1794427894.9474244,
+    "seen": 1794428328.9505658,
+    "ast_hash": "ffe36216279aaadd28a2132cfced64d2",
+    "semantic_hash": ""
+  },
+  "demo/deck/package-lock.json": {
+    "mtime": 1793632547.6858125,
+    "seen": 1793632992.9889338,
+    "ast_hash": "693c5a8ab6b7484898b6ad2e91240874",
+    "semantic_hash": ""
+  }
+}
